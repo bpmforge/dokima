@@ -15860,7 +15860,8 @@
         "MEASURED, THEN RATCHETED: gaps 46 -> 54, buried 44 -> 46, and the ten symbols that stopped hiding are named in conductor.config.json ($ratchetRaisedW2321Note). Nothing left either list. The two files doing the hiding were themselves cap splits \u2014 packages/harbormaster/src/breakpoints.ts and packages/events/src/receipts.ts \u2014 which is the finding in one sentence: the honest response to the 400-line cap was quietly disabling the guard.",
         "THIS IS THE $barrelCountingNote KIND OF RAISE, NOT THE FORBIDDEN ONE. Nothing was wired to nothing here; the counting got sharper and already-dead symbols became visible, exactly as at W12-39 (43 -> 62 when comments stopped counting as calls). Raising a ratchet to absorb debt a change created is the thing that is banned, and that is not what this is.",
         "FIXTURES: a chapter re-exporting a symbol gives it production 0; a real call in that same chapter still counts 1; the blanking preserves length and line count and leaves a local `export const` alone; and an `import ... from` is still a call, because only re-export is plumbing.",
-        "GATE: lint 0, typecheck 0, 610 files / 5331 passed / 2 skipped, 76 e2e passed, six validators clean (6.8s, validate-exports now at --max 54 --max-buried 46) plus temp-leaks clean."
+        "GATE: lint 0, typecheck 0, 610 files / 5331 passed / 2 skipped, 76 e2e passed, six validators clean (6.8s, validate-exports now at --max 54 --max-buried 46) plus temp-leaks clean.",
+        "THE TEN WERE THEN HAND-VERIFIED, as W12-39 verified two of its nineteen rather than trusting the count: each has exactly two non-test mentions, its own declaration and a re-export line. They are genuinely uncalled, and eight of them are one coherent surface (clarifications + runs) rather than eight independent slips. Filed as W23-25 \u2014 a caller or a deletion, never a baseline entry. The validator does not report its own new symbol, stripReexports, for a reason worth stating: both passes only judge packages/**, and scripts/ is read as reference source."
       ]
     },
     {
@@ -16298,6 +16299,36 @@
         "NECESSARY BUT NOT SUFFICIENT, and the original framing was wrong about that. Allowing removals did NOT let the docs/STATUS.md append through: prettier reformats that line, and a reformatted line is an ADDED line, so the AWS example literal landed on the plus side and was refused exactly as designed. The literal is therefore described instead of quoted \u2014 the redaction was still required, and the ticket bought the general rule rather than this one commit. A value-level exemption mirroring history-secrets-baseline.json would have kept the literal verbatim; not built, because it is more guard surface than the finding justifies.",
         "PRETTIER IS NOT IDEMPOTENT ON docs/STATUS.md: --write has to run twice before --check passes, observed on two separate occasions during this work. Deliberately NOT filed, and this is the judgement rather than an oversight \u2014 it is a formatter behaviour on one very large markdown file, the whole cost is one extra command, and there is no defect for a ticket to fix. Recorded here so the next person who sees --check fail after --write knows to run it again instead of hunting.",
         "GATE AT CLOSE: lint 0, typecheck 0, 610 files / 5327 passed / 2 skipped, 76 e2e passed, six validators clean (6.2s) plus temp-leaks clean."
+      ]
+    },
+    {
+      "id": "W23-25",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [],
+      "depends_on": [],
+      "lane": "core",
+      "module": "harbormaster",
+      "points": 5,
+      "title": "the clarifications and runs verbs have no production caller \u2014 a whole surface, not eight slips",
+      "write_scope": [
+        "packages/harbormaster/src/breakpoints-clarifications.ts",
+        "packages/harbormaster/src/breakpoints-runs.ts",
+        "packages/harbormaster/src/berths-dial.ts",
+        "packages/events/src/receipts/query.ts",
+        "scripts/validate-exports.test.mjs",
+        "conductor.config.json"
+      ],
+      "acceptance": [
+        "Each of the eleven symbols is decided ONE WAY OR THE OTHER \u2014 wired to the caller it was built for, or deleted \u2014 and neither answer is a baseline entry",
+        "Whatever the decision, both ratchets are re-measured afterwards and lowered to the measured numbers"
+      ],
+      "notes": [
+        "FOUND AT W23-21, 2026-09-08, and hand-verified the way W12-39 verified its own newly visible symbols rather than trusting the count. Every one of these has exactly two non-test mentions: its own declaration, and a re-export line in a barrel chapter. Nothing calls them.",
+        "THE SHAPE IS WHY THIS IS ONE TICKET AND NOT ELEVEN: askClarification, answerClarification, dismissClarification, listOpenClarifications, isTicketCheckpointed, completeRun and listRuns are a coherent clarifications/runs verb set \u2014 a whole surface built and never wired \u2014 plus resolveBerthCount and resolveAutorunBreakpoint (the berths dial) and events getReceiptActor. This is the W12-04 packer shape at a larger scale: complete, tested, reachable, adopted by nothing.",
+        "DO NOT ANSWER THIS BY RAISING A BASELINE. The ratchet was raised to 54/46 at W23-21 because the COUNTING got sharper, which is the one legitimate raise; absorbing this debt would be the forbidden one. The honest answers are a caller or a deletion.",
+        "CHECK THE SERVER ROUTES FIRST. A clarifications surface with no in-repo caller may be waiting on an HTTP route that was never registered, in which case the fix is the route and not the verbs \u2014 the same question W21-95 answered for the onboard analysis."
       ]
     }
   ]
