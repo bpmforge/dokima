@@ -16091,7 +16091,7 @@
       "id": "W23-22",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "depends_on": [],
       "lane": "quality",
@@ -16099,7 +16099,10 @@
       "points": 2,
       "title": "CI never runs `pnpm validate`, so three of the six validators are gated only on a laptop",
       "write_scope": [
-        ".github/workflows/ci.yml"
+        ".github/workflows/ci.yml",
+        "scripts/gate-plan.mjs",
+        "scripts/gate-plan.test.mjs",
+        "docs/work/automated-build/GATE_TIMINGS.md"
       ],
       "acceptance": [
         "CI runs the same `pnpm validate` the local Law 3 gate runs, with the same ratchet arguments, so no validator is enforced in only one of the two places",
@@ -16108,7 +16111,8 @@
       "notes": [
         "FOUND AT W23-15, 2026-09-08, while inventorying duplicate gate executions for AB-15. CI runs validate-plan and validate-traceability in a `traceability` job and validate-history-secrets in another, and never runs `pnpm validate` at all \u2014 so validate-ui-copy, validate-exports and validate-volatile-paths are enforced ONLY by a person running the local gate.",
         "THIS IS THE W22-06 SHAPE ONE LEVEL UP: that ticket found the same validator ENFORCING in one place and merely reporting in another, with the two numbers already drifted. Here the second place does not run it at all, which is the same failure with a worse denominator: a green CI is not evidence those three passed.",
-        "Deliberately not fixed inside AB-15: that card is a repository-development optimisation with its own acceptance, and editing CI to close a coverage gap is a different change from parallelising a local command. Evidence and measurements in docs/work/automated-build/GATE_TIMINGS.md \u00a71 row 4."
+        "Deliberately not fixed inside AB-15: that card is a repository-development optimisation with its own acceptance, and editing CI to close a coverage gap is a different change from parallelising a local command. Evidence and measurements in docs/work/automated-build/GATE_TIMINGS.md \u00a71 row 4.",
+        "SCOPE WIDENED AT CLAIM (Law 1), and the reason is the second acceptance criterion. CI cannot simply add `pnpm validate` beside the existing history-secrets job: that job runs the same scanner with --verify-remote-refs, the one network call in the file, deliberately CI-only (Law 9 keeps a local run offline). Adding pnpm validate would configure the same check twice with different arguments \u2014 the exact drift the criterion forbids. So gate-plan gains a guarded, named exclusion and CI runs the SAME `pnpm validate` command a laptop runs, with one documented owner for the scanner. All four files are unowned by any other ticket."
       ]
     },
     {
