@@ -16310,7 +16310,9 @@
       "role": "coding-agent",
       "phase": 23,
       "status": "todo",
-      "stories": [],
+      "stories": [
+        "US-701"
+      ],
       "depends_on": [],
       "lane": "core",
       "module": "harbormaster",
@@ -16325,14 +16327,18 @@
         "conductor.config.json"
       ],
       "acceptance": [
-        "Each of the eleven symbols is decided ONE WAY OR THE OTHER \u2014 wired to the caller it was built for, or deleted \u2014 and neither answer is a baseline entry",
-        "Whatever the decision, both ratchets are re-measured afterwards and lowered to the measured numbers"
+        "Each of the eleven symbols is decided one of three ways \u2014 wired to the caller its requirement implies, kept with an @unreached marker whose reason names the ticket that will wire it, or deleted \u2014 and none of them is answered by moving a ratchet",
+        "The clarifications verbs are decided against FR-N1/UC-03 specifically: either a route and a caller exist, or the marker records which ticket owes them one",
+        "Whatever the decisions, both ratchets are re-measured afterwards and lowered to the measured numbers"
       ],
       "notes": [
         "FOUND AT W23-21, 2026-09-08, and hand-verified the way W12-39 verified its own newly visible symbols rather than trusting the count. Every one of these has exactly two non-test mentions: its own declaration, and a re-export line in a barrel chapter. Nothing calls them.",
         "THE SHAPE IS WHY THIS IS ONE TICKET AND NOT ELEVEN: askClarification, answerClarification, dismissClarification, listOpenClarifications, isTicketCheckpointed, completeRun and listRuns are a coherent clarifications/runs verb set \u2014 a whole surface built and never wired \u2014 plus resolveBerthCount and resolveAutorunBreakpoint (the berths dial) and events getReceiptActor. This is the W12-04 packer shape at a larger scale: complete, tested, reachable, adopted by nothing.",
         "DO NOT ANSWER THIS BY RAISING A BASELINE. The ratchet was raised to 54/46 at W23-21 because the COUNTING got sharper, which is the one legitimate raise; absorbing this debt would be the forbidden one. The honest answers are a caller or a deletion.",
-        "CHECK THE SERVER ROUTES FIRST. A clarifications surface with no in-repo caller may be waiting on an HTTP route that was never registered, in which case the fix is the route and not the verbs \u2014 the same question W21-95 answered for the onboard analysis."
+        "CHECK THE SERVER ROUTES FIRST. A clarifications surface with no in-repo caller may be waiting on an HTTP route that was never registered, in which case the fix is the route and not the verbs \u2014 the same question W21-95 answered for the onboard analysis.",
+        "ACCEPTANCE AMENDED BEFORE ANYONE CLAIMED IT, 2026-09-08, because the filed version forced a false binary. This repo already uses a third answer: runReviewPass carries an @unreached marker reading \"an external caller of the published package may still use it\" \u2014 W23-10 kept an uncalled export because @dokima/harbormaster is one registry release away from being a public API. \"Wire it or delete it\" executed literally would strip eleven exports from a package about to ship v1.0.0.",
+        "AND THE REQUIREMENTS CLAIM THE CLARIFICATIONS VERBS, checked rather than assumed: FR-N1 (\"Clarification cards (context, specific question, options, default-if-unanswered) suspend only work dependent on the answer... dismissal takes the documented default + ledger row\"), US-701 and UC-03 all describe exactly askClarification / answerClarification / dismissClarification / listOpenClarifications / isTicketCheckpointed. These are an UNWIRED FEATURE, not residue from an abandoned design \u2014 which makes this a requirements gap and a product decision, not cleanup. FR-H4 orders the morning queue by leverage with clarifications in it, so the missing piece is plausibly the route and the queue, not the verbs.",
+        "FOUNDER SCOPE, DELIBERATELY NOT DONE HERE: everything else closed in this closeout wave (W23-21, W23-22, W23-24, W23-26) was tooling. This is trust-core production surface on a branch whose merge is already a founder decision, and the honest hand-off is a decided question rather than an unrequested wiring."
       ]
     },
     {

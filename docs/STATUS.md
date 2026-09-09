@@ -2077,12 +2077,49 @@ remotes, **not merged to `main`** — `main` remains the v1.0.0 tag target and
 the tag is not cut. The merge is the founder's call and the tradeoff is stated
 at the end of `docs/work/automated-build/PROGRESS.md`.
 
-**Filed, not fixed:** W23-19 (intermittent `dokima-suite-home-*` temp leak,
-reds `pnpm validate` about every other full run), W23-21 (`validate-exports`
-does not follow `export * from`, so splitting a barrel silently shrinks the
-ratchet), W23-22 (CI never runs `pnpm validate`), W23-23 (validator telemetry
-is written into the audited project).
+### Closeout, same day: four of the findings fixed
 
-**Gate at close (branch head `1290cb27`):** lint clean, typecheck 0, **5326
-tests passing** (610 files, 2 skipped), **76 e2e passing**, six validators plus
-`temp-leaks` clean.
+**W23-24 — the secrets guard refused the removal of a secret.** The pre-commit
+scan read the whole staged diff, removals included, so a 2026-08-03 line here
+quoting AWS's published example key could not be edited at all: every possible
+change to it, deleting the literal most of all, put the literal on the removed
+side. Added lines only now. That is what let this section be written.
+
+**W23-22 — three of the six validators were gated only on a laptop.** CI ran
+`validate-plan` and `validate-traceability` by hand, so `validate-ui-copy`,
+`validate-exports` and `validate-volatile-paths` were enforced by Law 3 and by
+nothing else. CI now runs the same `pnpm validate`, with one named exclusion —
+`validate-history-secrets` keeps its own job because CI runs it with
+`--verify-remote-refs`, which a local gate must not. Verified green on Actions
+run 34298504089.
+
+**W23-21 — the honest response to the file-size cap disabled the guard.** Not
+what the ticket said: the checker does follow `export * from`, proven by a
+fixture before anything changed. The blind spot was one layer down, in the
+reference count — `isBarrel` matches `src/index.ts` by path, so a barrel
+CHAPTER split out under the 400-line cap was read as production source and its
+`export { X } from` lines counted as calls to X. Re-export statements are now
+blanked wherever they appear. Ratchets **raised** to the measured 54/46, the
+W12-39 kind of raise: ten already-dead symbols stopped hiding. Hand-verified
+rather than trusted, and eight of them are one coherent clarifications/runs
+surface that FR-N1, US-701 and UC-03 actually claim — an unwired feature, filed
+as **W23-25** with three honest answers rather than "wire or delete".
+
+**W23-26 — the file that configures every test was never typechecked.**
+`vitest.setup.ts` pins `DOKIMA_HOME`, the credential store and the model seam
+for the whole server suite, and it called `w22_16_write`, a function that
+exists nowhere. Every package tsconfig said `"include": ["src"]`. Fourteen
+configs widened, a root config added for `vitest.workspace.ts` and
+`vitest.network-guard.ts`, a planted `TS2304` proved the gate now fires, and a
+fixture keeps the coverage from rotting.
+
+**Still open:** W23-19 (the intermittent suite-home leak — instrumented so a
+leaked home names its worker and test file, and deliberately left open: it did
+not reproduce in four consecutive full runs, and green runs are not the
+evidence its first criterion asks for), W23-23 (**blocked** — the fix needs the
+content pack re-signed, and the private key lives outside this repo at a stale
+`~/.shipwright` path only the founder has), W23-25.
+
+**Gate at close (branch head `2e7cd266`):** lint clean, typecheck 0, **5347
+tests passing** (611 files, 2 skipped), **76 e2e passing**, six validators plus
+`temp-leaks` clean. (AB-17 closed at `1290cb27` with 5326 across 610 files.)

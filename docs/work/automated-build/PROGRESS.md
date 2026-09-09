@@ -98,23 +98,37 @@ location + evidence, never the title) and the reviewer/decision split in
   the first row of a real benchmark table: commit the five task seeds from the
   protocol and run the GUARDED arm three times on task 1 against a local
   endpoint the operator supplies. That costs local compute and no budget.
-- **Open findings filed during this wave:** W23-19 (intermittent
-  `dokima-suite-home-*` temp leak), W23-21 (validate-exports does not follow
-  `export * from`), W23-22 (CI never runs `pnpm validate`), W23-23 (validator
-  telemetry is written into the audited project; needs a re-signed content
-  pack). W23-20 was closed inside AB-06; W23-24 — the pre-commit secrets scan
-  matched removed diff lines, so a line quoting an example key could not be
-  edited at all — was filed and then fixed at closeout, which is how
-  docs/STATUS.md got its wave-23 record.
-- **Actual test totals and skips:** 610 files, 5326 passed, 2 skipped.
+- **Findings from this wave, and what happened to each.** Fixed at closeout:
+  W23-24 (the pre-commit secrets scan matched removed diff lines, so a line
+  quoting an example key could not be edited at all), W23-22 (CI ran two of the
+  six validators by hand; it now runs `pnpm validate`, verified green on
+  Actions run 34298504089), W23-21 (a barrel chapter's re-export lines counted
+  as callers, hiding ten dead symbols from the ratchet), W23-26 (no tsconfig
+  included `vitest.setup.ts`, so the file that pins `DOKIMA_HOME` for the whole
+  server suite was never typechecked). Still open: W23-19 (intermittent
+  `dokima-suite-home-*` leak — instrumented at closeout, deliberately NOT
+  closed because it did not reproduce in four consecutive full runs and green
+  runs are not the proof its first criterion asks for), W23-23 (validator
+  telemetry written into the audited project; **blocked** — the fix needs the
+  content pack re-signed and the private key lives outside this repo at a stale
+  `~/.shipwright` path only the founder has), and W23-25 (eleven uncalled
+  symbols that FR-N1/US-701/UC-03 actually claim — an unwired feature, and a
+  product decision rather than cleanup). W23-20 was closed inside AB-06.
+- **Actual test totals and skips:** 611 files, 5347 passed, 2 skipped (at
+  `2e7cd266`; 610/5326 at AB-17's `1290cb27`).
 - **Not merged to `main`, and that is a decision, not a stopping point.** The
   branch IS ready to merge on its own terms: the full gate is green at
-  `1290cb27` (lint 0, typecheck 0, 5326 tests, 76 e2e, all validators), AB-16
+  `2e7cd266` (lint 0, typecheck 0, 5347 tests, 76 e2e, all validators), AB-16
   passed before anything was wired to a user surface, no existing project is
-  opted in by default, and the four findings this wave turned up are filed
-  (W23-19, W23-21, W23-22, W23-23) rather than carried silently. What it is NOT
-  is _measured_: EVALUATION_RESULTS.md is NOT RUN, so a merge would put an
-  unevaluated automated-build path on the same branch as the v1.0.0 tag target.
+  opted in by default, and every finding is filed rather than carried silently.
+  Two things a merge decision should weigh that were not true when AB-17
+  closed: `validate-exports`' ratchets were RAISED (46/44 → 54/46) when W23-21
+  stopped re-export lines counting as callers — sharper counting, not new debt,
+  but the eleven symbols it exposed are parked behind those numbers as W23-25 —
+  and W23-23 is blocked on a signing key only the founder has. What the branch
+  is NOT is _measured_: EVALUATION_RESULTS.md is NOT RUN, so a merge would put
+  an unevaluated automated-build path on the same branch as the v1.0.0 tag
+  target.
   Merging is therefore the founder's call, and the honest framing is: merge
   when you accept an unevaluated feature behind an opt-in, or run the AB-17
   protocol first and merge on the numbers. `main` is the tag target and the tag
