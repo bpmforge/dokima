@@ -51,6 +51,46 @@ export function gatePlan(
   }));
 }
 
+/**
+ * The one exclusion, and why it is not a bypass (W23-22).
+ *
+ * CI now runs the SAME `pnpm validate` a laptop runs, which is the whole point
+ * of the ticket: three of the six were gated only on a developer machine. But
+ * `validate-history-secrets` already has a dedicated CI job that runs it with
+ * `--verify-remote-refs` — the one network call in that scanner, deliberately
+ * CI-only, because a local gate must stay offline (Law 9). Running it both
+ * ways in the same workflow would configure one check twice with different
+ * arguments, which is exactly the drift that let the serial gate enforce 49
+ * against a measured 47 (W22-06).
+ *
+ * So the exclusion is BY NAME, LOUD, AND REFUSED IF IT IS A TYPO. A name that
+ * is not a validator exits nonzero rather than silently running the full set —
+ * `DOKIMA_GATE_SKIP=validate-histroy-secrets` must fail the build, not quietly
+ * pass it. And a skipped validator is printed in the results, so a green run
+ * never hides which check did not run here.
+ */
+export function planWithSkips(plan, skipList) {
+  const skips = String(skipList ?? '')
+    .split(',')
+    .map((name) => name.trim())
+    .filter(Boolean);
+  const unknown = skips.filter((name) => !VALIDATORS.includes(name));
+  if (unknown.length > 0) {
+    return {
+      error:
+        `DOKIMA_GATE_SKIP names ${unknown.length === 1 ? 'a validator' : 'validators'} that ` +
+        `does not exist: ${unknown.join(', ')}. Known: ${VALIDATORS.join(', ')}.`,
+      plan,
+      skipped: [],
+    };
+  }
+  return {
+    error: null,
+    plan: plan.filter((entry) => !skips.includes(entry.name)),
+    skipped: plan.filter((entry) => skips.includes(entry.name)).map((e) => e.name),
+  };
+}
+
 /** Runs one entry. Injectable so the tests are tests, not a second full gate. */
 function runOne(entry) {
   return new Promise((resolve) => {
@@ -128,15 +168,31 @@ export function formatResults(results) {
 
 async function main() {
   const started = Date.now();
-  const { results } = await runGatePlan();
-  for (const line of formatResults(results)) process.stdout.write(`${line}\n`);
-  const failed = results.filter((r) => r.status !== 0).length;
-  const seconds = ((Date.now() - started) / 1000).toFixed(1);
-  if (failed > 0) {
-    process.stdout.write(`\n${failed} validator(s) failed. (${seconds}s)\n`);
+  const { error, plan, skipped } = planWithSkips(
+    gatePlan(),
+    process.env.DOKIMA_GATE_SKIP,
+  );
+  if (error) {
+    process.stdout.write(`FAIL: ${error}\n`);
     process.exit(1);
   }
-  process.stdout.write(`\nall ${results.length} validators clean. (${seconds}s)\n`);
+  const { results } = await runGatePlan({ plan });
+  for (const line of formatResults(results)) process.stdout.write(`${line}\n`);
+  for (const name of skipped) {
+    process.stdout.write(
+      ` skip  ${name} (DOKIMA_GATE_SKIP — something else must own it)\n`,
+    );
+  }
+  const failed = results.filter((r) => r.status !== 0).length;
+  const seconds = ((Date.now() - started) / 1000).toFixed(1);
+  const tail = skipped.length ? `, ${skipped.length} skipped` : '';
+  if (failed > 0) {
+    process.stdout.write(`\n${failed} validator(s) failed${tail}. (${seconds}s)\n`);
+    process.exit(1);
+  }
+  process.stdout.write(
+    `\nall ${results.length} validators clean${tail}. (${seconds}s)\n`,
+  );
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) await main();

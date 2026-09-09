@@ -259,6 +259,8 @@ jobs:
   # with every gate green. This job reads history instead. No pnpm install: the
   # scanner is git plumbing plus Node, deliberately depending on no scanning
   # binary (Law 9), which also keeps this job honest on a cold runner.
+  # THE SOLE CI CONFIGURATION OF THIS SCANNER (W23-22): the validators job above
+  # skips it by name so it is not also run here without --verify-remote-refs.
   history-secrets:
     name: history secrets (git history, not just the tree — W10-27)
     runs-on: ubuntu-latest
@@ -285,11 +287,23 @@ jobs:
       - name: Scan every object reachable from every ref (file contents + commit/tag messages)
         run: node scripts/validate-history-secrets.mjs --verify-remote-refs
 
-  traceability:
-    name: traceability (validate-plan, validate-traceability, FR/UC grep)
+  # W23-22 — three of the six validators were gated only on a laptop. This job
+  # used to run `validate-plan` and `validate-traceability` by hand, so
+  # `validate-ui-copy`, `validate-exports` (with its 46/44 ratchets) and
+  # `validate-volatile-paths` were enforced by Law 3 and by nothing else: a
+  # branch could go red on a developer machine and green here. It now runs the
+  # SAME `pnpm validate` command the local gate runs, arguments and all, so
+  # there is no second place for the numbers to drift.
+  validators:
+    name: validators (pnpm validate — the same command Law 3 runs)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # validate-history-secrets is skipped below, but validate-plan's
+          # sibling checks read git history; and a shallow checkout here would
+          # be one more silent difference from the local gate.
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
@@ -299,10 +313,17 @@ jobs:
           cache: 'pnpm'
       - name: Install (frozen lockfile)
         run: pnpm install --frozen-lockfile
-      - name: validate-plan.mjs
-        run: node scripts/validate-plan.mjs
-      - name: validate-traceability.mjs
-        run: node scripts/validate-traceability.mjs
+      - name: pnpm validate (six validators + the temp-leak check)
+        # ONE EXCLUSION, BY NAME. `validate-history-secrets` has its own job
+        # below, which runs the same scanner with --verify-remote-refs — the
+        # one network call in it, CI-only because a local gate stays offline
+        # (Law 9). Running it both ways here would configure a single check
+        # twice with different arguments, the drift W22-06 already paid for.
+        # A typo in this variable fails the build rather than quietly running
+        # the full set (scripts/gate-plan.test.mjs).
+        env:
+          DOKIMA_GATE_SKIP: validate-history-secrets
+        run: pnpm validate
       # Wave-gate traceability grep (TESTING.md §9, PLAYBOOK.md coverage loop):
       # every FR/NFR/UC id cited by a *done* ticket must appear in a named
       # test title somewhere. continue-on-error: this check is new as of

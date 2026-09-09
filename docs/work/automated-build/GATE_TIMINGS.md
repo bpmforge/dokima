@@ -86,3 +86,33 @@ block still printed.
 - **`validate:serial` is kept** as `pnpm validate:serial`. It is the baseline
   the equivalence claim above is made against, and a claim whose baseline has
   been deleted cannot be rechecked.
+
+## 5. The one exclusion, added later (W23-22)
+
+CI used to run `validate-plan` and `validate-traceability` by hand and nothing
+else, so `validate-ui-copy`, `validate-exports` (ratchets and all) and
+`validate-volatile-paths` were enforced by Law 3 on a laptop and by no machine
+at all. CI now runs the same `pnpm validate` this document measures.
+
+That collided with the `history-secrets` job, which runs the same scanner with
+`--verify-remote-refs` — the one network call in it, CI-only because a local
+gate stays offline (Law 9). Two runs of one check with different arguments is
+the shape of drift that made the serial gate enforce 49 against a measured 47,
+so the CI validators job names the exclusion instead:
+
+```yaml
+env:
+  DOKIMA_GATE_SKIP: validate-history-secrets
+```
+
+`DOKIMA_GATE_SKIP` is deliberately a poor bypass. It takes validator names, not
+patterns; an unknown name **fails** rather than silently running the full set
+(the typo `validate-histroy-secrets` exits 1); a skipped check is printed in the
+results and counted in the summary line (`all 5 validators clean, 1 skipped`),
+so no green run hides which check did not run. Three fixtures in
+`scripts/gate-plan.test.mjs` hold those properties, including that the survivors
+keep their ratchet arguments — a skip must not quietly become a second,
+argument-less configuration of the checks it did not skip.
+
+Timing is unchanged: skipping one of six saves nothing worth reporting, and
+speed was never the reason for it.

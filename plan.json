@@ -16091,7 +16091,7 @@
       "id": "W23-22",
       "role": "coding-agent",
       "phase": 23,
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "depends_on": [],
       "lane": "quality",
@@ -16112,7 +16112,12 @@
         "FOUND AT W23-15, 2026-09-08, while inventorying duplicate gate executions for AB-15. CI runs validate-plan and validate-traceability in a `traceability` job and validate-history-secrets in another, and never runs `pnpm validate` at all \u2014 so validate-ui-copy, validate-exports and validate-volatile-paths are enforced ONLY by a person running the local gate.",
         "THIS IS THE W22-06 SHAPE ONE LEVEL UP: that ticket found the same validator ENFORCING in one place and merely reporting in another, with the two numbers already drifted. Here the second place does not run it at all, which is the same failure with a worse denominator: a green CI is not evidence those three passed.",
         "Deliberately not fixed inside AB-15: that card is a repository-development optimisation with its own acceptance, and editing CI to close a coverage gap is a different change from parallelising a local command. Evidence and measurements in docs/work/automated-build/GATE_TIMINGS.md \u00a71 row 4.",
-        "SCOPE WIDENED AT CLAIM (Law 1), and the reason is the second acceptance criterion. CI cannot simply add `pnpm validate` beside the existing history-secrets job: that job runs the same scanner with --verify-remote-refs, the one network call in the file, deliberately CI-only (Law 9 keeps a local run offline). Adding pnpm validate would configure the same check twice with different arguments \u2014 the exact drift the criterion forbids. So gate-plan gains a guarded, named exclusion and CI runs the SAME `pnpm validate` command a laptop runs, with one documented owner for the scanner. All four files are unowned by any other ticket."
+        "SCOPE WIDENED AT CLAIM (Law 1), and the reason is the second acceptance criterion. CI cannot simply add `pnpm validate` beside the existing history-secrets job: that job runs the same scanner with --verify-remote-refs, the one network call in the file, deliberately CI-only (Law 9 keeps a local run offline). Adding pnpm validate would configure the same check twice with different arguments \u2014 the exact drift the criterion forbids. So gate-plan gains a guarded, named exclusion and CI runs the SAME `pnpm validate` command a laptop runs, with one documented owner for the scanner. All four files are unowned by any other ticket.",
+        "DONE. The CI job that ran validate-plan and validate-traceability by hand now runs `pnpm validate` \u2014 the same command, the same conductor.config.json ratchets, no second copy of the numbers. validate-ui-copy, validate-exports (46/44) and validate-volatile-paths were previously enforced by Law 3 on a laptop and by no machine at all: a branch could be red locally and green in CI.",
+        "THE EXCLUSION IS THE INTERESTING PART. validate-history-secrets keeps its own job because CI runs it with --verify-remote-refs, the one network call in that scanner, and a local gate must stay offline (Law 9). Rather than run it twice with different arguments, the validators job sets DOKIMA_GATE_SKIP=validate-history-secrets and the history-secrets job is now labelled as the sole CI configuration of that check.",
+        "DOKIMA_GATE_SKIP IS A DELIBERATELY POOR BYPASS: names not patterns, an unknown name FAILS instead of quietly running the full set (validate-histroy-secrets exits 1), the skip is printed and counted in the summary (all 5 validators clean, 1 skipped), and the survivors keep their ratchet arguments \u2014 asserted in three fixtures, the last of which exists because a skip that dropped arguments would restore W22-06 in a new place.",
+        "NOT VERIFIED ON A RUNNER. This is a workflow change, and the only honest claim from a laptop is that the command it now runs is the command that passes here, plus a local reproduction of both the skip and the typo refusal. The first push of this branch is what proves the job itself.",
+        "GATE: lint 0, typecheck 0, 610 files / 5327 passed / 2 skipped, 76 e2e passed, six validators clean (6.3s) plus temp-leaks clean. node --test scripts/gate-plan.test.mjs: 9 pass."
       ]
     },
     {

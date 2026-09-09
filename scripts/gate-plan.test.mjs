@@ -11,6 +11,7 @@ import {
   DEFAULT_CONCURRENCY,
   formatResults,
   gatePlan,
+  planWithSkips,
   runGatePlan,
 } from './gate-plan.mjs';
 import { VALIDATORS, ratchetArgsByValidator } from './run-validators.mjs';
@@ -111,4 +112,36 @@ test('every entry runs exactly once, including when one of them fails', async ()
     },
   });
   assert.deepEqual(seen.slice().sort(), plan.map((e) => e.name).sort());
+});
+
+test('W23-22: a named skip leaves the rest of the plan exactly as it was', () => {
+  const full = gatePlan();
+  const { error, plan, skipped } = planWithSkips(full, 'validate-history-secrets');
+  assert.equal(error, null);
+  assert.deepEqual(skipped, ['validate-history-secrets']);
+  assert.deepEqual(
+    plan.map((e) => e.name),
+    full.map((e) => e.name).filter((n) => n !== 'validate-history-secrets'),
+  );
+  // The survivors keep their ratchet arguments — a skip must not become a
+  // second, argument-less configuration of the checks it did not skip.
+  assert.deepEqual(
+    plan.find((e) => e.name === 'validate-exports').args,
+    full.find((e) => e.name === 'validate-exports').args,
+  );
+});
+
+test('W23-22: a typo in DOKIMA_GATE_SKIP REFUSES rather than running the full set quietly', () => {
+  const { error, skipped } = planWithSkips(gatePlan(), 'validate-histroy-secrets');
+  assert.match(error, /does not exist/);
+  assert.deepEqual(skipped, []);
+});
+
+test('W23-22: no skip, or an empty one, is the whole plan', () => {
+  for (const value of [undefined, '', '  ', ',,']) {
+    const { error, plan, skipped } = planWithSkips(gatePlan(), value);
+    assert.equal(error, null);
+    assert.deepEqual(skipped, []);
+    assert.equal(plan.length, VALIDATORS.length);
+  }
 });
