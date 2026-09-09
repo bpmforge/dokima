@@ -15518,7 +15518,7 @@
       "id": "W23-19",
       "role": "coding-agent",
       "phase": 23,
-      "status": "in_progress",
+      "status": "todo",
       "stories": [],
       "depends_on": [],
       "lane": "quality",
@@ -15538,7 +15538,11 @@
         "W22-28 IS DONE AND ITS SECOND CRITERION IS NOT MET: \"a full pnpm test run leaves no dokima-suite-home-*, verified across three consecutive runs\". A fresh ticket rather than a reopen, which is exactly what W22-28 did to W22-21 on the same defect.",
         "COSTS A GATE, NOT A TEST: this is why an AB card can see a red pnpm validate it did not cause. Check whether the only violation is a suite home from the preceding run before treating it as a regression.",
         "FREQUENCY MEASURED, 2026-09-08: three of the four full gate runs in the W23-00..W23-03 session left exactly one dokima-suite-home-* behind. Not rare \u2014 roughly one run in two on this machine, always exactly one, always after a full pnpm test. That is a much better reproduction handle than W22-28 had.",
-        "SEEN AGAIN 2026-09-08 during W23-13: one dokima-suite-home-* leak in 1 of 3 full gate runs this session (and roughly every other run across the wave). Still not this card\u2019s to fix; recorded so the frequency is measured rather than remembered."
+        "SEEN AGAIN 2026-09-08 during W23-13: one dokima-suite-home-* leak in 1 of 3 full gate runs this session (and roughly every other run across the wave). Still not this card\u2019s to fix; recorded so the frequency is measured rather than remembered.",
+        "PARTIAL, AND DELIBERATELY LEFT OPEN, 2026-09-08. The instrumentation this card asks for is landed: every suite home writes a .created-by marker at CREATION (pid, worker id, pool id, timestamp) and rewrites it in beforeAll with the test file. Creation is the only moment guaranteed to happen \u2014 a home that leaks because its file never ran has no other chance to record anything \u2014 so a surviving home that names NO test file is itself the answer: the setup ran and the tests did not.",
+        "CRITERION 1 IS NOT MET AND THE RUNS ARE NOT THE PROOF. Four consecutive full pnpm test runs (610 files, 5331 passed) left zero dokima-suite-home-* behind, which is evidence the leak did not reproduce today, not evidence it is fixed \u2014 the exact trap W22-21 fell into when it stopped reproducing the moment it was instrumented. The one directory found before instrumenting (19:31, dokima-suite-home-QimXGi) was EMPTY, which is new information: previous sightings held a global.db. An empty home means nothing ever wrote through DOKIMA_HOME, i.e. the file was set up and its tests never started.",
+        "A NEW LEAD, FROM AN ACCIDENT: a Stop hook ran a second full suite concurrently with runs 2 and 4, and both ended `[vitest-worker]: Timeout calling \"onTaskUpdate\"` with all 5331 tests passing. A worker whose RPC times out under load is terminated without its afterAll, which produces exactly one orphaned home per run \u2014 matching the observed \"always exactly one\". Machine load is a plausible trigger for an intermittent that nobody could reproduce on demand.",
+        "AND A MEASUREMENT PROBLEM WORTH KNOWING: during run 3, SEVEN suite homes existed at check time and all seven were gone by run 4. They belonged to the concurrent suite and were LIVE. A directory in tmpdir is not distinguishable from a leak by looking at it, which is why validate-temp-leaks uses a 10-minute window and why a leak sighting must be checked against live processes. The .created-by marker now makes that discrimination possible: a marker naming a dead pid is a leak, one naming a live pid is a running worker."
       ]
     },
     {
