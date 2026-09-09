@@ -16339,7 +16339,7 @@
       "id": "W23-26",
       "role": "coding-agent",
       "phase": 23,
-      "status": "in_progress",
+      "status": "done",
       "stories": [],
       "depends_on": [],
       "lane": "quality",
@@ -16372,7 +16372,12 @@
       "notes": [
         "FOUND AT W23-19, 2026-09-08. apps/server/tsconfig.json is `\"include\": [\"src\"]`, so vitest.setup.ts \u2014 the file that pins DOKIMA_HOME, DOKIMA_NO_KEYCHAIN and the model seam for the whole apps/server suite \u2014 is invisible to tsc. It contained a call to `w22_16_write`, a helper that does not exist anywhere in the repo: leftover W22-16 instrumentation that would have thrown ReferenceError the moment its beforeExit handler fired, in the one file whose failure would mis-configure every test in the package.",
         "THE HANDLER NEVER FIRED, WHICH IS THE POINT: under the forks pool the pool terminates its children, so beforeExit is unreachable \u2014 the same fact W22-16 measured. Dead code in an unchecked file, in the suite bootstrap, is a bad place for both properties to meet. The call is removed under W23-19 (same file, same investigation); making tsc see the file is this ticket.",
-        "SCOPE WIDENED AT CLAIM (Law 1): the survey found this is not one file. Every package tsconfig is `\"include\": [\"src\"]` while each package carries an unchecked vitest.config.ts; apps/web adds playwright.config.ts and vite.config.ts; and the repo root has vitest.workspace.ts and vitest.network-guard.ts with no tsconfig at all. Fourteen configs, a new root config for the two root files, and a fixture that fails when a workspace TS file executed by the test run is outside every include \u2014 otherwise this closes today and re-opens the next time someone adds a config file."
+        "SCOPE WIDENED AT CLAIM (Law 1): the survey found this is not one file. Every package tsconfig is `\"include\": [\"src\"]` while each package carries an unchecked vitest.config.ts; apps/web adds playwright.config.ts and vite.config.ts; and the repo root has vitest.workspace.ts and vitest.network-guard.ts with no tsconfig at all. Fourteen configs, a new root config for the two root files, and a fixture that fails when a workspace TS file executed by the test run is outside every include \u2014 otherwise this closes today and re-opens the next time someone adds a config file.",
+        "DONE. Fourteen package configs now include their own root-level TS files (each vitest.config.ts, apps/server/vitest.setup.ts, apps/web playwright.config.ts and vite.config.ts), and the repo root gained tsconfig.root.json for vitest.workspace.ts and vitest.network-guard.ts \u2014 which no config covered at all. `pnpm typecheck` runs the root config first, because a config nobody runs checks nothing.",
+        "PLANTED-DEFECT PROOF, as the second criterion asks: `w23_26_does_not_exist();` appended to apps/server/vitest.setup.ts produced `vitest.setup.ts(183,1): error TS2304: Cannot find name` and a red typecheck; removed, and typecheck returned to 0. That is the same file that carried the real dead call for a whole wave.",
+        "AND A FIXTURE SO IT LASTS: scripts/tsconfig-coverage.test.mjs asserts coverage rather than correctness \u2014 every root-level .ts in a configured directory is inside that directory\u2019s include, the root config covers every root .ts file, and the typecheck script actually invokes it. Without it the fix holds only until the next config file is added.",
+        "NOTHING WAS FOUND BY WIDENING, WHICH IS WORTH SAYING: after the includes grew, typecheck was clean across all fourteen projects. The one real defect this class had produced (w22_16_write) was already removed under W23-19. The value here is the next one, not this one.",
+        "GATE: lint 0, typecheck 0, 611 files / 5347 passed / 2 skipped, 76 e2e passed, six validators clean plus temp-leaks clean."
       ]
     }
   ]
