@@ -260,6 +260,10 @@ a {
   top: 0;
   z-index: 10;
   background: var(--sw-bg);
+  /* UX review 2026-09-14: at phone width the actions ran off-screen and every
+     view scrolled sideways (scrollWidth 511 at 375px). Wrap instead. */
+  flex-wrap: wrap;
+  row-gap: var(--sw-space-2);
 }
 
 /* The current destination is MARKED, not removed — removing the thing you are
@@ -277,8 +281,11 @@ a {
 /* Groups, so a destination does not read the same as a preference. */
 .app-shell__header-actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--sw-space-3);
+  min-width: 0;
 }
 
 .app-shell__nav {
@@ -546,7 +553,6 @@ label:has(> input[type='radio']) {
   background: var(--sw-border);
 }
 
-
 /* ==========================================================================
    THE READOUT — the signature of the instrument-panel direction (W13-03).
 
@@ -605,7 +611,6 @@ label:has(> input[type='radio']) {
   font-family: var(--sw-font-mono);
   font-variant-numeric: tabular-nums;
 }
-
 
 /* ==========================================================================
    SHARED PRIMITIVES (W13-04). See docs/design/components.md for the inventory

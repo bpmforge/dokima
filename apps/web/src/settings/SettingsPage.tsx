@@ -105,40 +105,41 @@ export function SettingsPage({ projectId, onOpenWizard, onClose }: SettingsPageP
 
   if (!projectId) {
     return (
-      <div className="settings" data-testid="settings-page">
-        <header className="settings__header">
-          <h1>Settings</h1>
-          <button type="button" onClick={onClose}>
-            Close
-          </button>
-        </header>
-        {/* W12-31: this page used to be one sentence of internal vocabulary
+      <div className="page settings" data-testid="settings-page">
+        <div className="page__inner">
+          <header className="settings__header">
+            <h1>Settings</h1>
+            <button type="button" onClick={onClose}>
+              Close
+            </button>
+          </header>
+          {/* W12-31: this page used to be one sentence of internal vocabulary
             ("model matrix, autonomy dial, budgets, and scopes") over a single
             Run Setup Wizard button, with no way to reach a project from here.
             It read as "you must run the wizard", which is what prompted the
             question. Settings are per-project because providers, budgets and
             policies belong to a project — so say that, and lead somewhere. */}
-        <div className="empty-state">
-          <p className="empty-state__lead">
-            Settings belong to a project — which models it uses, which providers
-            it can reach, and what it is allowed to spend. Pick a project and
-            they will be here. The providers and every-project model defaults
-            you registered in the wizard already apply to any project you
-            create — a new project starts from them, so there is nothing to
-            set up again.
-          </p>
-          <div className="empty-state__actions">
-            <button type="button" className="btn-primary" onClick={onClose}>
-              Choose a project
-            </button>
-            <button type="button" className="btn-secondary" onClick={onOpenWizard}>
-              Run Setup Wizard
-            </button>
+          <div className="empty-state">
+            <p className="empty-state__lead">
+              Settings belong to a project — which models it uses, which providers it can
+              reach, and what it is allowed to spend. Pick a project and they will be
+              here. The providers and every-project model defaults you registered in the
+              wizard already apply to any project you create — a new project starts from
+              them, so there is nothing to set up again.
+            </p>
+            <div className="empty-state__actions">
+              <button type="button" className="btn-primary" onClick={onClose}>
+                Choose a project
+              </button>
+              <button type="button" className="btn-secondary" onClick={onOpenWizard}>
+                Run Setup Wizard
+              </button>
+            </div>
+            <p className="settings__no-project">
+              The wizard is a guided first run — it is optional, and everything it sets
+              can be changed here afterwards.
+            </p>
           </div>
-          <p className="settings__no-project">
-            The wizard is a guided first run — it is optional, and everything it
-            sets can be changed here afterwards.
-          </p>
         </div>
       </div>
     );
@@ -147,42 +148,19 @@ export function SettingsPage({ projectId, onOpenWizard, onClose }: SettingsPageP
   return (
     <div className="page settings" data-testid="settings-page">
       <div className="page__inner">
-      <header className="page__header settings__header">
-        <h1 className="page__title">Settings</h1>
-        <div className="settings__header-actions">
-          <button type="button" onClick={onOpenWizard}>
-            Setup Wizard
-          </button>
-          <button type="button" onClick={onClose}>
-            Close
-          </button>
-        </div>
-      </header>
-      <nav className="settings__tabs" aria-label="Settings sections">
-        {PROJECT_TABS.filter((t) => BASIC_TAB_IDS.includes(t.id)).map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            className={
-              t.id === tab ? 'settings__tab settings__tab--active' : 'settings__tab'
-            }
-            aria-current={t.id === tab ? 'true' : undefined}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-        <button
-          type="button"
-          className="settings__tab settings__tab--advanced-toggle"
-          data-testid="settings-advanced-toggle"
-          aria-expanded={showAdvanced}
-          onClick={() => setAdvancedOpen((open) => !open)}
-        >
-          {showAdvanced ? 'Advanced ▾' : 'Advanced ▸'}
-        </button>
-        {showAdvanced &&
-          PROJECT_TABS.filter((t) => !BASIC_TAB_IDS.includes(t.id)).map((t) => (
+        <header className="page__header settings__header">
+          <h1 className="page__title">Settings</h1>
+          <div className="settings__header-actions">
+            <button type="button" onClick={onOpenWizard}>
+              Setup Wizard
+            </button>
+            <button type="button" onClick={onClose}>
+              Close
+            </button>
+          </div>
+        </header>
+        <nav className="settings__tabs" aria-label="Settings sections">
+          {PROJECT_TABS.filter((t) => BASIC_TAB_IDS.includes(t.id)).map((t) => (
             <button
               key={t.id}
               type="button"
@@ -195,40 +173,63 @@ export function SettingsPage({ projectId, onOpenWizard, onClose }: SettingsPageP
               {t.label}
             </button>
           ))}
-      </nav>
-      <div className="settings__panel">
-        {/* Mounted once, always — `hidden` rather than unmounted, so the
+          <button
+            type="button"
+            className="settings__tab settings__tab--advanced-toggle"
+            data-testid="settings-advanced-toggle"
+            aria-expanded={showAdvanced}
+            onClick={() => setAdvancedOpen((open) => !open)}
+          >
+            {showAdvanced ? 'Advanced ▾' : 'Advanced ▸'}
+          </button>
+          {showAdvanced &&
+            PROJECT_TABS.filter((t) => !BASIC_TAB_IDS.includes(t.id)).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={
+                  t.id === tab ? 'settings__tab settings__tab--active' : 'settings__tab'
+                }
+                aria-current={t.id === tab ? 'true' : undefined}
+                onClick={() => setTab(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
+        </nav>
+        <div className="settings__panel">
+          {/* Mounted once, always — `hidden` rather than unmounted, so the
             catalog it discovered survives a tab switch instead of being
             re-fetched (or lost) each time. */}
-        <div hidden={tab !== 'providers'}>
-          <ProvidersPanel
-            projectId={projectId}
-            onCatalogsChange={setCatalogs}
-            onEntriesChange={setProviderEntries}
-          />
+          <div hidden={tab !== 'providers'}>
+            <ProvidersPanel
+              projectId={projectId}
+              onCatalogsChange={setCatalogs}
+              onEntriesChange={setProviderEntries}
+            />
+          </div>
+          {tab === 'matrix' && (
+            <ModelMatrixPanel
+              projectId={projectId}
+              catalogs={catalogs}
+              providerEntries={providerEntries}
+            />
+          )}
+          {tab === 'agent' && <AgentRunnerPanel projectId={projectId} />}
+          {tab === 'runs' && <RunKnobsPanel projectId={projectId} />}
+          {tab === 'autonomy-budget' && <AutonomyBudgetPanel projectId={projectId} />}
+          {tab === 'estimate' && token && (
+            <EstimateWorkspace token={token} projectId={projectId} />
+          )}
+          {tab === 'effective' && <EffectiveSettingsPanel projectId={projectId} />}
+          {tab === 'mcp' && <McpServersPanel projectId={projectId} />}
+          {tab === 'validators' && <ValidatorPacksPanel projectId={projectId} />}
+          {tab === 'experts' && <ExpertOverridesPanel projectId={projectId} />}
+          {tab === 'rules' && <RuleLifecyclePanel projectId={projectId} />}
+          {tab === 'suppressions' && <SuppressionsPanel projectId={projectId} />}
+          {tab === 'escalation' && <EscalationPolicyPanel projectId={projectId} />}
+          {tab === 'copilot' && <CopilotConsentPanel projectId={projectId} />}
         </div>
-        {tab === 'matrix' && (
-          <ModelMatrixPanel
-            projectId={projectId}
-            catalogs={catalogs}
-            providerEntries={providerEntries}
-          />
-        )}
-        {tab === 'agent' && <AgentRunnerPanel projectId={projectId} />}
-        {tab === 'runs' && <RunKnobsPanel projectId={projectId} />}
-        {tab === 'autonomy-budget' && <AutonomyBudgetPanel projectId={projectId} />}
-        {tab === 'estimate' && token && (
-          <EstimateWorkspace token={token} projectId={projectId} />
-        )}
-        {tab === 'effective' && <EffectiveSettingsPanel projectId={projectId} />}
-        {tab === 'mcp' && <McpServersPanel projectId={projectId} />}
-        {tab === 'validators' && <ValidatorPacksPanel projectId={projectId} />}
-        {tab === 'experts' && <ExpertOverridesPanel projectId={projectId} />}
-        {tab === 'rules' && <RuleLifecyclePanel projectId={projectId} />}
-        {tab === 'suppressions' && <SuppressionsPanel projectId={projectId} />}
-        {tab === 'escalation' && <EscalationPolicyPanel projectId={projectId} />}
-        {tab === 'copilot' && <CopilotConsentPanel projectId={projectId} />}
-      </div>
       </div>
     </div>
   );

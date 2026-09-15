@@ -3,8 +3,18 @@
    loaded (SettingsPage.tsx is imported unconditionally by App.tsx). */
 .app-shell__header-actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--sw-space-2);
+  min-width: 0;
+}
+
+/* UX review 2026-09-14: a wizard step's disabled-Next explanation sat inline
+   with the button and wrapped mid-sentence at phone width. Stack it. */
+.settings--wizard .btn-primary + .settings__hint {
+  display: block;
+  margin-top: var(--sw-space-2);
 }
 
 /* Layout, gutters and the measure come from the shared `.page` shell
