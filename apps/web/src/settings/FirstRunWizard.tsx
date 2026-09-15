@@ -226,13 +226,7 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
       // which is what "register once, use everywhere" (FR-F3) promises. It
       // happens here rather than in step 2 because the global-scope write is
       // addressed through a project, and no project exists until now.
-      await putProviders(
-        card.id,
-        [
-          providerEntry(),
-        ],
-        { scope: 'global' },
-      );
+      await putProviders(card.id, [providerEntry()], { scope: 'global' });
 
       setCreatedProjectId(card.id);
       // The fresh-install path: this is the first moment a model catalog can
@@ -261,108 +255,119 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
     MODEL_POLICY_CHOICES.find((c) => c.id === choiceId)?.preset ?? 'hybrid';
 
   return (
-    <div className="settings settings--wizard" data-testid="first-run-wizard">
-      <header className="settings__header">
-        <h1>
-          Setup Wizard <HelpAffordance topic="first-run-wizard" label="Setup wizard" />
-        </h1>
-        <button type="button" onClick={onCancel}>
-          Cancel
-        </button>
-      </header>
-      {error && (
-        <p role="alert" className="settings__error">
-          {error}
-        </p>
-      )}
-
-      {step === 'preset' && (
-        <WizardPresetStep
-          number={stepNumber('preset')}
-          choiceId={choiceId}
-          onChoose={setChoiceId}
-          onNext={() => setStep('provider')}
-        />
-      )}
-
-      {step === 'provider' && (
-        <WizardProviderStep
-          number={stepNumber('provider')}
-          draft={{ providerKind, baseUrl, pinnedModel, project, location, credentialRef }}
-          needsModel={
-            MODEL_POLICY_CHOICES.find((c) => c.id === choiceId)?.needsModel === true
-          }
-          onChange={(patch) => {
-            if (patch.providerKind !== undefined) setProviderKind(patch.providerKind);
-            if (patch.baseUrl !== undefined) setBaseUrl(patch.baseUrl);
-            if (patch.pinnedModel !== undefined) setPinnedModel(patch.pinnedModel);
-            if (patch.project !== undefined) setProject(patch.project);
-            if (patch.location !== undefined) setLocation(patch.location);
-            if (patch.credentialRef !== undefined) setCredentialRef(patch.credentialRef);
-          }}
-          onNext={() => void savePresetAndProvider()}
-        />
-      )}
-
-      {step === 'models' && (matrixProjectId ? (
-        <WizardModelsStep
-          projectId={matrixProjectId}
-          providerId="first-run"
-          preset={chosenPreset}
-          number={stepNumber('models')}
-          onSaved={() => {
-            setMatrixWritten(true);
-            setError(null);
-            setStep(afterModels);
-          }}
-        />
-      ) : null)}
-
-      {step === 'sample' && (
-        <section aria-label="Guided sample" data-testid="wizard-step-sample">
-          <h2>
-            {stepNumber('sample')}. Guided sample project{' '}
-            <HelpAffordance topic="guided-sample" label="Guided sample" />
-          </h2>
-          <p className="settings__hint">
-            Creates a real project, then runs a built-in idea ("a link-shortener with
-            auth") through the interview, blueprint, decisions, and board on your
-            configured model — watch the whole lifecycle before risking your own idea.
+    <div className="page settings settings--wizard" data-testid="first-run-wizard">
+      <div className="page__inner">
+        <header className="settings__header">
+          <h1>
+            Setup Wizard <HelpAffordance topic="first-run-wizard" label="Setup wizard" />
+          </h1>
+          <button type="button" onClick={onCancel}>
+            Cancel
+          </button>
+        </header>
+        {error && (
+          <p role="alert" className="settings__error">
+            {error}
           </p>
-          <button type="button" onClick={() => void handleCreateSample()}>
-            Create sample project
-          </button>
-        </section>
-      )}
+        )}
 
-      {step === 'done' && (
-        <section aria-label="Wizard complete" data-testid="wizard-step-done">
-          <h2>You're set up</h2>
+        {step === 'preset' && (
+          <WizardPresetStep
+            number={stepNumber('preset')}
+            choiceId={choiceId}
+            onChoose={setChoiceId}
+            onNext={() => setStep('provider')}
+          />
+        )}
 
-          {createdProjectId && guidedActive && (
-            <div data-testid="wizard-guided-sample">
-              <GuidedSample
-                projectId={createdProjectId}
-                onContinue={() => setGuidedActive(false)}
-              />
-            </div>
-          )}
+        {step === 'provider' && (
+          <WizardProviderStep
+            number={stepNumber('provider')}
+            draft={{
+              providerKind,
+              baseUrl,
+              pinnedModel,
+              project,
+              location,
+              credentialRef,
+            }}
+            needsModel={
+              MODEL_POLICY_CHOICES.find((c) => c.id === choiceId)?.needsModel === true
+            }
+            onChange={(patch) => {
+              if (patch.providerKind !== undefined) setProviderKind(patch.providerKind);
+              if (patch.baseUrl !== undefined) setBaseUrl(patch.baseUrl);
+              if (patch.pinnedModel !== undefined) setPinnedModel(patch.pinnedModel);
+              if (patch.project !== undefined) setProject(patch.project);
+              if (patch.location !== undefined) setLocation(patch.location);
+              if (patch.credentialRef !== undefined)
+                setCredentialRef(patch.credentialRef);
+            }}
+            onNext={() => void savePresetAndProvider()}
+          />
+        )}
 
-          <div className="settings__hint" data-testid="what-to-do-tomorrow">
-            <h3>What to do tomorrow</h3>
-            <p>
-              Set a role or two to <code>auto</code> and let a ticket run overnight
-              (Settings → Autonomy). Tomorrow morning, open the notification bell →
-              Morning Queue: it sorts by leverage — merges first, then approvals, then
-              clarifications — with receipts and cost inline. Budget about ten minutes to
-              review a full night's work.
+        {step === 'models' &&
+          (matrixProjectId ? (
+            <WizardModelsStep
+              projectId={matrixProjectId}
+              providerId="first-run"
+              preset={chosenPreset}
+              number={stepNumber('models')}
+              onSaved={() => {
+                setMatrixWritten(true);
+                setError(null);
+                setStep(afterModels);
+              }}
+            />
+          ) : null)}
+
+        {step === 'sample' && (
+          <section aria-label="Guided sample" data-testid="wizard-step-sample">
+            <h2>
+              {stepNumber('sample')}. Guided sample project{' '}
+              <HelpAffordance topic="guided-sample" label="Guided sample" />
+            </h2>
+            <p className="settings__hint">
+              Creates a real project, then runs a built-in idea ("a link-shortener with
+              auth") through the interview, blueprint, decisions, and board on your
+              configured model — watch the whole lifecycle before risking your own idea.
             </p>
-          </div>
-          <button type="button" onClick={() => onFinish(createdProjectId)}>
-            Done
-          </button>
-        </section>
-      )}
+            <button type="button" onClick={() => void handleCreateSample()}>
+              Create sample project
+            </button>
+          </section>
+        )}
+
+        {step === 'done' && (
+          <section aria-label="Wizard complete" data-testid="wizard-step-done">
+            <h2>You're set up</h2>
+
+            {createdProjectId && guidedActive && (
+              <div data-testid="wizard-guided-sample">
+                <GuidedSample
+                  projectId={createdProjectId}
+                  onContinue={() => setGuidedActive(false)}
+                />
+              </div>
+            )}
+
+            <div className="settings__hint" data-testid="what-to-do-tomorrow">
+              <h3>What to do tomorrow</h3>
+              <p>
+                Set a role or two to <code>auto</code> and let a ticket run overnight
+                (Settings → Autonomy). Tomorrow morning, open the notification bell →
+                Morning Queue: it sorts by leverage — merges first, then approvals, then
+                clarifications — with receipts and cost inline. Budget about ten minutes
+                to review a full night's work.
+              </p>
+            </div>
+            <button type="button" onClick={() => onFinish(createdProjectId)}>
+              Done
+            </button>
+          </section>
+        )}
+      </div>
     </div>
   );
 }
