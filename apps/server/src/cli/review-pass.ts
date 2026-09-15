@@ -11,12 +11,21 @@
  */
 
 import { ROLE_CODE_REVIEWER } from '@dokima/gateway';
-import { runReviewPass, type ReviewOutcome } from '@dokima/harbormaster';
+import {
+  reviewTicketDecisions,
+  type ReviewDecision,
+  type ReviewOutcome,
+} from '@dokima/harbormaster';
 import { getCalibration } from '@dokima/memory';
 import type { EventLog } from '@dokima/events';
 import { resolveModelTarget } from '../api/pipeline/model-resolution.js';
 import { providerForConfig } from '../api/pipeline/gateway-model-port/provider.js';
+import { endpointIdFor, pooledProvider } from './shared-gateway-pool.js';
 import { targetToConfig } from '../api/pipeline/gateway-model-port/config.js';
+import {
+  bundledSecretsScanner,
+  networkPolicyOf,
+} from '../api/pipeline/onboard-security-checks.js';
 
 const REVIEW_MAX_TOKENS = 2_000;
 
@@ -30,11 +39,20 @@ export interface ExecuteReviewPassOptions {
   readonly makerModels?: readonly string[];
   readonly secretValues: readonly string[];
   readonly stderr: (line: string) => void;
+  /** W23-06: the fair-scheduling key inside one endpoint's queue. Falls back to the repo root, which is stable and unique per project. */
+  readonly projectId?: string;
+  /**
+   * W23-10: the tickets THIS run landed. Without it the pass reviews every
+   * `in_review` ticket on the board, including ones a person parked weeks ago
+   * whose worktree may no longer exist.
+   */
+  readonly ticketIds?: readonly string[];
 }
 
-export async function executeReviewPass(
-  options: ExecuteReviewPassOptions,
-): Promise<ReviewOutcome[]> {
+export async function executeReviewPass(options: ExecuteReviewPassOptions): Promise<{
+  readonly outcomes: readonly ReviewOutcome[];
+  readonly decisions: readonly (ReviewDecision | null)[];
+}> {
   let reviewerModel: string | null = null;
   let chat: ((prompt: string) => Promise<string>) | null = null;
   try {
@@ -44,7 +62,14 @@ export async function executeReviewPass(
       taskType: 'verification',
       actorId: options.actorId,
     });
-    const provider = await providerForConfig(targetToConfig(target, process.env));
+    // W23-06: through the SAME process-wide pool the maker sessions use. Before
+    // this the review pass called `chat` directly, so a review overlapping a
+    // build could put two concurrent requests on an endpoint that serves one.
+    const provider = pooledProvider(
+      await providerForConfig(targetToConfig(target, process.env)),
+      endpointIdFor(target),
+      options.projectId ?? options.repoRoot,
+    );
     reviewerModel = target.model;
     chat = async (prompt: string) => {
       const response = await provider.chat({
@@ -62,7 +87,19 @@ export async function executeReviewPass(
     );
   }
 
-  return runReviewPass({
+  /**
+   * W23-16: the two facts the review path could not previously reach. Both
+   * existed for the onboard path and neither was ever handed to this one, so
+   * the bundled secrets scanner never ran during a review and the SAST check
+   * was permanently unavailable. Found by driving the whole workflow through
+   * the real entrance rather than through injected seams.
+   */
+  const [secretsValidatorPath, networkPolicy] = await Promise.all([
+    bundledSecretsScanner(),
+    networkPolicyOf(options.repoRoot),
+  ]);
+
+  const results = await reviewTicketDecisions({
     log: options.log,
     actorId: options.actorId,
     runId: options.runId,
@@ -72,9 +109,22 @@ export async function executeReviewPass(
     reviewerModel,
     reviewChat: chat ?? (async () => ''),
     secretValues: options.secretValues,
+    secretsValidatorPath,
+    networkPolicy,
     // W15-02: the maker's track record biases borderline calls toward a
     // person, never toward acceptance (FR-L3 asymmetry).
     makerCalibration: () =>
       getCalibration(options.log.db, options.makerModel, 'coding-agent'),
+    ...(options.ticketIds ? { ticketIds: options.ticketIds } : {}),
   });
+
+  /**
+   * W23-10: the decisions are returned to the caller as well as the outcomes,
+   * because the eligibility question ("may this be accepted without a person?")
+   * is answered by the decision and nothing else can re-derive it honestly.
+   */
+  return {
+    outcomes: results.map((r) => r.outcome),
+    decisions: results.map((r) => r.decision),
+  };
 }

@@ -22,16 +22,72 @@
  * files can never see each other's global settings either.
  */
 
-import { mkdtempSync, rmSync } from 'node:fs';
-import { afterAll } from 'vitest';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { afterAll, beforeAll, expect } from 'vitest';
 import os from 'node:os';
 import path from 'node:path';
 
 const home = mkdtempSync(path.join(os.tmpdir(), 'dokima-suite-home-'));
 process.env.DOKIMA_HOME = home;
 
-process.on('beforeExit', () => {
-  w22_16_write(path.join(os.tmpdir(), 'w22-16-beforeExit'), 'fired');
+/**
+ * A LEAKED HOME NOW SAYS WHO MADE IT (W23-19).
+ *
+ * The leak this instruments is intermittent — roughly one full run in two on
+ * this machine, always exactly one directory — and every previous attempt at
+ * it (W22-21, W22-28) died the same way: by the time anyone looked, the
+ * surviving directory was anonymous. Setups were counted against teardowns and
+ * matched, so the theories were about the REMOVAL failing, and there was
+ * nothing in the directory to contradict them.
+ *
+ * The marker is written at creation because that is the only moment guaranteed
+ * to happen: a home that leaks because its file's tests never ran has no other
+ * chance to record anything. It is one small file per test file, and it is the
+ * difference between a leak with a name and another session of theories.
+ *
+ * `testPath` is deliberately NOT read here — `expect.getState()` is empty this
+ * early. `beforeAll` below fills it in, so a surviving home that names no test
+ * file is itself the finding: the setup ran and the tests did not.
+ */
+writeFileSync(
+  path.join(home, '.created-by'),
+  `${JSON.stringify(
+    {
+      pid: process.pid,
+      worker: process.env.VITEST_WORKER_ID ?? null,
+      pool: process.env.VITEST_POOL_ID ?? null,
+      createdAt: new Date().toISOString(),
+      testFile: null,
+    },
+    null,
+    2,
+  )}\n`,
+);
+
+beforeAll(() => {
+  // The file this home actually belongs to, recorded as soon as anything in it
+  // runs. A leaked home carrying a testFile means the tests ran and the
+  // teardown did not; one carrying null means the tests never started.
+  try {
+    const state = expect.getState();
+    writeFileSync(
+      path.join(home, '.created-by'),
+      `${JSON.stringify(
+        {
+          pid: process.pid,
+          worker: process.env.VITEST_WORKER_ID ?? null,
+          pool: process.env.VITEST_POOL_ID ?? null,
+          createdAt: new Date().toISOString(),
+          testFile: state.testPath ?? null,
+        },
+        null,
+        2,
+      )}\n`,
+    );
+  } catch {
+    // Instrumentation must never fail a test file. A home with a stale marker
+    // is still a named home.
+  }
 });
 /**
  * Removes it after the file's tests (W22-16).
@@ -122,4 +178,3 @@ process.env.DOKIMA_VAULT_KEY ??= 'test-vault-key-w1243';
  */
 process.env.DOKIMA_MODEL_BASE_URL ??= 'http://127.0.0.1:1234/v1';
 process.env.DOKIMA_MODEL_ID ??= 'test-model';
-

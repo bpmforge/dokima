@@ -47,7 +47,13 @@ export function stripComments(text) {
   //
   // Blanked, not removed, per W12-38: two identifiers either side of a
   // stripped comment must not glue into a third word.
-  const source = ts.createSourceFile('scan.tsx', text, ts.ScriptTarget.Latest, false, ts.ScriptKind.TSX);
+  const source = ts.createSourceFile(
+    'scan.tsx',
+    text,
+    ts.ScriptTarget.Latest,
+    false,
+    ts.ScriptKind.TSX,
+  );
   /** [start, end) of every string, template and regex literal in the file. */
   const literals = [];
   const collect = (node) => {
@@ -81,7 +87,10 @@ export function stripComments(text) {
     const limit = next < literals.length ? literals[next][0] : n;
     const ch = text[i];
     if (ch === '/' && text[i + 1] === '/') {
-      while (i < n && text[i] !== '\n') { out += ' '; i += 1; }
+      while (i < n && text[i] !== '\n') {
+        out += ' ';
+        i += 1;
+      }
       continue;
     }
     if (ch === '/' && text[i + 1] === '*') {
@@ -101,6 +110,56 @@ export function stripComments(text) {
 }
 
 /**
+ * The same text again, with every `export ... from '...'` statement blanked
+ * (W23-21).
+ *
+ * A RE-EXPORT IS PLUMBING WHEREVER IT LIVES. `isBarrel` says that already, and
+ * says it by PATH — `src/index.ts` and nothing else — which held for exactly
+ * as long as every barrel was one file. It stopped holding the moment a barrel
+ * crossed the 400-line cap and was split: a chapter whose entire content is
+ * `export { X } from './x.js'` lines is not named index.ts, so it was scanned
+ * as ordinary production source and each of those lines counted as a call to
+ * X. Three symbols left the report that way during W23-09, and the suppression
+ * list emptied with them, because a symbol nobody reports is a symbol no
+ * `@unreached` marker suppresses.
+ *
+ * THE DANGEROUS DIRECTION FOR A RATCHET: the honest response to a file-size
+ * cap made the guard weaker and looked like an improvement in the numbers.
+ *
+ * Blanked per statement rather than per file, which is stricter than a second
+ * path rule would be: a real module that happens to re-export one symbol
+ * beside its own code keeps every genuine reference in it and loses only the
+ * plumbing line. Blanked, not removed, for the same reason comments are —
+ * positions must not shift.
+ */
+export function stripReexports(text) {
+  const source = ts.createSourceFile(
+    'scan.tsx',
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const ranges = [];
+  for (const statement of source.statements) {
+    // `export { x } from './y.js'` and `export * from './y.js'` — a module
+    // specifier is what makes it a re-export rather than a declaration.
+    if (ts.isExportDeclaration(statement) && statement.moduleSpecifier) {
+      ranges.push([statement.getStart(source), statement.end]);
+    }
+  }
+  if (ranges.length === 0) return text;
+  let out = '';
+  let i = 0;
+  for (const [start, end] of ranges) {
+    out += text.slice(i, start);
+    out += text.slice(start, end).replace(/[^\n]/g, ' ');
+    i = end;
+  }
+  return out + text.slice(i);
+}
+
+/**
  * References to `name` in PRODUCTION source anywhere in the repo — including
  * the declaring package, which an earlier draft of this validator wrongly
  * excluded. Excluding it reported 245 symbols, most of them functions used
@@ -114,14 +173,24 @@ export function stripComments(text) {
  * exercising an otherwise-uncalled mechanism is precisely the disguise this
  * defect class wears — W11-04's `secretValues` had tests and no callers).
  */
-export function countReferences(name, files, contentsByFile, declFile, cache = new Map()) {
+export function countReferences(
+  name,
+  files,
+  contentsByFile,
+  declFile,
+  cache = new Map(),
+) {
   // STRIPPING LIVES HERE, not in the caller (W12-39). It was in
   // `findUnreferencedExports` first, which meant the guarantee "a comment is
   // not a caller" held only as long as every future caller remembered to
   // pre-strip — and a fixture written against this function passed while
   // proving nothing. Cached so the work is still done once per file per run.
   const code = (file) => {
-    if (!cache.has(file)) cache.set(file, stripComments(contentsByFile.get(file) ?? ''));
+    if (!cache.has(file))
+      // Comments first, then re-export statements (W23-21): both are the same
+      // kind of lie about use, and both must be gone before a word-boundary
+      // match means anything.
+      cache.set(file, stripReexports(stripComments(contentsByFile.get(file) ?? '')));
     return cache.get(file);
   };
   const pattern = new RegExp(`\\b${name}\\b`);

@@ -63,6 +63,37 @@ describe('hooks/install.sh (P0-04)', () => {
     expect(msg).toContain('possible secret');
   });
 
+  it('pre-commit ALLOWS a commit that only REMOVES a secret (W23-24)', () => {
+    // The secret is planted BEFORE the hooks are installed, which is how the
+    // real one got in: it predates the guard. What must not happen is the
+    // guard then refusing to let it out.
+    const secret = 'AKIA' + 'ABCDEFGHIJKLMNOP';
+    writeFileSync(join(dir, 'old.txt'), `key=${secret}\nkept line\n`);
+    run(dir, 'git', ['add', 'old.txt']);
+    run(dir, 'git', [
+      '-c',
+      'user.email=t@t',
+      '-c',
+      'user.name=t',
+      'commit',
+      '-qm',
+      'pre',
+    ]);
+    run(dir, 'bash', ['hooks/install.sh']);
+    writeFileSync(join(dir, 'old.txt'), 'kept line\n');
+    run(dir, 'git', ['add', 'old.txt']);
+    run(dir, 'git', [
+      '-c',
+      'user.email=t@t',
+      '-c',
+      'user.name=t',
+      'commit',
+      '-qm',
+      'redact',
+    ]);
+    expect(run(dir, 'git', ['log', '--oneline']).trim()).toContain('redact');
+  });
+
   it('pre-commit passes a clean commit', () => {
     run(dir, 'bash', ['hooks/install.sh']);
     writeFileSync(join(dir, 'notes.txt'), 'nothing secret here\n');

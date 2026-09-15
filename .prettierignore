@@ -3,3 +3,18 @@
 # blows the 400-line chapter cap (conductor-lib.test.mjs W10-46). Exempted
 # rather than split under P6 — splitting it is real work needing its own ticket.
 scripts/validate-plan.mjs
+
+# plan.json is written by conductor-lib's writePlan, which deliberately
+# preserves the file's own on-disk conventions — ASCII-escaped non-ASCII and no
+# trailing newline (W9-11). Prettier's format disagrees with both, so running it
+# would turn every one-ticket status change into the thousands-of-bytes,
+# unreviewable diff W9-11 exists to prevent. The board's format has an owner;
+# it is not prettier. Found at AB-00: HEAD's plan.json already failed
+# `prettier --check`, so the first commit to stage it hit the pre-commit hook —
+# the same shape as P6-23 (docs/STATUS.md).
+plan.json
+
+# The automated-build handoff package is an input artifact delivered whole.
+# Reformatting it would edit someone else's document in place and make it
+# impossible to diff against the copy the work was scoped from.
+docs/work/automated-build-handoff/

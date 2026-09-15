@@ -8,6 +8,7 @@ import {
   isTestSupportFile,
   moduleExports,
   stripComments,
+  stripReexports,
 } from './validate-exports.mjs';
 
 /**
@@ -301,8 +302,8 @@ describe('the three degrees of unreached (W22-02)', () => {
     // conductor.config.json is now measuring a different thing than it was
     // calibrated against.
     const { findings, buried } = scan();
-    expect(findings.length).toBe(46);
-    expect(buried.length).toBe(45);
+    expect(findings.length).toBe(54);
+    expect(buried.length).toBe(46);
   });
 });
 
@@ -364,15 +365,40 @@ describe('the @unreached marker (W22-02)', () => {
     },
   );
 
-  it('the repo carries no @unreached markers again — P5-01 wired the four P3-05 mechanisms and deleted them, as the markers themselves promised', () => {
+  it('every @unreached marker in the repo names a real wiring ticket, and this list shrinks when that ticket lands', () => {
     // History: pre-P3-05 this asserted suppressed === []; P3-05 landed four
     // marked mechanisms awaiting a caller; P5-01 (the product loop) IS that
     // caller — productLoop/gapsToProposals call all four — so the markers
-    // are gone and the list shrank back to empty, the direction the marker
-    // contract demands. A future marker must carry a reason and a named
-    // wiring ticket, and this assertion grows with it, then shrinks again.
+    // went away and the list shrank back to empty, the direction the marker
+    // contract demands. W23-01 grows it again by two, exactly as the previous
+    // version of this comment said a future marker would: the approved-build
+    // decision function is exported ahead of the runtime that calls it, and
+    // W23-02 is the ticket that must delete both markers when it wires them.
+    // The assertion is on the SYMBOLS AND THEIR TICKET, not a count, so a
+    // third marker added quietly still reds this test.
     const { suppressed, malformedMarkers } = scan();
-    expect(suppressed).toEqual([]);
+    // W23-02 landed and the list SHRANK, which is the whole contract:
+    // APPROVED_BUILD_POLICY_VERSION is stamped onto every recorded approval
+    // now, so its marker is gone. decideApprovedBuildAction is still unreached
+    // and its marker was retargeted to W23-12, the card where a ticket's
+    // post-close path actually asks it whether it may accept.
+    // W23-07 landed and the list shrank again: two of its four markers became
+    // real callers, one export was DELETED because the caller did not want it,
+    // and one stopped being barrel-published. That is the contract working in
+    // all three directions.
+    // Asserted symbol BY symbol, with the reason each one must give. A count
+    // would pass while a marker quietly changed its story, and the story is
+    // the entire value of the mechanism: a marker either names the ticket that
+    // owes it a caller, or says plainly that it is a kept compatibility
+    // surface and will never have one.
+    const reasons = new Map(suppressed.map((s) => [s.symbol, s.reason]));
+    // W23-11 landed the repair loop and W23-12 the post-close accept, so
+    // consolidateFindings, groupByOwner and decideApprovedBuildAction all have
+    // the callers their markers promised. Every one of those markers is
+    // DELETED rather than retargeted, which is the only honest way a marker
+    // ends. What is left is the one that never claimed to be waiting.
+    expect([...reasons.keys()].sort()).toEqual(['runReviewPass']);
+    expect(reasons.get('runReviewPass')).toMatch(/compatibility surface/);
     expect(malformedMarkers).toEqual([]);
   });
 });
@@ -415,13 +441,63 @@ describe('stripComments understands code, not just delimiters (W22-02)', () => {
     // The whole reason this could be fixed inside this ticket: both ratchets
     // in conductor.config.json are calibrated against these counts, and a
     // counting change that moved them would need its own recalibration.
+    // (The numbers themselves moved later, at W23-21, when re-export
+    // statements stopped counting as calls — 46/44 -> 54/46. What this
+    // fixture asserts is unchanged: the W22-02 stripper's own two symbols
+    // are still not findings.)
     const { findings, buried, unreferenced } = scan();
-    expect(findings.length).toBe(46);
-    expect(buried.length).toBe(45);
+    expect(findings.length).toBe(54);
+    expect(buried.length).toBe(46);
     // FEATURE_STEPS and IMPROVE_STEPS were reported as unreached by the broken
     // stripper. Both are used in their own files; neither is a finding now.
     const named = unreferenced.map((u) => u.symbol);
     expect(named).not.toContain('FEATURE_STEPS');
     expect(named).not.toContain('IMPROVE_STEPS');
+  });
+});
+
+describe('a re-export is plumbing wherever it lives (W23-21)', () => {
+  const CHAPTER = "export { alpha } from './a.js';\nexport * from './b.js';\n";
+
+  it(
+    'RED FIXTURE: a barrel CHAPTER does not call the symbols it re-exports. ' +
+      'isBarrel matches src/index.ts by path, so a chapter split out under the ' +
+      '400-line cap was scanned as production source and its export lines read ' +
+      'as callers — three symbols left the report that way during W23-09, and ' +
+      'the suppression list emptied with them',
+    () => {
+      const files = ['/repo/packages/p/src/chapter.ts', '/repo/packages/p/src/x.ts'];
+      const contents = new Map([
+        [files[0], CHAPTER],
+        [files[1], 'export function alpha() {}\n'],
+      ]);
+      const { production } = countReferences('alpha', files, contents, files[1]);
+      expect(production).toBe(0);
+    },
+  );
+
+  it('a real call in the same chapter still counts — the fix must not blind the check', () => {
+    const files = ['/repo/packages/p/src/chapter.ts', '/repo/packages/p/src/x.ts'];
+    const contents = new Map([
+      [files[0], `${CHAPTER}alpha();\n`],
+      [files[1], 'export function alpha() {}\n'],
+    ]);
+    expect(countReferences('alpha', files, contents, files[1]).production).toBe(1);
+  });
+
+  it('blanks only the re-export statement, and keeps length and line count', () => {
+    const text = "export { alpha } from './a.js';\nalpha();\nexport const beta = 1;\n";
+    const stripped = stripReexports(text);
+    expect(stripped.length).toBe(text.length);
+    expect(stripped.split('\n').length).toBe(text.split('\n').length);
+    // The plumbing line is gone, the call is not, and a LOCAL export — which
+    // is a declaration, not a re-export — is untouched.
+    expect((stripped.match(/\balpha\b/g) ?? []).length).toBe(1);
+    expect(stripped).toContain('export const beta = 1;');
+  });
+
+  it('an import is still a call — only `export ... from` is plumbing', () => {
+    const text = "import { alpha } from './a.js';\nconst x = alpha;\n";
+    expect(stripReexports(text)).toBe(text);
   });
 });

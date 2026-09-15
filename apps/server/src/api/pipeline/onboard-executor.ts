@@ -54,13 +54,10 @@
  * always signs accept with `OPERATOR_ACTOR_ID`, never a specialist id —
  * AC3b, maker != verifier).
  */
+import { appendEvent, createIdentity, getIdentity, type EventLog } from '@dokima/events';
 import {
-  appendEvent,
-  createIdentity,
-  getIdentity,
-  type EventLog,
-} from '@dokima/events';
-import {
+  SECURITY_PLAN,
+  classifySecurityApplicability,
   runCoverageLoopForMode,
   runOnboard,
   type CoverageRow,
@@ -69,7 +66,9 @@ import {
   type OnboardRunResult,
   type RunOnboardInput,
 } from '@dokima/pipeline';
+import { runCheckSchedule } from '@dokima/harbormaster';
 import { ensureOperatorIdentity, OPERATOR_ACTOR_ID } from '../server/board-actor.js';
+import { dispatchSecurityGroup } from './onboard-security-schedule.js';
 import type { RealOnboardDispatch } from './onboard-dispatch-port.js';
 import type { OnboardStepArtifact } from './onboard-types.js';
 
@@ -135,27 +134,50 @@ async function runRealPreflight(
     return artifact !== undefined && (artifact.session.exitCode ?? 1) === 0;
   };
 
-  const result = await runCoverageLoopForMode(
-    'onboard',
-    steps.map(rowFor),
-    {
-      async discoverRows(rows) {
-        // Re-dispatch in topology order, so priorArtifacts stays coherent.
-        for (const step of steps) {
-          if (!rows.some((row) => row.id === step.stepId)) continue;
-          cache[step.stepId] = await dispatch(step.role, {
-            stepId: step.stepId,
-            seedContext: input.seedContext,
-            priorArtifacts: { ...cache },
-            deliverables: step.deliverables,
-          });
-        }
-      },
-      verifyCoverage() {
-        return steps.filter((step) => !covered(step.stepId)).map(rowFor);
-      },
+  const result = await runCoverageLoopForMode('onboard', steps.map(rowFor), {
+    async discoverRows(rows) {
+      const wanted = (step: DiscoveredStep): boolean =>
+        rows.some((row) => row.id === step.stepId);
+      const inSecurityGraph = (step: DiscoveredStep): boolean =>
+        SECURITY_PLAN.some((node) => node.id === step.stepId);
+
+      // W23-07: the seven GENERAL onboarding steps stay sequential — this
+      // release optimizes the security groups only (AB-05 step 1), and
+      // `priorArtifacts` threading across the general chain is the reason
+      // that order exists rather than an accident of implementation.
+      for (const step of steps) {
+        if (!wanted(step) || inSecurityGraph(step)) continue;
+        cache[step.stepId] = await dispatch(step.role, {
+          stepId: step.stepId,
+          seedContext: input.seedContext,
+          priorArtifacts: { ...cache },
+          deliverables: step.deliverables,
+        });
+      }
+
+      // W23-07: the security portion runs against the DECLARED graph, in
+      // bounded groups. Independent specialists overlap; synthesis waits for
+      // every applicable one; a failure stops its dependents and not the
+      // whole run.
+      await dispatchSecurityGroup({
+        steps: steps.filter((step) => wanted(step) && inSecurityGraph(step)),
+        seedContext: input.seedContext,
+        cache,
+        dispatch,
+        schedule: runCheckSchedule,
+        applicability: classifySecurityApplicability({
+          servesHttp: null,
+          integratesLlm: null,
+          usesCloudSdk: null,
+          hasInfrastructureAsCode: null,
+          inventoryPaths: [],
+        }),
+      });
     },
-  );
+    verifyCoverage() {
+      return steps.filter((step) => !covered(step.stepId)).map(rowFor);
+    },
+  });
   for (const record of result.iterations) {
     ledger?.({
       iteration: record.iteration,

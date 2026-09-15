@@ -172,6 +172,18 @@ export interface LandLoopOptions {
   /** Extra secret values (W11-16, FR-S2/SC-06, e.g. `collectSecretValues(vault, projectDir)`) redacted out of the rendered HANDOFF prompt before it reaches `spawn` (see `attemptOnce`). Omit for pattern-only redaction. */
   readonly secretValues?: readonly string[];
   /**
+   * W23-12 (AB-12): what happens to a ticket the moment it LANDS, before the
+   * engine moves to the next one — review, repair, and on an approved build an
+   * acceptance, so a dependent unlocks mid-run instead of waiting for a person
+   * the next morning. Injected here rather than called from `runLandLoop` so
+   * the berth engine gets it for free: both paths share this one function.
+   * Absent, the run behaves exactly as it did.
+   */
+  readonly postClose?: (input: {
+    readonly ticketId: string;
+    readonly worktreePath: string;
+  }) => Promise<void>;
+  /**
    * P6-05 (Law L11): the per-project landing mode. `'per-feature'` PARKS every
    * close-gate-green ticket (branch kept, park ledgered durably; the status
    * stays whatever `closeTicket` produced — `in_review`, a human still

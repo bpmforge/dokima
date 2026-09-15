@@ -270,3 +270,164 @@ describe('the C-4 refusal set covers every rung (W16-01)', () => {
     expect(events(log, 'review.verdict')).toHaveLength(0);
   });
 });
+
+describe('W23-03: the reviewer sees the source change, and a verdict is bound to it', () => {
+  it('RED FIXTURE: the prompt carries the planted LINE, not merely the filename', async () => {
+    const { log, repoRoot } = await fixture('printf "1 tests passed\\n"');
+    // The worktree the fixture built has one commit on top of main. Plant a
+    // line inside it that a filename could never reveal.
+    const worktree = path.join(repoRoot, '.dokima', 'worktrees', 'T-1');
+    await fs.writeFile(
+      path.join(worktree, 'auth.ts'),
+      'export const isAdmin = () => true; // PLANTED-BYPASS\n',
+    );
+    await git(worktree, ['add', '--', 'auth.ts']);
+    await git(worktree, ['commit', '-m', 'T-1: bypass']);
+
+    const prompts: string[] = [];
+    await runReviewPass(
+      options(log, repoRoot, {
+        reviewChat: async (prompt: string) => {
+          prompts.push(prompt);
+          return '{"verdict":"CONFIRMED","score":8,"reasoning":"looks fine to me."}';
+        },
+      }),
+    );
+
+    expect(prompts).toHaveLength(1);
+    expect(prompts[0]).toContain('PLANTED-BYPASS');
+    expect(prompts[0]).toContain('+export const isAdmin = () => true;');
+  });
+
+  it('the verdict event names the head, base and digest it was given', async () => {
+    const { log, repoRoot } = await fixture('printf "1 tests passed\\n"');
+    await runReviewPass(options(log, repoRoot));
+    const verdict = events(log, 'review.verdict').at(-1)!.payload as Record<
+      string,
+      unknown
+    >;
+    expect(verdict.reviewedHead).toMatch(/^[0-9a-f]{40}$/);
+    expect(verdict.sourceDigest).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(verdict.evidenceComplete).toBe(true);
+    expect(verdict.evidenceStillCurrent).toBe(true);
+  });
+
+  it('RED FIXTURE: a model CONFIRMED on evidence it was never shown is recorded as UNVERIFIABLE', async () => {
+    const { log, repoRoot } = await fixture('printf "1 tests passed\\n"');
+    // A dirty worktree: there is no settled tree, so there is no diff to show.
+    await fs.writeFile(
+      path.join(repoRoot, '.dokima', 'worktrees', 'T-1', 'work.txt'),
+      'edited after the commit\n',
+    );
+
+    const outcomes = await runReviewPass(options(log, repoRoot));
+    expect(outcomes[0]).toMatchObject({ status: 'recorded', verdict: 'UNVERIFIABLE' });
+
+    const verdict = events(log, 'review.verdict').at(-1)!.payload as Record<
+      string,
+      unknown
+    >;
+    expect(verdict.evidenceComplete).toBe(false);
+    expect(verdict.modelVerdict).toBe('CONFIRMED');
+    expect(String(verdict.evidenceReason)).toMatch(/uncommitted changes/);
+
+    const comment = getTicket(log, 'T-1')!
+      .history.filter((h) => h.verb === 'comment')
+      .at(-1)!;
+    expect(comment.body).toContain('NOT shown the source change');
+  });
+
+  it('RED FIXTURE: a failing core re-run still out-votes a model CONFIRMED, diff or no diff', async () => {
+    const { log, repoRoot } = await fixture(
+      'sh -c "printf \'1 tests failed\\n\'; exit 1"',
+    );
+    const outcomes = await runReviewPass(options(log, repoRoot));
+    expect(outcomes[0]).toMatchObject({ verdict: 'CONTRADICTED' });
+  });
+});
+
+describe('W23-04: the build path runs the real registry, and the reviewer sees what it found', () => {
+  it('the prompt carries a status line per objective check — including the ones that did not run', async () => {
+    const { log, repoRoot } = await fixture('printf "1 tests passed\\n"');
+    const prompts: string[] = [];
+    await runReviewPass(
+      options(log, repoRoot, {
+        reviewChat: async (prompt: string) => {
+          prompts.push(prompt);
+          return '{"verdict":"CONFIRMED","score":8,"reasoning":"fine."}';
+        },
+      }),
+    );
+    expect(prompts[0]).toContain('Objective security checks, executed by the core');
+    // ASSERTED WITHOUT A REGEX, and not by preference: SC-04's lint guard
+    // forbids regex literals over completion words anywhere in this package,
+    // and it fired on the first draft of this very assertion. The rule cannot
+    // tell a prompt-content check from a completion-by-string-match, and the
+    // conservative reading is the right one — so the status set is compared as
+    // data instead.
+    const firstPrompt = prompts[0] ?? '';
+    const statusLine = firstPrompt
+      .split('\n')
+      .find((line) => line.startsWith('- tool-sast: '));
+    expect(statusLine).toBeDefined();
+    const statuses = ['PASSED', 'FINDINGS', 'ERROR', 'UNAVAILABLE', 'NOT_APPLICABLE'];
+    expect(statuses.some((status) => statusLine!.includes(status))).toBe(true);
+    // The sentence that stops a missing scanner reading as a clean one.
+    const verdictSentences = [
+      'Every required check ran and passed',
+      'A tool that could not run is NOT a clean result',
+    ];
+    expect(verdictSentences.some((sentence) => prompts[0]!.includes(sentence))).toBe(
+      true,
+    );
+  });
+
+  it('the verdict event records what the CORE executed, beside what the model said', async () => {
+    const { log, repoRoot } = await fixture('printf "1 tests passed\\n"');
+    await runReviewPass(options(log, repoRoot));
+    const payload = events(log, 'review.verdict').at(-1)!.payload as Record<
+      string,
+      unknown
+    >;
+    const checks = payload.securityChecks as { checkId: string; status: string }[];
+    expect(checks.map((c) => c.checkId)).toEqual([
+      'tool-sast',
+      'tool-secrets',
+      'tool-deps',
+    ]);
+    // Whatever this host has installed, no check may report a status the
+    // registry does not define, and none may be silently absent.
+    for (const check of checks) {
+      expect(['passed', 'findings', 'error', 'unavailable', 'not_applicable']).toContain(
+        check.status,
+      );
+    }
+    expect(typeof payload.securityChecksEligible).toBe('boolean');
+  });
+  it('RED FIXTURE: applicability is MEASURED from the worktree, not asserted by the caller', async () => {
+    const { log, repoRoot } = await fixture('printf "1 tests passed\\n"');
+    // A real Node project inside the ticket's own worktree: manifest AND
+    // lockfile. The first draft of this wiring passed `hasLockfile: false` as a
+    // literal, so tool-deps read NOT_APPLICABLE ("no lockfile") for every
+    // ticket on every project forever — a status derived from a guess while
+    // wearing a runtime-derived reason.
+    const worktree = path.join(repoRoot, '.dokima', 'worktrees', 'T-1');
+    await fs.writeFile(path.join(worktree, 'package.json'), '{"name":"fixture"}\n');
+    await fs.writeFile(
+      path.join(worktree, 'package-lock.json'),
+      '{"lockfileVersion":3}\n',
+    );
+    await git(worktree, ['add', '--', 'package.json', 'package-lock.json']);
+    await git(worktree, ['commit', '-m', 'T-1: a real node project']);
+
+    await runReviewPass(options(log, repoRoot));
+    const payload = events(log, 'review.verdict').at(-1)!.payload as Record<
+      string,
+      unknown
+    >;
+    const deps = (payload.securityChecks as { checkId: string; status: string }[]).find(
+      (c) => c.checkId === 'tool-deps',
+    )!;
+    expect(deps.status).not.toBe('not_applicable');
+  });
+});

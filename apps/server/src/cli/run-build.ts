@@ -16,8 +16,6 @@
 
 import type { EventLog } from '@dokima/events';
 import {
-  collectSecretValues,
-  getEffectiveSettings,
   resolveAsset,
   resolveEffectiveValue,
   SECRET_PATTERNS,
@@ -25,28 +23,22 @@ import {
 } from '@dokima/shared';
 import { type SpawnSession } from '@dokima/loop';
 import {
-  DEFAULT_MAX_SESSION_SECONDS,
   orphanedClaims,
   runLandLoop,
+  type LandLoopOptions,
   type LandLoopResult,
   type LandRungSessions,
 } from '@dokima/harbormaster';
 import { createPackedHandoffBuilder } from './handoff-context.js';
 import { ensureSessionActor } from './identity.js';
-import { assertSandboxOrWaiver } from './sandbox-preflight.js';
-import { signingKeyOrRefusal } from './signing-key.js';
+import { runBuildPreflight } from './run-build-preflight.js';
 
 import {
   announceRungSessions,
   buildBuiltInSpawn,
   createWatchedExternalSpawn,
 } from './run-build-spawn.js';
-import {
-  ESCALATION_POLICY_SETTINGS_KEY,
-  resolveRunLimits,
-  resolvePinnedModel,
-  resolvePolicyScope,
-} from './run-build-policy.js';
+import {} from './run-build-policy.js';
 
 import { ROLE_CODING_AGENT } from '@dokima/gateway';
 import {
@@ -72,6 +64,7 @@ import { createLearningHook, createR0ConsultHook } from './memory-hooks.js';
 import { FORGE_MIRROR_SETTINGS_KEY, setupForgeMirror } from './forge-mirror.js';
 import { executeBerthsRun } from './run-build-berths.js';
 import { executeReviewPass } from './review-pass.js';
+import { createRunReviewSeams } from './build-verify.js';
 import { printRunOutcomes } from './run-summary.js';
 import { requiredValidatorsFor } from './run-validators.js';
 import { listTickets } from '@dokima/tickets';
@@ -82,9 +75,7 @@ import {
 } from './consolidation.js';
 import { syncMcpApprovalNotifications } from '../api/notifications/mcp-approvals.js';
 
-import { resolveVaultOrRefusal } from './run-vault.js';
 import {
-  countReceipts,
   localFirstPushToRemotes,
   preflightBuiltInModel,
   resolveAgentRunner,
@@ -102,62 +93,22 @@ export async function executeBuildRun(
   runId: string,
   io: RunCliIO,
 ): Promise<number> {
-  // W12-43: minted on a fresh install rather than demanded — see signing-key.ts.
-  const keyResult = await signingKeyOrRefusal(countReceipts(log), runId, io.stderr);
-  if ('refused' in keyResult) return 2;
-  const signingKey = keyResult.key;
-
-  // W12-02: refuse rather than run with nothing to redact.
-  const vault = resolveVaultOrRefusal(io.cwd);
-  if (!vault.ok) {
-    io.stderr(
-      `${runId} did not start: the secrets vault is unreadable, so registered ` +
-        `project secrets cannot be enumerated and would reach the model ` +
-        `unredacted (FR-S2/SC-06). Nothing was claimed. ${vault.reason}`,
-    );
-    return 2;
-  }
-
-  const secretValues = await collectSecretValues(vault.vault, io.cwd);
-
-  // W13-25: SC-07 fails closed — see `sandbox-preflight.ts`.
-  if (!assertSandboxOrWaiver(log, command.actorId, runId, io)) return 2;
-
-  // W12-18: the policy the user chose, read for the first time.
-  const policyScoped = await getEffectiveSettings({ projectDir: io.cwd });
-  const policyRaw = resolveEffectiveValue(ESCALATION_POLICY_SETTINGS_KEY, policyScoped)
-    ?.value as JsonValue | undefined;
-  const policyResult = resolvePolicyScope(policyRaw, ROLE_CODING_AGENT);
-  if ('refusal' in policyResult) {
-    io.stderr(`${runId} did not start: ${policyResult.refusal}`);
-    return 2;
-  }
-
-  const pin = resolvePinnedModel(policyRaw, ROLE_CODING_AGENT);
-
-  // P6-05 (Law L11): per-project landing mode, same generic settings surface
-  // as `agentRunner`/`escalationPolicy`; default per-ticket (unchanged).
-  const landingRaw = resolveEffectiveValue('landingMode', policyScoped)?.value;
-  if (landingRaw != null && landingRaw !== 'per-ticket' && landingRaw !== 'per-feature') {
-    io.stderr(
-      `${runId} did not start: settings key "landingMode" must be "per-ticket" or ` +
-        `"per-feature" (got ${JSON.stringify(landingRaw)}); nothing was claimed`,
-    );
-    return 2;
-  }
-
-  // W13-11/43/47: the run's numeric bounds, resolved together and refused
-  // rather than clamped — see `resolveRunLimits`.
-  const limitsResult = resolveRunLimits(
-    (key: string) =>
-      resolveEffectiveValue(key, policyScoped)?.value as JsonValue | undefined,
-    DEFAULT_MAX_SESSION_SECONDS,
-  );
-  if ('refusal' in limitsResult) {
-    io.stderr(`${runId} did not start: ${limitsResult.refusal}`);
-    return 2;
-  }
-  const limits = limitsResult.limits;
+  // W23-20: the whole read-check-refuse sequence, one chapter. Every entry
+  // returns an exit code or the values the run needs; nothing here decides
+  // anything the original inline blocks did not.
+  const pre = await runBuildPreflight(log, command, runId, io);
+  if ('refused' in pre) return pre.refused;
+  const {
+    signingKey,
+    vault,
+    secretValues,
+    policyScoped,
+    pin,
+    limits,
+    policyScope,
+    landingMode,
+    approvedPolicy,
+  } = pre;
 
   // W14-02: preload configured MCP servers — see mcp-preload.ts.
   const mcp = await preloadMcpFromSettings({
@@ -284,6 +235,22 @@ export async function executeBuildRun(
   // the run. `conflictWatch.humanActorId` below keeps the human where a human
   // is genuinely meant — the split this line completes.
   const sessionActorId = ensureSessionActor(log, io.now);
+
+  // W15-01/W23-12: the review options, the post-close accept seam and the
+  // record of what it decided — composed in build-verify.ts, because this file
+  // is at the 400-line chapter cap and that is one concern, not a fragment of
+  // the run loop.
+  const seams = createRunReviewSeams({
+    log,
+    runId,
+    command,
+    repoRoot: io.cwd,
+    makerModel: () => makerModel,
+    usedModels: () => usedModels(),
+    policy: approvedPolicy,
+    secretValues,
+    stderr: io.stderr,
+  });
   const landOptions = {
     log,
     actorId: sessionActorId,
@@ -295,7 +262,7 @@ export async function executeBuildRun(
     signingKey,
     spawn,
     // W12-04: the packed builder — FR-L5's Context Packer, live.
-    policyScope: policyResult.scope,
+    policyScope,
     ...(validators.requiredValidators
       ? { requiredValidators: validators.requiredValidators }
       : {}),
@@ -327,8 +294,13 @@ export async function executeBuildRun(
     now: io.now,
     // P6-05: chosen landing mode; omitted when per-ticket (pre-P6-05 shape).
     // Wired on BOTH paths since P6-11: runLandLoop and the berth engine park + sweep.
-    ...(landingRaw === 'per-feature' ? { landing: 'per-feature' as const } : {}),
+    ...(landingMode === 'per-feature' ? { landing: 'per-feature' as const } : {}),
+    // W23-12: review, repair and (policy permitting) accept the moment a
+    // ticket lands, so a dependent unlocks mid-run. Absent unless this run is
+    // an approved build.
+    ...(seams.postClose ? { postClose: seams.postClose } : {}),
   };
+  seams.useLandOptions(landOptions as LandLoopOptions);
   let result!: Omit<LandLoopResult, 'stopReason'> & { stopReason: string };
   try {
     result =
@@ -353,20 +325,23 @@ export async function executeBuildRun(
     }
   }
 
-  // W15-01: the review pass — every in_review ticket gets a cross-model
-  // verdict (or an honest skip) before a person reads the Decide card.
-  await executeReviewPass({
-    log,
-    actorId: command.actorId,
-    runId,
-    repoRoot: io.cwd,
-    makerModel,
-    // W16-01: every model a rung session actually ran this run — the reviewer
-    // must not match ANY of them (C-4 stays true when a ticket landed on R2).
-    makerModels: [makerModel, ...usedModels()],
-    secretValues,
-    stderr: io.stderr,
-  });
+  /**
+   * W15-01: the review pass — every in_review ticket gets a cross-model
+   * verdict (or an honest skip) before a person reads the Decide card.
+   *
+   * W23-12 step 5: only the tickets the post-close seam did NOT decide. On an
+   * approved run that is the legacy remainder — a ticket that landed before
+   * the seam existed, or one whose post-close verification threw. Reviewing
+   * the rest again would spend a model turn to re-reach a verdict that is
+   * already in the ledger, and would record a second one beside it.
+   */
+  const decidedIds = new Set(seams.decided.map((entry) => entry.ticketId));
+  const unreviewed = result.processed
+    .map((entry) => entry.ticketId)
+    .filter((id) => !decidedIds.has(id));
+  if (unreviewed.length > 0) {
+    await executeReviewPass({ ...seams.reviewOptions, ticketIds: unreviewed });
+  }
 
   // W14-06: the run's end is this product's idle moment — consolidate now
   // unless the project turned it off (US-603 AC-1; ON by default, FR-M3).

@@ -46,7 +46,11 @@ export {
   isTestSupportFile,
   walkSourceFiles,
 } from './validate-exports/files.mjs';
-export { countReferences, stripComments } from './validate-exports/strip.mjs';
+export {
+  countReferences,
+  stripComments,
+  stripReexports,
+} from './validate-exports/strip.mjs';
 export {
   exportsOfBarrel,
   moduleExports,

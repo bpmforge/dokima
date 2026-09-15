@@ -35,6 +35,15 @@ import {
   type ReviewSignalAction,
 } from '@dokima/loop';
 import { reRunVerify } from './loop-gates-verify.js';
+import { collectTicketSecurityChecks, securityChecksSection } from './review-security.js';
+import { reviewCommentBody } from './loop-review-report.js';
+import {
+  decideReview,
+  ensureReviewerIdentity,
+  type ReviewDecision,
+} from './review-decision.js';
+import { countsFrom, parseVerdict, reviewPrompt } from './loop-review-prompt.js';
+import { collectReviewEvidence, evidenceStillCurrent } from './review-evidence.js';
 // W21-75: the literal that used to sit further down was Dokima's own gate,
 // duplicated; the ticket's verify command is resolved in loop-gates.ts now.
 import { DEFAULT_VERIFY_COMMAND } from './loop-handoff.js';
@@ -72,97 +81,67 @@ export interface ReviewPassOptions {
   readonly now?: () => string;
   /** W15-02 (FR-L3): the maker's calibration record, injected — the store lives in memory, which harbormaster may not import. */
   readonly makerCalibration?: () => CalibrationRecord | undefined;
+  /** W23-04: where the bundled secrets scanner lives in THIS installation — apps/server resolves it; the package must not guess. */
+  readonly secretsValidatorPath?: string | null;
+  /**
+   * W23-16: the project's own network policy, from the settings file the
+   * onboard path reads. Hardcoded local-only here, and `tool-sast` needs the
+   * network for its ruleset — so SAST was permanently UNAVAILABLE and no
+   * ticket could ever be machine-accepted. Default stays local-only.
+   */
+  readonly networkPolicy?: 'local-only' | 'network-allowed';
+  /**
+   * W23-10: review only these tickets. A run that lands three tickets must not
+   * also re-review a ticket someone parked last week merely because it is
+   * still `in_review` — that ticket's worktree may be gone and nobody asked.
+   * Omitted, every `in_review` ticket is reviewed, exactly as before.
+   */
+  readonly ticketIds?: readonly string[];
 }
 
 export const DEFAULT_REVIEW_VERIFY_TIMEOUT_MS = 10 * 60 * 1000;
 
-/** Test-count extraction is best-effort; the contract only demands a non-empty counts record, and `commandsRun` is always true. */
-function countsFrom(output: string): Record<string, number> {
-  const counts: Record<string, number> = { commandsRun: 1 };
-  const passed = /(\d+)\s+(?:tests? )?pass(?:ed|ing)/i.exec(output);
-  if (passed) counts.passed = Number(passed[1]);
-  const failed = /(\d+)\s+(?:tests? )?fail(?:ed|ing)/i.exec(output);
-  if (failed) counts.failed = Number(failed[1]);
-  return counts;
-}
-
-function reviewPrompt(
-  ticket: Ticket,
-  rerun: RerunEvidence,
-  rerunOutputHead: string,
-): string {
-  const acceptance = ticket.acceptance
-    .map((criterion) => `- ${criterion.text}`)
-    .join('\n');
-  const files = (ticket.manifest?.files ?? []).join(', ') || '(none listed)';
-  return [
-    `You are reviewing finished work on ticket ${ticket.id}: ${ticket.title}`,
-    `Acceptance criteria:\n${acceptance || '- (none recorded)'}`,
-    `Files changed: ${files}`,
-    `Commits: ${(ticket.manifest?.commits ?? []).join(', ') || '(none)'}`,
-    `The core re-ran the verify command independently: ${formatRerunLine(rerun)}`,
-    `Verify output (head): ${rerunOutputHead}`,
-    '',
-    'Judge whether the work satisfies its acceptance criteria. Respond with',
-    'ONLY a JSON object: {"verdict": "CONFIRMED"|"CONTRADICTED"|"UNVERIFIABLE",',
-    '"score": 1-10, "reasoning": "<two sentences naming specific evidence>"}',
-  ].join('\n');
-}
-
-function parseVerdict(
-  raw: string,
-): { verdict: ReviewVerdictKind; score: number; reasoning: string } | null {
-  const match = /\{[\s\S]*\}/.exec(raw);
-  if (!match) return null;
-  try {
-    const parsed = JSON.parse(match[0]) as Record<string, unknown>;
-    const verdict = parsed.verdict;
-    const score = parsed.score;
-    if (
-      (verdict === 'CONFIRMED' ||
-        verdict === 'CONTRADICTED' ||
-        verdict === 'UNVERIFIABLE') &&
-      typeof score === 'number' &&
-      Number.isInteger(score) &&
-      score >= 1 &&
-      score <= 10
-    ) {
-      return {
-        verdict,
-        score,
-        reasoning: typeof parsed.reasoning === 'string' ? parsed.reasoning : '',
-      };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
+/** W23-10: kept as the compatibility wrapper — existing callers keep their outcomes. */
 export async function runReviewPass(
   options: ReviewPassOptions,
 ): Promise<ReviewOutcome[]> {
-  const outcomes: ReviewOutcome[] = [];
-  const inReview = listTickets(options.log).filter(
-    (ticket) => ticket.status === 'in_review' && ticket.manifest !== null,
-  );
+  return (await reviewTicketDecisions(options)).map((entry) => entry.outcome);
+}
 
+/** The per-ticket review operation, with the structured decision beside each outcome. */
+export async function reviewTicketDecisions(
+  options: ReviewPassOptions,
+): Promise<readonly { outcome: ReviewOutcome; decision: ReviewDecision | null }[]> {
+  const results: { outcome: ReviewOutcome; decision: ReviewDecision | null }[] = [];
+  const selected = options.ticketIds ? new Set(options.ticketIds) : null;
+  const inReview = listTickets(options.log).filter(
+    (ticket) =>
+      ticket.status === 'in_review' &&
+      ticket.manifest !== null &&
+      (selected === null || selected.has(ticket.id)),
+  );
   for (const ticket of inReview) {
-    outcomes.push(await reviewOne(options, ticket));
+    results.push(await reviewOne(options, ticket));
   }
-  return outcomes;
+  return results;
 }
 
 async function reviewOne(
   options: ReviewPassOptions,
   ticket: Ticket,
-): Promise<ReviewOutcome> {
+): Promise<{ outcome: ReviewOutcome; decision: ReviewDecision | null }> {
+  /**
+   * W23-10: THE MACHINE SIGNS ITS OWN REVIEW. These events were appended under
+   * `options.actorId` — the human who started the build — which reads, in an
+   * append-only log, as that person having reviewed the work (C-4, SC-05).
+   */
+  const reviewerActorId = ensureReviewerIdentity(options.log);
   const record = (payload: Record<string, unknown>, eventType: string) =>
     appendEvent(
       options.log,
       {
         eventType,
-        actorId: options.actorId,
+        actorId: reviewerActorId,
         ticketId: ticket.id,
         runId: options.runId,
         payload,
@@ -172,7 +151,10 @@ async function reviewOne(
 
   if (options.reviewerModel === null) {
     record({ reason: 'no reviewer model configured' }, 'review.skipped');
-    return { ticketId: ticket.id, status: 'skipped', reason: 'no reviewer model' };
+    return {
+      outcome: { ticketId: ticket.id, status: 'skipped', reason: 'no reviewer model' },
+      decision: null,
+    };
   }
 
   const makerModels = options.makerModels ?? [options.makerModel];
@@ -188,14 +170,17 @@ async function reviewOne(
       `code-reviewer role, or review this ticket yourself from the Decide card.`;
     commentTicket(options.log, {
       ticketId: ticket.id,
-      actorId: options.actorId,
+      actorId: reviewerActorId,
       body: sentence,
     });
     record(
       { reason: 'same model as maker', model: options.reviewerModel },
       'review.skipped',
     );
-    return { ticketId: ticket.id, status: 'skipped', reason: 'same model as maker' };
+    return {
+      outcome: { ticketId: ticket.id, status: 'skipped', reason: 'same model as maker' },
+      decision: null,
+    };
   }
 
   // THE CORE re-runs verify in the ticket's own worktree (C-2/SC-12).
@@ -220,20 +205,58 @@ async function reviewOne(
   };
   if (!isValidRerun(rerun)) {
     record({ reason: 'rerun evidence invalid' }, 'review.bounced');
-    return { ticketId: ticket.id, status: 'bounced', reason: 'invalid rerun' };
+    return {
+      outcome: { ticketId: ticket.id, status: 'bounced', reason: 'invalid rerun' },
+      decision: null,
+    };
   }
+
+  // W23-03: the actual source change, collected by the CORE from the ticket's
+  // own worktree. Incomplete evidence (dirty, oversized, unreadable, empty) is
+  // carried into the prompt as an explicit "you are not looking at the code"
+  // and, below, makes CONFIRMED impossible — a review of a diff nobody showed
+  // the reviewer is worse than no review, because it arrives with a verdict.
+  const evidenceInput = {
+    ticketId: ticket.id,
+    worktreePath,
+    secretValues: options.secretValues ?? [],
+  };
+  const evidence = await collectReviewEvidence(evidenceInput);
+
+  // W23-04: the SAME registry the onboard path runs, pointed at this ticket's
+  // worktree. W23-16: with the project's OWN network policy, resolved by the
+  // caller from the settings file the onboard path already reads — the
+  // hardcoded local-only here made tool-sast permanently unavailable and
+  // machine acceptance permanently unreachable. Local-only remains the
+  // default, because reaching a network by default is the one mistake a
+  // default must not make (Law 9b).
+  const security = await collectTicketSecurityChecks({
+    worktreePath,
+    sourceDigest: evidence.sourceDigest,
+    networkPolicy: options.networkPolicy ?? 'local-only',
+    secretsValidatorPath: options.secretsValidatorPath ?? null,
+  });
 
   // One bounce allowed (R-B2: INCOMPLETE is bounced, not counted). A
   // reviewer endpoint that is down or refused skips HONESTLY — a run that
   // landed real work must never crash over its reviewer's availability.
-  const prompt = reviewPrompt(ticket, rerun, output.slice(0, 800));
+  const prompt = reviewPrompt(
+    ticket,
+    rerun,
+    output.slice(0, 800),
+    evidence,
+    securityChecksSection(security),
+  );
   let raw: string;
   try {
     raw = await options.reviewChat(prompt);
   } catch (err) {
     const reason = `reviewer unavailable: ${err instanceof Error ? err.message.slice(0, 200) : String(err)}`;
     record({ reason }, 'review.skipped');
-    return { ticketId: ticket.id, status: 'skipped', reason };
+    return {
+      outcome: { ticketId: ticket.id, status: 'skipped', reason },
+      decision: null,
+    };
   }
   let parsed = parseVerdict(raw);
   if (!parsed) {
@@ -246,13 +269,30 @@ async function reviewOne(
   }
   if (!parsed) {
     record({ attempt: 2, reason: 'unparseable verdict — not counted' }, 'review.bounced');
-    return { ticketId: ticket.id, status: 'bounced', reason: 'unparseable verdict' };
+    return {
+      outcome: { ticketId: ticket.id, status: 'bounced', reason: 'unparseable verdict' },
+      decision: null,
+    };
   }
+
+  // W23-03: the source must still be the source that was reviewed. A model
+  // turn takes seconds to minutes and nothing stops the session, a person or a
+  // concurrent berth from committing during it, so the head is re-read AFTER
+  // the answer rather than trusted from before it.
+  const stillCurrent =
+    evidence.complete && (await evidenceStillCurrent(evidence, evidenceInput));
 
   // Ground truth out-votes the model: a failing core re-run IS a
   // contradiction, whatever the reviewer said (C-2).
   const gatePassed = run.exitCode === 0;
-  const verdict: ReviewVerdictKind = gatePassed ? parsed.verdict : 'CONTRADICTED';
+  // W23-03: and a CONFIRMED that rests on evidence the reviewer never saw, or
+  // on a tree that has since moved, is downgraded to UNVERIFIABLE rather than
+  // recorded as a confirmation. Never upgraded — a CONTRADICTED stays
+  // contradicted whatever the evidence looked like.
+  const evidenceUsable = evidence.complete && stillCurrent;
+  const modelVerdict: ReviewVerdictKind =
+    parsed.verdict === 'CONFIRMED' && !evidenceUsable ? 'UNVERIFIABLE' : parsed.verdict;
+  const verdict: ReviewVerdictKind = gatePassed ? modelVerdict : 'CONTRADICTED';
   // Advisory score classifies only over a PASSING deterministic gate
   // (classifySubjectiveScore's own contract) — over a failing one the
   // verdict alone speaks. W15-02: a chronically over-claiming maker's
@@ -270,31 +310,25 @@ async function reviewOne(
   }
 
   const rerunLine = formatRerunLine(rerun);
-  const lines = [
-    `Review verdict: ${verdict} (score ${parsed.score}/10${
-      action ? ` — ${action}` : ''
-    }) — reviewed by ${options.reviewerModel}; maker ${options.makerModel}`,
+  const body = reviewCommentBody({
+    verdict,
+    score: parsed.score,
+    action,
+    reasoning: parsed.reasoning,
     rerunLine,
-    parsed.reasoning,
-  ];
-  if (overclaiming && action === 'ESCALATE_TO_HUMAN') {
-    lines.splice(
-      1,
-      0,
-      `Escalated to you: this maker (${options.makerModel}) has historically claimed done more often than the gate confirmed, so its borderline work gets a person's eyes (FR-L3).`,
-    );
-  }
-  if (!gatePassed) {
-    lines.splice(
-      1,
-      0,
-      `The core's independent re-run FAILED (exit ${run.exitCode}) — the verdict is CONTRADICTED by construction; the model's opinion cannot out-vote the gate.`,
-    );
-  }
+    reviewerModel: options.reviewerModel,
+    makerModel: options.makerModel,
+    overclaiming,
+    gatePassed,
+    rerunExitCode: run.exitCode,
+    evidenceUsable,
+    evidenceComplete: evidence.complete,
+    evidenceReason: evidence.reason,
+  });
   commentTicket(options.log, {
     ticketId: ticket.id,
-    actorId: options.actorId,
-    body: lines.filter(Boolean).join('\n'),
+    actorId: reviewerActorId,
+    body,
   });
   record(
     {
@@ -306,14 +340,60 @@ async function reviewOne(
       makerModel: options.makerModel,
       gatePassed,
       overclaiming,
+      // W23-03: what this verdict is ABOUT. A verdict with no head and no
+      // digest cannot be checked for staleness later, which is how a stale
+      // approval gets reused (IMPLEMENTATION_PLAN §6).
+      reviewedHead: evidence.headCommit,
+      reviewedBase: evidence.baseCommit,
+      sourceDigest: evidence.sourceDigest,
+      evidenceComplete: evidence.complete,
+      evidenceReason: evidence.reason,
+      evidenceStillCurrent: stillCurrent,
+      modelVerdict: parsed.verdict,
+      // W23-04: what the CORE executed, beside what the model said about it.
+      securityChecks: security.evidence.map((c) => ({
+        checkId: c.checkId,
+        status: c.status,
+        exitCode: c.exitCode,
+        findingCount: c.findingCount,
+        reason: c.reason,
+      })),
+      securityChecksEligible: security.eligible,
     },
     'review.verdict',
   );
-  return {
+  const decision = decideReview({
     ticketId: ticket.id,
-    status: 'recorded',
-    verdict,
+    modelVerdict: parsed.verdict,
     score: parsed.score,
-    action,
+    reviewedHead: evidence.headCommit,
+    sourceDigest: evidence.sourceDigest,
+    evidenceComplete: evidence.complete,
+    evidenceStillCurrent: stillCurrent,
+    gatePassed,
+    // Every objective check is REQUIRED for an automated acceptance: a check
+    // the runtime chose to run and then treats as optional exists to be
+    // ignored.
+    checks: security.evidence.map((check) => ({
+      checkId: check.checkId,
+      status: check.status,
+      required: true,
+    })),
+    makerModel: options.makerModel,
+    makerModels,
+    reviewerModel: options.reviewerModel,
+    reviewerActorId,
+    makerActorId: ticket.ownerId,
+  });
+
+  return {
+    outcome: {
+      ticketId: ticket.id,
+      status: 'recorded',
+      verdict,
+      score: parsed.score,
+      action,
+    },
+    decision,
   };
 }

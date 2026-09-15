@@ -15447,6 +15447,944 @@
         "THE PROTECTION THAT MATTERS IS ALREADY IN THE GATE. validate-temp-leaks catches this within one gate run of it happening \u2014 it has now done so three times, including twice against the person who wrote it. A rare race that is always caught is a different thing from a silent leak, and it is the thing this line of tickets was actually for.",
         "Gate: lint clean, typecheck 0, 4792 tests passing across 561 files (1 skipped), 76 e2e passing, all 6 validators clean plus temp-leaks OK."
       ]
+    },
+    {
+      "id": "W23-00",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [],
+      "lane": "quality",
+      "module": "quality",
+      "points": 2,
+      "title": "automated-build baseline: capture the gate honestly and put wave 23 on the board",
+      "write_scope": [
+        "docs/work/automated-build/BASELINE.md",
+        "docs/work/automated-build/PROGRESS.md",
+        "docs/work/automated-build-handoff/**",
+        ".prettierignore"
+      ],
+      "acceptance": [
+        "BASELINE.md records the checkout, every gate command with its OWN exit code (not a pipe status), test totals and skips, and every pre-existing non-green fact a later session could misread as AB damage",
+        "PROGRESS.md maps AB-00..AB-18 to reserved wave-23 ticket ids, states which are actually registered on the board, and marks nothing implemented",
+        "No source file, dependency or conductor state changed by this card"
+      ],
+      "notes": [
+        "DONE 2026-09-08. Gate as observed: lint 0 (5s), typecheck 0 (7s), test 0 (592 files / 5065 passed / 3 skipped, 30s), e2e 0 (76 passed, 45s), validate 1 (11s) then 0 on a re-run.",
+        "THE ONE RED IS NOT THIS CARD AND NOT NEW: validate-temp-leaks failed on a single dokima-suite-home-* left by the preceding pnpm test. W22-28 is done and its acceptance says a full run leaves none across three consecutive runs; it does not hold. Filed as W23-19 rather than written down as a sentence (Law 1).",
+        "Work lives on feat/automated-build, NOT main: main is the v1.0.0 tag target and the tag is not cut yet, so landing AB work there would move the commit the CHANGELOG and RELEASE_TRACKER evidence point at.",
+        "SCOPE WIDENED (Law 1), answered when found: staging plan.json tripped the pre-commit prettier hook, because HEAD plan.json ALREADY fails prettier --check. Running prettier on it would overwrite the very byte conventions writePlan preserves (W9-11: ASCII-escaped, no trailing newline) and turn every status change into a thousands-of-bytes diff. The board format has an owner and it is not prettier, so plan.json joins .prettierignore with that reason recorded in the file. docs/work/automated-build-handoff/ joins it too: it is an input artifact delivered whole, and reformatting it would edit someone else\u2019s document in place. Same shape as P6-23 (docs/STATUS.md cannot pass the hooks)."
+      ]
+    },
+    {
+      "id": "W23-01",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [],
+      "lane": "core",
+      "module": "harbormaster",
+      "points": 3,
+      "title": "approved-build-v1: a pure pause decision function that no model field can authorize",
+      "write_scope": [
+        "packages/harbormaster/src/approved-build-policy.ts",
+        "packages/harbormaster/src/approved-build-policy.test.ts",
+        "packages/harbormaster/src/index.ts",
+        "packages/harbormaster/src/index.test.ts",
+        "docs/work/automated-build/PAUSE_SITES.md",
+        "docs/work/automated-build/PROGRESS.md",
+        "conductor.config.json",
+        "scripts/validate-exports.test.mjs",
+        "packages/harbormaster/src/approved-build-accept.ts"
+      ],
+      "acceptance": [
+        "A pure decision function covers every row of the IMPLEMENTATION_PLAN pause table, table-driven, in BOTH approved-build-v1 and legacy interactive modes",
+        "Authorization comes only from runtime-owned facts: an unknown pause kind, a model-supplied safe flag, a missing approval, a changed scope, a raised budget and a protected action can none of them auto-proceed",
+        "Routine implementation inside an already-approved scope proceeds with no extra clarification",
+        "isNeverAutoPauseSite is consulted on the same path and its protected set is unchanged (C-5)",
+        "PAUSE_SITES.md records the REAL callers of askClarification and resolvePauseAction found by rg, including the ones that do not exist, rather than the callers the handoff expected"
+      ],
+      "notes": [
+        "LINKED CHILD OF W13-32, NOT A DUPLICATE OF IT. W13-32 stays blocked and keeps wiring the dial for existing projects; its own first acceptance criterion says the decision about which defaults are acceptable unattended must be made and recorded BEFORE any wiring. This ticket builds that recorded decision as a versioned, testable function and changes no default for a project that has not opted in.",
+        "D-032 / C-5: legacy autonomy=auto projects keep legacy interactive behaviour. Opting in is explicit and versioned (approved-build-v1); an unenumerated pause kind fails closed.",
+        "SCOPE WIDENED (Law 1), answered when found: exporting decideApprovedBuildAction gave resolvePauseAction its first non-test caller, so validate-exports\u2019 buried count dropped 45 -> 44. The baseline\u2019s own standing instruction is to lower the ratchet whenever the measured number drops, and scripts/validate-exports.test.mjs pins that number in two places (W22-20 warned it would). conductor.config.json (--max-buried 45 -> 44) and that test are unowned by any live ticket, and W23-01 cannot be green without them.",
+        "THE @unreached MARKER IS THE HONEST FORM OF \"no caller yet\". decideApprovedBuildAction and APPROVED_BUILD_POLICY_VERSION are exported ahead of the runtime that calls them, each marked with the ticket that owes the wiring (W23-02). validate-exports.test.mjs now asserts both markers name W23-02, so the card that wires them and forgets to delete them reds a test rather than leaving a suppression nobody revisits.",
+        "DONE 2026-09-08. resolvePauseAction and askClarification had ZERO production callers \u2014 verified with rg across apps, packages, scripts and content, and recorded in docs/work/automated-build/PAUSE_SITES.md. The autonomy dial is not wired to anything; C-5 holds today because nothing ever reaches a pause site to test it. W13-32\u2019s four files were not touched."
+      ]
+    },
+    {
+      "id": "W23-19",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [],
+      "depends_on": [],
+      "lane": "quality",
+      "module": "quality",
+      "points": 3,
+      "title": "the suite home still leaks after W22-28 \u2014 one in a run, not every run",
+      "write_scope": [
+        "apps/server/vitest.setup.ts",
+        "apps/server/vitest.config.ts"
+      ],
+      "acceptance": [
+        "The surviving home is explained: which worker or test file creates a dokima-suite-home-* whose afterAll never runs, with instrumentation output rather than a theory",
+        "Three consecutive full pnpm test runs leave zero dokima-suite-home-* directories, and pnpm validate exits 0 immediately after each"
+      ],
+      "notes": [
+        "FOUND AT THE AB-00 BASELINE, 2026-09-08. pnpm validate exited 1 on /var/folders/.../dokima-suite-home-3dXsuZ, holding one global.db, with no vitest, playwright or conductor process alive. A second full run immediately afterwards left none, so it is intermittent \u2014 the same shape W22-28 itself recorded (four at once once, none at other times, around test-file churn).",
+        "W22-28 IS DONE AND ITS SECOND CRITERION IS NOT MET: \"a full pnpm test run leaves no dokima-suite-home-*, verified across three consecutive runs\". A fresh ticket rather than a reopen, which is exactly what W22-28 did to W22-21 on the same defect.",
+        "COSTS A GATE, NOT A TEST: this is why an AB card can see a red pnpm validate it did not cause. Check whether the only violation is a suite home from the preceding run before treating it as a regression.",
+        "FREQUENCY MEASURED, 2026-09-08: three of the four full gate runs in the W23-00..W23-03 session left exactly one dokima-suite-home-* behind. Not rare \u2014 roughly one run in two on this machine, always exactly one, always after a full pnpm test. That is a much better reproduction handle than W22-28 had.",
+        "SEEN AGAIN 2026-09-08 during W23-13: one dokima-suite-home-* leak in 1 of 3 full gate runs this session (and roughly every other run across the wave). Still not this card\u2019s to fix; recorded so the frequency is measured rather than remembered.",
+        "PARTIAL, AND DELIBERATELY LEFT OPEN, 2026-09-08. The instrumentation this card asks for is landed: every suite home writes a .created-by marker at CREATION (pid, worker id, pool id, timestamp) and rewrites it in beforeAll with the test file. Creation is the only moment guaranteed to happen \u2014 a home that leaks because its file never ran has no other chance to record anything \u2014 so a surviving home that names NO test file is itself the answer: the setup ran and the tests did not.",
+        "CRITERION 1 IS NOT MET AND THE RUNS ARE NOT THE PROOF. Four consecutive full pnpm test runs (610 files, 5331 passed) left zero dokima-suite-home-* behind, which is evidence the leak did not reproduce today, not evidence it is fixed \u2014 the exact trap W22-21 fell into when it stopped reproducing the moment it was instrumented. The one directory found before instrumenting (19:31, dokima-suite-home-QimXGi) was EMPTY, which is new information: previous sightings held a global.db. An empty home means nothing ever wrote through DOKIMA_HOME, i.e. the file was set up and its tests never started.",
+        "A NEW LEAD, FROM AN ACCIDENT: a Stop hook ran a second full suite concurrently with runs 2 and 4, and both ended `[vitest-worker]: Timeout calling \"onTaskUpdate\"` with all 5331 tests passing. A worker whose RPC times out under load is terminated without its afterAll, which produces exactly one orphaned home per run \u2014 matching the observed \"always exactly one\". Machine load is a plausible trigger for an intermittent that nobody could reproduce on demand.",
+        "AND A MEASUREMENT PROBLEM WORTH KNOWING: during run 3, SEVEN suite homes existed at check time and all seven were gone by run 4. They belonged to the concurrent suite and were LIVE. A directory in tmpdir is not distinguishable from a leak by looking at it, which is why validate-temp-leaks uses a 10-minute window and why a leak sighting must be checked against live processes. The .created-by marker now makes that discrimination possible: a marker naming a dead pid is a leak, one naming a live pid is a running worker."
+      ]
+    },
+    {
+      "id": "W23-02",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-01"
+      ],
+      "lane": "core",
+      "module": "cli",
+      "points": 5,
+      "title": "record and validate the approved build inputs, at both entrances, before anything is claimed",
+      "write_scope": [
+        "apps/server/src/cli/approved-build.ts",
+        "apps/server/src/cli/approved-build.test.ts",
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/cli/run-types.ts",
+        "apps/server/src/cli/run-cmd.ts",
+        "apps/server/src/api/server/runs-routes.ts",
+        "apps/server/src/api/server/runs-routes.test.ts",
+        "apps/server/src/api/server/runs-job.ts",
+        "packages/harbormaster/src/index.ts",
+        "scripts/validate-exports.test.mjs",
+        "docs/work/automated-build/PROGRESS.md",
+        "apps/server/src/cli/run-cmd.test.ts"
+      ],
+      "acceptance": [
+        "A canonical digest covers the approved SPECIFICATION \u2014 ticket acceptance text, write scopes, dependencies, roles, verify commands, model policy and budget \u2014 and deliberately excludes mutable execution status (ticket status, owner, claim, manifest, per-criterion done flags), so progress never invalidates an approval and a specification edit always does",
+        "The approval is a versioned event carrying the human actor and the digest, with no credential material; the runtime reconstructs the policy from it rather than from any request body",
+        "One shared validation function is called from executeBuildRun, so the HTTP route and the CLI cannot disagree, and an opted-in run with a missing or stale approval refuses BEFORE any ticket is claimed",
+        "Opting in is explicit at both entrances (a CLI flag and a request field); a legacy autonomy=auto project with no approval runs exactly as it did before"
+      ],
+      "notes": [
+        "AB-02. Reuses @dokima/mcp digestOf/stableStringify rather than writing a second canonical-JSON hasher (CLAUDE.md rule 4) \u2014 the helper is already barrel-published and already used for exactly this purpose, an args/result digest that must be stable across key order.",
+        "THE SPECIFICATION IS THE EVENT-LOG BOARD, not plan.json: plan.json is Dokima\u2019s own dev board, while a product project\u2019s tickets live in state.db and are read with loadTickets. Digesting the wrong board would have produced an approval that never changed for any user.",
+        "SCOPE WIDENED (Law 1): apps/server/src/cli/run-cmd.test.ts, for the CLI half of acceptance criterion 3 \u2014 a `run start --approved-build` with no approval must exit 2 and leave the ticket unclaimed. Proving the shared function and not both entrances would have been exactly the gap this ticket exists to close.",
+        "THE @unreached MARKERS MOVED, WHICH IS THE MECHANISM WORKING. APPROVED_BUILD_POLICY_VERSION now has a production caller (this ticket stamps and reads it), so its marker is gone; decideApprovedBuildAction still has none and its marker was RETARGETED to W23-12, the card where a ticket\u2019s post-close path actually asks it. scripts/validate-exports.test.mjs asserts the surviving marker names W23-12.",
+        "DONE 2026-09-08. run-build.ts is at exactly 400 lines as a result; filed as W23-20 rather than refactored inside this card (START_HERE rule 7)."
+      ]
+    },
+    {
+      "id": "W23-20",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [],
+      "lane": "core",
+      "module": "cli",
+      "points": 3,
+      "title": "run-build.ts sits at exactly 400 lines \u2014 the next preflight cannot be added without a chapter",
+      "write_scope": [
+        "apps/server/src/cli/run-build.ts"
+      ],
+      "acceptance": [
+        "executeBuildRun\u2019s preflight sequence is extracted into one cohesive chapter with the same behaviour and the same refusal exit codes, verified by the existing run-build and run-cmd tests unchanged",
+        "run-build.ts has real headroom under the 400-line cap \u2014 not one or two lines"
+      ],
+      "notes": [
+        "FOUND AT W23-02, 2026-09-08. Adding a single preflight call plus its import took the file from 398 to 402 and reddened conductor-lib.test.mjs\u2019s repo-wide validate-file-size check. It now sits at EXACTLY 400 because the explanatory comment had to become a trailing `// W23-02` and the preflight body was moved into approved-build.ts. That fits, and it is not a good place to leave the file: the next card that touches executeBuildRun has zero lines of budget and will be tempted to do what this one nearly did.",
+        "NOT DONE HERE ON PURPOSE (START_HERE rule 7): a file-size rule must not trigger an unrelated refactor inside someone else\u2019s card. The extraction is real work \u2014 six or seven read-check-refuse blocks that each return 2 \u2014 and is carried by THIS ticket, W23-20, rather than being smuggled into an approval ticket.",
+        "DONE INSIDE W23-06, 2026-09-08, and that is exactly the moment this ticket predicted: W23-06 added one field to the executeReviewPass call and run-build.ts went from 400 to 401 lines. The prediction was \"the next card that touches executeBuildRun has zero lines of budget and will be tempted to do what this one nearly did.\" Rather than shave a comment again, the preflight sequence became run-build-preflight.ts \u2014 extraction only, same order, same messages, same exit codes, with a refusal returned as a value instead of a `return 2` in the middle of a 400-line function. run-build.ts is 347 lines now."
+      ]
+    },
+    {
+      "id": "W23-03",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-02"
+      ],
+      "lane": "core",
+      "module": "harbormaster",
+      "points": 5,
+      "title": "the reviewer was never shown the code \u2014 give it the diff, and bind the verdict to it",
+      "write_scope": [
+        "packages/harbormaster/src/review-evidence.ts",
+        "packages/harbormaster/src/review-evidence.test.ts",
+        "packages/harbormaster/src/loop-review.ts",
+        "packages/harbormaster/src/loop-review.test.ts",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "A fake reviewer captures a prompt containing the planted changed LINE, not merely its filename, through the real runReviewPass \u2014 not a second helper with no caller",
+        "A change that passes its tests and is insecure is fully visible in the evidence bundle",
+        "Secrets are redacted before the diff reaches a model or a ledger summary; oversized, dirty, stale or unreadable evidence is INCOMPLETE with a reason and carries no partial diff",
+        "A model CONFIRMED on incomplete or stale evidence is recorded as UNVERIFIABLE, and a nonzero independent verify result still out-votes any model verdict",
+        "Producing the diff executes nothing from the reviewed repository \u2014 an external diff program and a textconv filter configured by the repo itself both fail to run"
+      ],
+      "notes": [
+        "AB-03. THE OLD PROMPT LISTED FILENAMES AND ASKED FOR A JUDGEMENT. reviewPrompt carried acceptance, the manifest\u2019s file list, commit shas and the verify output, and no source at all \u2014 so the reviewer could only restate the gate\u2019s own result, and every change that is insecure rather than broken was invisible to it by construction. The C-4 machinery around it was real; what it protected was a review of a file list.",
+        "READING AN UNTRUSTED REPOSITORY IS AN ATTACK SURFACE, and this is the part that needed a red fixture rather than a comment: git will run a program the reviewed repository names (diff.external, a textconv filter in .gitattributes) while producing a diff. Every read passes --no-ext-diff/--no-textconv AND neutralizes the config that supplies them; the fixture configures both and asserts the marker file is never created.",
+        "INCOMPLETE IS A STATE. Oversized evidence carries NO diff rather than half of one, and the prompt says \"you are NOT looking at the code\" in words \u2014 a reviewer told nothing about a missing diff will confidently review its absence."
+      ]
+    },
+    {
+      "id": "W23-04",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-03"
+      ],
+      "lane": "core",
+      "module": "harbormaster",
+      "points": 8,
+      "title": "a step named security-sast is not evidence that a scanner ran \u2014 make the tools execute",
+      "write_scope": [
+        "packages/harbormaster/src/security-checks.ts",
+        "packages/harbormaster/src/security-checks.test.ts",
+        "packages/harbormaster/src/security-tool-adapters.ts",
+        "packages/harbormaster/src/review-security.ts",
+        "packages/harbormaster/src/loop-review.ts",
+        "packages/harbormaster/src/loop-review-prompt.ts",
+        "packages/harbormaster/src/loop-review.test.ts",
+        "packages/harbormaster/src/index.ts",
+        "apps/server/src/api/pipeline/onboard-security-checks.ts",
+        "apps/server/src/api/pipeline/onboard-run.ts",
+        "docs/work/automated-build/PROGRESS.md",
+        "apps/server/src/api/pipeline/onboard-dispatch-port.test.ts"
+      ],
+      "acceptance": [
+        "Fixtures distinguish clean scan, findings, timeout, unavailable tool and malformed output, and none of the failure shapes resolves to PASSED",
+        "A planted credential is detected by the ACTUAL bundled scanner in an opt-in smoke path (DOKIMA_TEST_REAL_SCANNERS=1); the mocked adapter tests are not reported as that proof",
+        "Local-only policy prevents the dependency audit from reaching a network, its absent coverage is visible in the evidence, and it blocks automatic completion",
+        "Both the onboard path and the build review path invoke the same registry, and the verdict/onboard events record what the CORE executed beside what a model said"
+      ],
+      "notes": [
+        "AB-04. THE DEFECT IN ONE SENTENCE: onboard-dispatch-port.ts runs each security specialist as a single provider.chat() turn with verify: \"true\", so a step named security-sast produced a model\u2019s DESCRIPTION of a SAST run and nothing anywhere executed a scanner.",
+        "EVERY SCANNER BLURS \"found something\" WITH \"failed to run\", which is why each adapter interprets its own exit code: semgrep exits 1 for findings and 2 for a bad rule file; npm audit exits 1 both for advisories and for an unreachable registry; the bundled scanner exits 2 for its own failure. Exit 0 with unparseable output is the dangerous case and is ERROR, not a clean scan.",
+        "TWO CLASSES OF PROOF, KEPT APART (START_HERE rule 9): fixture tests inject process results and prove orchestration; one opt-in smoke test runs the real bundled secrets-scan.sh against a planted AWS-shaped key and asserts exit 1. Verified by hand this session \u2014 DOKIMA_TEST_REAL_SCANNERS=1 gives 14 passed, 0 skipped.",
+        "SCOPE WIDENED (Law 1): loop-review.ts crossed the 400-line cap when the checks section joined the prompt, so reviewPrompt/parseVerdict/countsFrom became loop-review-prompt.ts \u2014 one cohesive chapter (a prompt and the only parser of its reply), extraction only.",
+        "FIXED AFTER REVIEW, SAME CARD: the review path was PASSING hasNodeManifest/hasLockfile as the literals true/false, which made tool-deps resolve to NOT_APPLICABLE (\"no lockfile\") for every ticket on every project forever \u2014 a status derived from a guess while wearing a runtime-derived reason, which is the exact defect this card exists to remove. Applicability is now measured from the worktree, and a red fixture puts a real package.json + package-lock.json in the ticket worktree and asserts tool-deps is NOT not_applicable.",
+        "MECHANISM CLAIM UPGRADED TO OUTCOME CLAIM: seedContext carrying the checks proves nothing about what a model was shown, and this repo has been caught by that exact gap before. onboard-dispatch-port.test.ts now asserts the PROMPT THE FAKE GATEWAY RECEIVED contains the tool-sast row.",
+        "semgrep --config auto fetches its ruleset, so the adapter declares requiresNetwork: true. Declaring it false would have let a local-only policy allow the check and then watched the sandbox correctly deny its network \u2014 an ERROR whose cause lived in a field that disagreed with the command beside it."
+      ]
+    },
+    {
+      "id": "W23-05",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-04"
+      ],
+      "lane": "core",
+      "module": "pipeline",
+      "points": 5,
+      "title": "an ordered list is not a dependency graph \u2014 declare the security topology",
+      "write_scope": [
+        "packages/pipeline/src/modes/security-plan.ts",
+        "packages/pipeline/src/modes/security-plan.test.ts",
+        "packages/pipeline/src/run/run-onboard.ts",
+        "packages/pipeline/src/index.ts",
+        "scripts/validate-exports.test.mjs",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "The graph has no duplicate ids, no unknown predecessors, no cycles and no two nodes writing one output \u2014 each proven by a red fixture, and the whole plan validates clean",
+        "Attack-chain synthesis depends on EVERY stage-B specialist, and the threat-model refresh on synthesis",
+        "An absent surface is NOT_APPLICABLE with a runtime-derived reason and the inventory digest; an UNCLASSIFIABLE surface stays required and never satisfies a dependency",
+        "The seven existing onboarding steps and the existing security step ids are unchanged, and runOnboard still returns the same shape"
+      ],
+      "notes": [
+        "AB-05. SECURITY_STEPS IS AN ORDERED LIST AND AN ORDER IS NOT A GRAPH: reading it you cannot tell whether attack-chains must WAIT for owasp-web or merely follows it, and the only way to find out was to run it and watch. The moment anything runs two steps at once that order stops being documentation and becomes a race.",
+        "THE THIRD APPLICABILITY ANSWER IS THE POINT: an observation of null \u2014 the runtime could not classify this project \u2014 leaves the node UNRESOLVED, which callers must treat as required. \"We could not tell whether this app talks to a cloud\" is not \"this app does not talk to a cloud\", and silently skipping the unmeasured is how a scan nobody ran becomes a clean security result.",
+        "VALIDATION RUNS BEFORE ANY DISPATCH (step 5): runOnboard calls validateSecurityPlan and throws SecurityPlanInvalidError rather than starting. Nothing else about the sequential onboarding walk changed \u2014 this release declares the topology AB-07 will schedule against.",
+        "FOUR EXPORTS CARRY @unreached MARKERS NAMING W23-07: the classification, the ready-set, the skipped list and the inventory digest have no production caller until the bounded-group scheduler exists. validate-exports.test.mjs asserts every marker names W23-07 or W23-12."
+      ]
+    },
+    {
+      "id": "W23-06",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-05"
+      ],
+      "lane": "core",
+      "module": "cli",
+      "points": 5,
+      "title": "the endpoint limit covered one third of the traffic",
+      "write_scope": [
+        "apps/server/src/cli/shared-gateway-pool.ts",
+        "apps/server/src/cli/shared-gateway-pool.test.ts",
+        "apps/server/src/cli/run-build-spawn.ts",
+        "apps/server/src/cli/review-pass.ts",
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/cli/run-build-preflight.ts",
+        "apps/server/src/api/pipeline/onboard-dispatch-port.ts",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "Two SEPARATELY CONSTRUCTED providers on one endpoint never exceed one active request; two distinct endpoints overlap freely",
+        "A failed or rejected request releases its slot and the endpoint still serves the next request \u2014 a leaked active count cannot wedge it",
+        "Endpoint identity normalizes trailing slashes and host case, keeps two provider kinds on one host distinct, and carries no credential or query token",
+        "The coding, review and onboard production paths all import the one shared pool instance; only chat is queued, so a health probe from inside a queued chat cannot deadlock"
+      ],
+      "notes": [
+        "AB-06. THE LIMIT WAS REAL AND COVERED ONE THIRD OF THE TRAFFIC: run-build-spawn.ts held a module-level GatewayPool that every maker session, rung and berth shared, while review-pass.ts and onboard-dispatch-port.ts each constructed a provider and called chat directly. A local endpoint that serves one request at a time could therefore be asked for three the moment a review or an analysis overlapped a build.",
+        "ENDPOINT IDENTITY WAS `${providerId}:${baseUrl ?? \"\"}` \u2014 a raw concatenation, so http://localhost:1234 and http://localhost:1234/ were two endpoints with two limits. Normalized now, with credentials and query strings stripped because a pool key is logged, surfaced through queueStats, and lives as long as the process (FR-S2).",
+        "ONLY chat IS QUEUED. FairScheduler is not reentrant, so a health probe taken from inside a queued chat would wait on the slot that chat is holding, forever. There is a test that would hang if that were ever changed."
+      ]
+    },
+    {
+      "id": "W23-07",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-06"
+      ],
+      "lane": "core",
+      "module": "harbormaster",
+      "points": 8,
+      "title": "run the security graph in bounded groups, and never let a failure look clean",
+      "write_scope": [
+        "packages/harbormaster/src/check-scheduler.ts",
+        "packages/harbormaster/src/check-scheduler.test.ts",
+        "packages/harbormaster/src/index.ts",
+        "packages/pipeline/src/modes/security-plan.ts",
+        "packages/pipeline/src/modes/security-plan.test.ts",
+        "packages/pipeline/src/index.ts",
+        "apps/server/src/api/pipeline/onboard-executor.ts",
+        "apps/server/src/api/pipeline/onboard-executor.test.ts",
+        "apps/server/src/api/pipeline/onboard-security-schedule.ts",
+        "scripts/validate-exports.test.mjs",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "Deferred-promise tests prove independent nodes overlap and dependents wait, with no wall-clock assertion anywhere",
+        "A thrown dispatch, a failed node, a stop request and a source that moved mid-run each produce a status that is not \"complete\"; a failure stops its dependents and not its independent siblings",
+        "Each node receives an immutable snapshot of only its declared predecessors, never the live result map",
+        "The real onboard entry point traverses the graph: synthesis is dispatched only after every stage-B specialist finished, the seven general steps still run sequentially first, and the synthesis node is told which categories were skipped"
+      ],
+      "notes": [
+        "AB-07. THE SCHEDULER KNOWS NOTHING ABOUT SECURITY: it takes nodes and an injected execute callback, because model routing lives in apps/server and a package may not import an app. apps/server\u2019s onboard-security-schedule.ts is the seam where the generic scheduler meets @dokima/pipeline\u2019s SECURITY_PLAN.",
+        "A REAL BUG THE TESTS CAUGHT: the first draft tracked only settled outcomes, so a node still in flight had no outcome, read as ready on the next pass, and was started a SECOND time \u2014 the worker-limit test observed [a, b, b]. A separate `started` set fixes it; the comment on that set names the test that found it.",
+        "THE MARKER MECHANISM RESOLVED IN ALL THREE DIRECTIONS. W23-05 exported four symbols marked @unreached \"caller is W23-07\". Two got real callers (classifySecurityApplicability, skippedCategories). One stopped being barrel-published (inventoryDigest, already stamped into every classification). And readySecurityNodes was DELETED: runCheckSchedule computes readiness itself, from the same edges, because it also has to know what is in flight and what has failed \u2014 facts a pure function over (completed, applicability) cannot see. Two implementations of \"what may start now\" is exactly the drift the marker exists to surface, and the honest resolution of a marker is sometimes a deletion.",
+        "TOOL NODES STAY IN THE GRAPH even though stage A already ran them: deleting a completed node from a dependency graph is how a specialist ends up looking independent of the tool whose output it reads."
+      ]
+    },
+    {
+      "id": "W23-08",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-07"
+      ],
+      "lane": "core",
+      "module": "harbormaster",
+      "points": 5,
+      "title": "a retry that leaves the synthesis cached is a conclusion about work that no longer exists",
+      "write_scope": [
+        "packages/harbormaster/src/check-evidence.ts",
+        "packages/harbormaster/src/check-evidence.test.ts",
+        "packages/harbormaster/src/review-status.ts",
+        "packages/harbormaster/src/review-status.test.ts",
+        "packages/harbormaster/src/security-checks.ts",
+        "packages/harbormaster/src/security-checks.test.ts",
+        "packages/harbormaster/src/index.ts",
+        "apps/server/src/api/pipeline/onboard-security-schedule.ts",
+        "apps/server/src/api/pipeline/onboard-executor.ts",
+        "apps/server/src/api/pipeline/onboard-executor.test.ts",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "An upstream failure followed by success re-runs the attack-chain synthesis and the threat-model refresh, transitively, through the real onboard entry point",
+        "Unchanged independent work is not repeated by another node\u2019s retry",
+        "Changed source, command, tool version, rule set, configuration or predecessor digest invalidates reuse; an unknown component is never a wildcard; model prose is never reused as a scanner pass; a missing or altered artifact blocks reuse",
+        "reviewStatusFor reports STALE \u2014 a state of its own, not a downgrade to never-reviewed \u2014 when the source moved after the verdict, or the ticket was rejected or closed again since; a fresh verdict supersedes it"
+      ],
+      "notes": [
+        "AB-08. THE KEY IS ASSEMBLED, NOT HASHED, on purpose: when a reuse decision is wrong the reason is the whole debugging story, and a sha256 of everything tells you only that something differed. `diffKeys` names the first differing component.",
+        "WHOLE-TREE SOURCE DIGEST, DELIBERATELY (IMPLEMENTATION_PLAN \u00a77). Fine-grained affected-file caching means asking a cheap analysis to infer a perfect dependency graph across arbitrary languages, and its failure mode is silent \u2014 a check that skips because a file it secretly depended on was not in its list. First release buys correctness with re-runs.",
+        "STALE IS ITS OWN REVIEW STATE. \"A model looked and then the code changed\" and \"nothing has ever looked\" ask different things of the person about to accept, so `stale` carries what it used to be (staleFrom) and why it stopped being that (staleReason). A verdict recorded before W23-03 has no digest and is NOT called stale for lacking one \u2014 absence of evidence is not evidence of change.",
+        "REUSE IS EXACT AND CURRENTLY NEVER FIRES for the SAST adapter, because its ruleDigest and configDigest are unknown and an unknown component makes a key incomplete. That is the conservative direction and it is asserted by a test rather than left as a surprise."
+      ]
+    },
+    {
+      "id": "W23-21",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [],
+      "lane": "quality",
+      "module": "quality",
+      "points": 3,
+      "title": "validate-exports does not follow `export * from`, so a barrel chapter hides its symbols from the ratchet",
+      "write_scope": [
+        "scripts/validate-exports/strip.mjs",
+        "scripts/validate-exports/files.mjs",
+        "scripts/validate-exports.test.mjs",
+        "conductor.config.json"
+      ],
+      "acceptance": [
+        "A package barrel that re-exports a chapter with `export * from` has that chapter\u2019s symbols counted exactly as if they were listed in the barrel directly \u2014 proven by a fixture barrel with both shapes",
+        "The gated numbers are re-measured after the change and the ratchets move to the measured values, in whichever direction they move"
+      ],
+      "notes": [
+        "FOUND AT W23-09, 2026-09-08, while splitting packages/harbormaster/src/index.ts under the 400-line cap. Moving three wave-23 export blocks into a chapter re-exported with `export * from \"./automated-build.js\"` made the gap count DROP by three and the suppression list go empty \u2014 not because anything got wired, but because the validator stopped seeing those symbols at all.",
+        "THAT IS THE DANGEROUS DIRECTION FOR A RATCHET: the honest response to a file-size cap made the guard weaker and looked like an improvement in the numbers. The split was reverted and the exports re-inlined with terser comments (index.ts is 390 lines, 10 to spare), so the markers stay where the validator reads them.",
+        "THE SAME BLIND SPOT APPLIES TO EVERY PACKAGE, not just this one. Any barrel that grows past the cap will be split the same way, and each split silently removes its symbols from the count.",
+        "THE FILED DIAGNOSIS IS WRONG, and the fixture says so before anything was changed: exportsOfBarrel resolves through the TypeScript checker, and a probe barrel carrying both shapes \u2014 `export { alpha } from \"./named.js\"` and `export * from \"./chapter.js\"` \u2014 returns alpha, beta and gamma alike. The checker follows `export *` and always did. Scope corrected from symbols.mjs, which needs no change, to strip.mjs.",
+        "THE REAL MECHANISM IS THE REFERENCE COUNT, one layer down. isBarrel() matches src/index.ts by PATH, so a barrel CHAPTER \u2014 a file whose whole content is `export { X } from \"./x.js\"` lines \u2014 is scanned as ordinary production source, and each of those lines is a word-boundary match on X. Moving three exports into a chapter therefore gave all three a production \"caller\" and they left the report; the suppression list emptied because a symbol nobody reports is a symbol no marker suppresses. Same observed numbers, different cause, and the correct fix is narrower than the filed one: a re-export STATEMENT is plumbing wherever it lives, not only in a file named index.ts.",
+        "FIXED IN countReferences, not in the barrel reader: every `export ... from` STATEMENT is blanked before the word-boundary match, wherever it appears. That is stricter than adding a second path rule for chapters \u2014 a real module that re-exports one symbol beside its own code keeps every genuine reference and loses only the plumbing line \u2014 and it needs no list of which files count as barrels.",
+        "MEASURED, THEN RATCHETED: gaps 46 -> 54, buried 44 -> 46, and the ten symbols that stopped hiding are named in conductor.config.json ($ratchetRaisedW2321Note). Nothing left either list. The two files doing the hiding were themselves cap splits \u2014 packages/harbormaster/src/breakpoints.ts and packages/events/src/receipts.ts \u2014 which is the finding in one sentence: the honest response to the 400-line cap was quietly disabling the guard.",
+        "THIS IS THE $barrelCountingNote KIND OF RAISE, NOT THE FORBIDDEN ONE. Nothing was wired to nothing here; the counting got sharper and already-dead symbols became visible, exactly as at W12-39 (43 -> 62 when comments stopped counting as calls). Raising a ratchet to absorb debt a change created is the thing that is banned, and that is not what this is.",
+        "FIXTURES: a chapter re-exporting a symbol gives it production 0; a real call in that same chapter still counts 1; the blanking preserves length and line count and leaves a local `export const` alone; and an `import ... from` is still a call, because only re-export is plumbing.",
+        "GATE: lint 0, typecheck 0, 610 files / 5331 passed / 2 skipped, 76 e2e passed, six validators clean (6.8s, validate-exports now at --max 54 --max-buried 46) plus temp-leaks clean.",
+        "THE TEN WERE THEN HAND-VERIFIED, as W12-39 verified two of its nineteen rather than trusting the count: each has exactly two non-test mentions, its own declaration and a re-export line. They are genuinely uncalled, and eight of them are one coherent surface (clarifications + runs) rather than eight independent slips. Filed as W23-25 \u2014 a caller or a deletion, never a baseline entry. The validator does not report its own new symbol, stripReexports, for a reason worth stating: both passes only judge packages/**, and scripts/ is read as reference source."
+      ]
+    },
+    {
+      "id": "W23-09",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-08"
+      ],
+      "lane": "core",
+      "module": "harbormaster",
+      "points": 5,
+      "title": "one repair batch: deduplicate by identity, never by resemblance",
+      "write_scope": [
+        "packages/harbormaster/src/repair-findings.ts",
+        "packages/harbormaster/src/repair-findings.test.ts",
+        "packages/harbormaster/src/index.ts",
+        "scripts/validate-exports.test.mjs",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "Two origins reporting one finding produce a single repair carrying both origin ids; similar titles at a different path, location, rule or evidence stay separate",
+        "A repair outside every approved write scope is parked as an explicit proposal with its evidence, never silently claimed",
+        "A path that escapes the worktree, an absolute path, a missing rule id or a missing evidence fingerprint is refused rather than normalized into something plausible",
+        "A review hypothesis is never promoted to a tool-confirmed defect \u2014 including when two models agree \u2014 and is never silently erased"
+      ],
+      "notes": [
+        "AB-09. IDENTITY IS rule + normalized path + location + evidence fingerprint, and deliberately NOT the title: titles are prose written by whichever model spoke last. The failure of a deduplicator is always the merge you cannot see, so both directions are asserted.",
+        "AGREEMENT BETWEEN MODELS IS NOT EVIDENCE, IT IS CORRELATION BETWEEN MODELS. Two review hypotheses about one line merge into one hypothesis, not into a confirmed defect. A merge raises severity and never lowers it (the same \"raise never lower\" direction FR-N2 uses) and raises confidence never.",
+        "A FINDING NO RUNTIME CHECK CAN VERIFY DOES NOT ENTER THE BATCH. Model-suggested commands are suggestions; the verification check ids come from the runtime\u2019s own list (AB-09 step 4).",
+        "SCOPE WIDENED: scripts/validate-exports.test.mjs, for the two new @unreached markers naming W23-11. Also filed W23-21 \u2014 validate-exports does not follow `export * from`, so splitting a barrel into a chapter silently removes its symbols from the ratchet."
+      ]
+    },
+    {
+      "id": "W23-10",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-09"
+      ],
+      "lane": "core",
+      "module": "harbormaster",
+      "points": 5,
+      "title": "the machine review was signed by the human who started the build",
+      "write_scope": [
+        "packages/harbormaster/src/review-decision.ts",
+        "packages/harbormaster/src/review-decision.test.ts",
+        "packages/harbormaster/src/loop-review.ts",
+        "packages/harbormaster/src/loop-review-report.ts",
+        "packages/harbormaster/src/index.ts",
+        "apps/server/src/cli/review-pass.ts",
+        "apps/server/src/cli/run-build.ts",
+        "scripts/validate-exports.test.mjs",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "A maker identity or model cannot review its own work, including a model used only during escalation",
+        "A fresh, complete review returns an eligible decision; every unavailable, stale, incomplete or inconclusive condition returns an ineligible one, each with its own reason",
+        "Review events and comments are signed by a dedicated machine reviewer identity, never by the human who started the build",
+        "A run reviews only the tickets it processed; runReviewPass stays as a compatibility wrapper over the per-ticket operation"
+      ],
+      "notes": [
+        "AB-10. THE IDENTITY DEFECT IS THE ONE WORTH NAMING: review events and the C-4 refusal comment were appended under options.actorId \u2014 the human who started the build \u2014 which reads, in an append-only log, as that person having reviewed the work. A machine review is the machine\u2019s claim (C-4/SC-05), so it is signed by a minted `machine-reviewer` identity distinct from the human who will later accept.",
+        "ELIGIBLE IS COMPUTED FROM FACTS AND CARRIES ITS REASONS. Each precondition contributes its own sentence to ineligibleBecause, because \"not eligible\" with one reason is actionable and with none is a shrug. A NOT_APPLICABLE required check does not block \u2014 nothing was skipped that could have been looked at.",
+        "AN INDEPENDENT CHECK DOMINATES THE MODEL, and that ordering is not a preference: a scanner exit code is a fact about the code and a verdict is an opinion about it. Freshness can only downgrade a CONFIRMED; nothing turns a CONTRADICTED into something better.",
+        "runReviewPass carries an @unreached marker whose reason is NOT a ticket id: it is a kept compatibility surface and will never have an in-repo caller again. The marker test now asserts each symbol\u2019s reason individually rather than matching one pattern across all of them \u2014 a count would pass while a marker quietly changed its story.",
+        "SCOPE WIDENED: loop-review.ts crossed the 400-line cap again, so the comment assembly became loop-review-report.ts (extraction only). A first attempt at this extraction corrupted the file by string-matching the wrong commentTicket call site; caught by tsc, reverted with git checkout, and redone against explicit anchors."
+      ]
+    },
+    {
+      "id": "W23-11",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-10"
+      ],
+      "lane": "core",
+      "module": "harbormaster",
+      "points": 8,
+      "title": "the review wrote a verdict and a person did every repair",
+      "write_scope": [
+        "packages/harbormaster/src/build-repair-loop.ts",
+        "packages/harbormaster/src/build-repair-loop.test.ts",
+        "packages/harbormaster/src/review-decision.ts",
+        "packages/harbormaster/src/review-decision.test.ts",
+        "packages/harbormaster/src/loop-review.ts",
+        "packages/harbormaster/src/index.ts",
+        "apps/server/src/cli/build-repair.ts",
+        "apps/server/src/cli/run-build.ts",
+        "scripts/validate-exports.test.mjs",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "A planted failing check is rejected, repaired by the maker and independently re-verified into a fresh confirmed result with nobody in the room",
+        "A persistent defect ends at three automatic rounds, and a restart is granted no new ones",
+        "A maker cannot reject as the verifier, and a finding outside the ticket write scope never auto-expands it",
+        "A check that could not answer parks with the true reason instead of producing a repair round against a defect nobody has evidence of"
+      ],
+      "notes": [
+        "AB-11. THE BOUND LIVES IN THE LEDGER, NOT IN THE FUNCTION. A counter held in memory is refilled by every restart, and a budget a restart refills is a suggestion. `build.repair.round` is appended BEFORE the reject that opens the round, so a crash between the two costs the round rather than refunding it \u2014 over-counting is the safe direction for a bound. An acceptance is the one thing that resets it: reopened work is new work.",
+        "AN OUTAGE IS NOT A DEFECT (IMPLEMENTATION_PLAN \u00a77). A missing scanner, a dead endpoint or an errored check parks with the true reason. Without that ordering the loop is unreachable in exactly the wrong way: every objective check is REQUIRED for eligibility, so on a machine with no semgrep every ticket is permanently ineligible and a naive loop would send a maker after a defect nobody has evidence of. A SKIPPED machine review takes the same path \u2014 no verdict means no judgement to repair against.",
+        "NO-PROGRESS COMPARES SIGNATURES, and falls back to the blocker sentences when the origins attributed no file. The review path today names blockers and check ids, not paths, so the structured finding list handed to consolidateFindings is EMPTY in production \u2014 stated in the caller rather than faked, because inventing a path to populate the batch would put a fabricated location in front of a maker.",
+        "THE REJECTION IS THE HANDOFF. W21-42 already carries `latestRejectionReason` to rung zero, where it outranks a playbook hit, so the repair batch reaches the next attempt through the path that exists rather than a new one. The reject is signed by the machine reviewer; `rejectTicket` refuses the ticket owner, so a maker cannot reach it by impersonation.",
+        "ACTIVATION IS THE APPROVAL. The loop runs only when the run is an approved build (W23-02) \u2014 AB-16 gates turning it on for existing users, and a run nobody approved keeps the old shape: an in_review ticket and a verdict a human reads.",
+        "SCOPE WIDENED: review-decision.ts / loop-review.ts, to close the C-4 half AB-10 left open. decideReview compared the reviewer MODEL against the maker models and never compared identities, so a reviewer actor equal to the maker owner passed. Found in review before AB-11 wired acceptance to `eligible`, which is the card that would have made it load-bearing."
+      ]
+    },
+    {
+      "id": "W23-12",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-11"
+      ],
+      "lane": "core",
+      "module": "harbormaster",
+      "points": 8,
+      "title": "a dependent waited for the morning, not for its predecessor",
+      "write_scope": [
+        "packages/harbormaster/src/verified-ticket-decision.ts",
+        "packages/harbormaster/src/verified-ticket-decision.test.ts",
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/loop-land.test.ts",
+        "packages/harbormaster/src/index.ts",
+        "apps/server/src/cli/build-verify.ts",
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/cli/run-build-preflight.ts",
+        "scripts/validate-exports.test.mjs",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "Three dependent tickets build, verify and become done in order in ONE run with no per-ticket human acceptance, under an opted-in approved policy",
+        "The same run leaves the trunk unchanged, and each dependent forks from its accepted predecessor rather than the trunk",
+        "A red, stale, unreviewed or infrastructure-blocked ticket stays in_review and blocks its dependent, while an unrelated ticket proceeds",
+        "The sequential and berth paths accept identically, and the final review pass reviews only what the post-close seam did not"
+      ],
+      "notes": [
+        "AB-12. THE ANSWER WAS NOT TO RELAX depsDone. A dependent waited for a person because depsDone requires done and nothing became done until the Decide card was opened; treating in_review as accepted would make the demo finish and destroy the meaning of the state. done still means accepted \u2014 what changed is that a machine can supply the acceptance under D-020, and the dependent unlocks through the reflow that already exists.",
+        "THE SEAM IS INSIDE THE ONE-TICKET ENGINE, not after the run loop returns. landClaimedTicket is what runLandLoop and the berth engine share, so both paths get it from one place and the berth path \u2014 which spreads the same options object \u2014 is equivalent by construction rather than by a second copy.",
+        "THE JUDGEMENT IS THE POLICY\u2019S. decideMachineAccept (W23-01) finally has its production caller: this module\u2019s whole job is to put TRUE facts in front of it, folded from the ledger and read from the tree, and to re-read the two that can move underneath it \u2014 head and source digest \u2014 immediately before the accept. A verdict followed by a re-close or a rejection is reported inconclusive, because a digest comparison alone cannot see a re-close.",
+        "EVERY DECISION LEAVES A ROW (build.accept.decided) with the rule id that produced it. A refusal that leaves no row is a ticket that silently sat there, which is the shape the Decide card cannot explain.",
+        "THE POST-CLOSE FAILURE PATH NEVER UNDOES A CLOSE. A reviewer that throws leaves the ticket in_review and a person reads it \u2014 the behaviour of every run before this card.",
+        "SCOPE WIDENED: run-build.ts crossed the 400-line cap again, so the review options + seam composition became createRunReviewSeams in build-verify.ts. makerModel/makerModels are read through getters: the ladder records which models ran as the run goes, and a snapshot taken at composition time would make C-4\u2019s refusal set wrong for any ticket that landed on a higher rung."
+      ]
+    },
+    {
+      "id": "W23-13",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-12"
+      ],
+      "lane": "core",
+      "module": "cli",
+      "points": 5,
+      "title": "a run\u2019s status and its stop both died with the process that held them",
+      "write_scope": [
+        "apps/server/src/api/server/approved-build-run-state.ts",
+        "apps/server/src/api/server/approved-build-run-state.test.ts",
+        "apps/server/src/api/server/runs-job.ts",
+        "apps/server/src/api/server/runs-routes.ts",
+        "apps/server/src/api/server/runs-routes.test.ts",
+        "apps/server/src/cli/approved-build.ts",
+        "apps/server/src/cli/build-verify.ts",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "A run whose process died is visible as interrupted after a restart, and the counters it had already spent survive with it",
+        "A repeated start for the same run creates no second writer, and a run id belonging to another project can neither be read nor stopped",
+        "A stop survives a restart and still blocks new work, through the HTTP route, for a run this process never started",
+        "A terminal outcome distinguishes verified, awaiting decision, stopped, failed and interrupted \u2014 exit 0 alone is not build completion"
+      ],
+      "notes": [
+        "AB-13. TWO MAPS HELD THE TRUTH AND BOTH DIED WITH THE PROCESS, and the two failures are not symmetric inconveniences: a run whose process died read `running` forever or 404ed as if it had never existed, and a run a person STOPPED came back unstopped, because the only record of the stop was a boolean in a dead heap. The ledger is the source now and the maps are caches in front of it (C-6, AB-13 step 1).",
+        "NOT A REBUILT runs.status. Widening that column\u2019s CHECK to carry the five outcomes means dropping and recreating the table holding every historical run in SQLite \u2014 and a local safety hook blocked exactly that, correctly. The log already carries what a projection would: `runs` stays the coarse lifecycle row the verbs maintain and the fine outcome lives in append-only events where nothing can silently rewrite it.",
+        "EXIT 0 IS NOT COMPLETION (step 3), and after W23-12 that is the ORDINARY case: a run can exit 0 having landed three tickets with two still waiting for a person. awaiting_decision is deliberately not done \u2014 work the product cannot finish by itself is unfinished, and calling it done is how a queue of unread decisions comes to look like a finished project.",
+        "IDEMPOTENCY AND CROSS-PROJECT ISOLATION ARE THE SAME READ, because they are the same question: is this id already someone\u2019s? A run id from another project is refused rather than answered, which is the cheapest cross-tenant hole to leave open in a route that also controls stopping.",
+        "NOTHING IS REPLAYED (step 4). The sweep records that a run stopped being live; acceptances, pushes and published artifacts are already-done external effects with their own events, and a resume reads those rather than re-deriving intent from a status.",
+        "SCOPE WIDENED: approved-build.ts + build-verify.ts. The approval digest inputs were being hand-built at TWO call sites \u2014 the preflight that validates the approval and the acceptance that re-checks it. They agreed today; the day they drift, every machine acceptance refuses as stale for a reason nobody can see. approvedBuildRunInputs() is now the one construction both use. Found in review of W23-12, fixed here rather than filed, because it is four lines and the drift is silent."
+      ]
+    },
+    {
+      "id": "W23-14",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-13"
+      ],
+      "lane": "ui",
+      "module": "web",
+      "points": 8,
+      "title": "the policy that lets a machine finish had no door a person could open",
+      "write_scope": [
+        "apps/web/src/board/ApprovedBuildPanel.tsx",
+        "apps/web/src/board/ApprovedBuildPanel.test.tsx",
+        "apps/web/src/board/approvedBuildApi.ts",
+        "apps/web/src/board/BoardView.tsx",
+        "apps/web/src/settings/AutonomyBudgetPanel.tsx",
+        "apps/web/src/settings/AutonomyBudgetPanel.test.tsx",
+        "apps/web/e2e/settings.spec.ts",
+        "apps/server/src/api/server/approved-build-routes.ts",
+        "apps/server/src/api/server/approved-build-routes.test.ts",
+        "apps/server/src/api/server/approved-build-summary.ts",
+        "apps/server/src/api/server.ts",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "A person can approve an exact build from the board \u2014 tickets, scopes, models, budget and what still asks them \u2014 and start it, in one confirmation",
+        "Every phase (Building, Checking, Fixing, Ready to review, Needs your decision, Stopped) is shown from durable state, and a reload restores it from the server",
+        "A ticket the machine would not accept names the policy rule that refused it, with a drill-down to the ticket\u2019s evidence",
+        "With one model, the surface says before launch that the build cannot finish without a person; the autonomy dial copy no longer implies otherwise"
+      ],
+      "notes": [
+        "AB-14. recordApprovedBuild HAD NO ENTRANCE. It landed in W23-02 and could only be written by a test, so the product shipped a policy nobody could opt into \u2014 the same shape as a check nobody runs: it exists, it is correct, and it does nothing.",
+        "THE PREVIEW IS THE APPROVAL. A button that says approve over an unstated specification is a click, not a decision, so what the digest covers is shown before the button that records it. Everything in the preview is read from the project; a preview the caller can shape is not a specification.",
+        "THE PHASE IS DERIVED ON THE SERVER, from the run\u2019s own events. The browser holds none of them, and shipping the log so it could compute the phase would be a second implementation of the same question that disagrees the first time either changes.",
+        "A FAILURE IS NOT ONE OF THE SIX PHASES. AB-14 names Building/Checking/Fixing/Ready to review/Needs your decision/Stopped, and a run that refused or died is none of them: stopped would claim a person asked for it and needs-decision would put it in a queue it does not belong to. It gets its own word.",
+        "NO LIVE PREVIEW, SAID PLAINLY (step 4). Dokima does not run the user\u2019s app and a second IDE is explicitly out; the surface says so and offers the evidence drill-down instead of an empty pane a person waits on.",
+        "AUTONOMY COPY UPDATED LAST (step 5), and not to \"now it is enforced\": the dial still does not make a run unattended. The per-run approval does, over a specification the person read, and a project that chose Auto months ago chose the old meaning (D-032).",
+        "SCOPE WIDENED: BoardView.tsx handleStartRun swallowed nothing \u2014 a fetch REJECTION (core down, bad base URL) escaped as an unhandled rejection instead of reaching the person as a refusal. Found because mounting the new panel changed the timing enough for the existing suite to surface it as a hard error."
+      ]
+    },
+    {
+      "id": "W23-22",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [],
+      "lane": "quality",
+      "module": "quality",
+      "points": 2,
+      "title": "CI never runs `pnpm validate`, so three of the six validators are gated only on a laptop",
+      "write_scope": [
+        ".github/workflows/ci.yml",
+        "scripts/gate-plan.mjs",
+        "scripts/gate-plan.test.mjs",
+        "docs/work/automated-build/GATE_TIMINGS.md"
+      ],
+      "acceptance": [
+        "CI runs the same `pnpm validate` the local Law 3 gate runs, with the same ratchet arguments, so no validator is enforced in only one of the two places",
+        "The existing traceability and history-secrets jobs either call it or are folded into it \u2014 the same check must not be configured twice with different arguments"
+      ],
+      "notes": [
+        "FOUND AT W23-15, 2026-09-08, while inventorying duplicate gate executions for AB-15. CI runs validate-plan and validate-traceability in a `traceability` job and validate-history-secrets in another, and never runs `pnpm validate` at all \u2014 so validate-ui-copy, validate-exports and validate-volatile-paths are enforced ONLY by a person running the local gate.",
+        "THIS IS THE W22-06 SHAPE ONE LEVEL UP: that ticket found the same validator ENFORCING in one place and merely reporting in another, with the two numbers already drifted. Here the second place does not run it at all, which is the same failure with a worse denominator: a green CI is not evidence those three passed.",
+        "Deliberately not fixed inside AB-15: that card is a repository-development optimisation with its own acceptance, and editing CI to close a coverage gap is a different change from parallelising a local command. Evidence and measurements in docs/work/automated-build/GATE_TIMINGS.md \u00a71 row 4.",
+        "SCOPE WIDENED AT CLAIM (Law 1), and the reason is the second acceptance criterion. CI cannot simply add `pnpm validate` beside the existing history-secrets job: that job runs the same scanner with --verify-remote-refs, the one network call in the file, deliberately CI-only (Law 9 keeps a local run offline). Adding pnpm validate would configure the same check twice with different arguments \u2014 the exact drift the criterion forbids. So gate-plan gains a guarded, named exclusion and CI runs the SAME `pnpm validate` command a laptop runs, with one documented owner for the scanner. All four files are unowned by any other ticket.",
+        "DONE. The CI job that ran validate-plan and validate-traceability by hand now runs `pnpm validate` \u2014 the same command, the same conductor.config.json ratchets, no second copy of the numbers. validate-ui-copy, validate-exports (46/44) and validate-volatile-paths were previously enforced by Law 3 on a laptop and by no machine at all: a branch could be red locally and green in CI.",
+        "THE EXCLUSION IS THE INTERESTING PART. validate-history-secrets keeps its own job because CI runs it with --verify-remote-refs, the one network call in that scanner, and a local gate must stay offline (Law 9). Rather than run it twice with different arguments, the validators job sets DOKIMA_GATE_SKIP=validate-history-secrets and the history-secrets job is now labelled as the sole CI configuration of that check.",
+        "DOKIMA_GATE_SKIP IS A DELIBERATELY POOR BYPASS: names not patterns, an unknown name FAILS instead of quietly running the full set (validate-histroy-secrets exits 1), the skip is printed and counted in the summary (all 5 validators clean, 1 skipped), and the survivors keep their ratchet arguments \u2014 asserted in three fixtures, the last of which exists because a skip that dropped arguments would restore W22-06 in a new place.",
+        "NOT VERIFIED ON A RUNNER. This is a workflow change, and the only honest claim from a laptop is that the command it now runs is the command that passes here, plus a local reproduction of both the skip and the typo refusal. The first push of this branch is what proves the job itself.",
+        "GATE: lint 0, typecheck 0, 610 files / 5327 passed / 2 skipped, 76 e2e passed, six validators clean (6.3s) plus temp-leaks clean. node --test scripts/gate-plan.test.mjs: 9 pass.",
+        "VERIFIED ON A RUNNER after all, which the closing note above could not claim: GitHub Actions run 34298504089 on this branch, job \"validators (pnpm validate \u2014 the same command Law 3 runs)\" \u2014 success, alongside the history-secrets job that still owns the scanner. The prediction in that note was right and is now discharged."
+      ]
+    },
+    {
+      "id": "W23-15",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-14"
+      ],
+      "lane": "quality",
+      "module": "quality",
+      "points": 3,
+      "title": "six independent read-only checks took turns",
+      "write_scope": [
+        "scripts/gate-plan.mjs",
+        "scripts/gate-plan.test.mjs",
+        "scripts/gate-plan.suite.test.mjs",
+        "scripts/vitest.config.ts",
+        "package.json",
+        "CLAUDE.md",
+        "docs/work/automated-build/GATE_TIMINGS.md",
+        "apps/server/src/api/server/approved-build-routes.test.ts",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "A deliberately failing validator fails the whole gate, and every group keeps its own output in the configured order",
+        "The ratchet arguments are the serial baseline\u2019s, read from conductor.config.json rather than copied, and the temp-leak check runs only after everything else has exited",
+        "Before/after timings are measured on the same tree with the same check set, and the serial runner is kept so the comparison can be repeated",
+        "No check was removed, no ratchet weakened, no timeout raised, and no affected-check selection was introduced"
+      ],
+      "notes": [
+        "AB-15. THE SERIAL RUNNER\u2019S OWN REASON WAS HALF RIGHT: \"a serial run means the first failure is the one you read\". That is a property of the OUTPUT, not of the scheduling \u2014 so the six run concurrently under a bound and are printed in configured order whatever order they finish in. ~10.95s \u2192 ~6.38s, measured twice each on the same tree.",
+        "EQUIVALENCE WAS DEMONSTRATED BEFORE THE INSTRUCTIONS CHANGED (step 5). Byte-identical output apart from the elapsed-time suffix, and a real planted failure (process.exit(3) at the top of validate-ui-copy.mjs, reverted) fails both runners with exit 1 while the parallel one keeps all six group lines and the failing child\u2019s words.",
+        "THE NODE:TEST FILE IS STILL IN pnpm test. AB-15\u2019s focused verification is `node --test scripts/gate-plan.test.mjs`, which vitest cannot execute \u2014 so it is excluded from the vitest project and gate-plan.suite.test.mjs runs it as a child and fails with it. A check that runs only when someone remembers the command is the L-46/L-47 decay this repo has been bitten by twice.",
+        "FOUND AND FILED: CI never runs `pnpm validate` \u2014 validate-ui-copy, validate-exports and validate-volatile-paths are gated only by the local Law 3 gate. Filed as W23-22 rather than fixed here: editing CI to close a coverage gap is a different change from parallelising a local command.",
+        "ALSO FIXED HERE: a typecheck error committed with W23-14 (an acceptance criterion fixture missing `done`). `pnpm --filter @dokima/server typecheck` was run after that file was written and the workspace-wide one was not; recorded rather than quietly corrected."
+      ]
+    },
+    {
+      "id": "W23-23",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [],
+      "depends_on": [],
+      "lane": "content",
+      "module": "content",
+      "points": 3,
+      "title": "the validators write telemetry INTO the audited project, and three checks now work around it",
+      "write_scope": [
+        "content/validators/_lib.sh",
+        "content/manifest.json",
+        "scripts/sign-content.mjs"
+      ],
+      "acceptance": [
+        "Validator telemetry lands under .dokima/ (already excluded everywhere) rather than inside the audited project tree",
+        "The content pack is re-signed and verify-receipts still passes, so the change is not a silent break of the signed manifest",
+        "The three workarounds that exist only because of this \u2014 the harness-owned path list, the out-of-session scope sweep and the review evidence dirty check \u2014 are reduced to whatever is still genuinely needed"
+      ],
+      "notes": [
+        "W21-28 WROTE THIS DOWN AND COULD NOT DO IT: \"The better fix is for that telemetry to land in .dokima/ (already hard-excluded) instead of inside the audited project \u2014 but content/ is a SIGNED pack, so changing it there needs a re-sign with a key held outside this repo.\" Filed now, at W23-16, because a third check has just had to work around it.",
+        "THE THIRD WORKAROUND IS THE REASON TO FILE. content/validators/_lib.sh appends to ${ROOT}/docs/work/telemetry.jsonl on every validator run, so the CLOSE GATE dirties the worktree it just gated \u2014 and the review evidence check read that as the agent having edited past the reviewed commit, reported incomplete evidence, and capped EVERY verdict at UNVERIFIABLE. Machine acceptance was unreachable in production because a validator writes a log file.",
+        "The key lives outside the repo (see the signing-key note in the session memory); this ticket cannot close without it, which is exactly why it is a ticket and not a comment."
+      ]
+    },
+    {
+      "id": "W23-16",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-15"
+      ],
+      "lane": "core",
+      "module": "cli",
+      "points": 8,
+      "title": "every piece was proven at its own seam and the workflow had never been run",
+      "write_scope": [
+        "apps/server/src/cli/approved-build-e2e.test.ts",
+        "apps/server/src/cli/review-pass.ts",
+        "apps/server/src/api/pipeline/onboard-security-checks.ts",
+        "apps/server/src/api/server/runs-job.ts",
+        "apps/server/src/api/server/approved-build-run-state.ts",
+        "packages/harbormaster/src/loop-review.ts",
+        "packages/harbormaster/src/review-evidence.ts",
+        "packages/harbormaster/src/verified-ticket-decision.ts",
+        "docs/work/automated-build/ACCEPTANCE_REPORT.md",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "A planted rejection is repaired and accepted through the real entry point with no person acting, and the trunk is unchanged afterwards",
+        "Three dependent tickets and one independent one finish in ONE run in dependency order, on both the sequential and the berth path",
+        "Every red scenario ends in its stated non-success status with its evidence retained, and the reason names the rule that produced it",
+        "The acceptance report links real commands and results and names what is not tested"
+      ],
+      "notes": [
+        "AB-16. FOUR PRODUCTION DEFECTS, none of which any unit test could see, all of which made the workflow unreachable: (1) the review path never passed secretsValidatorPath, so the bundled secrets scanner never ran during a review; (2) it hardcoded networkPolicy local-only and tool-sast needs the network, so SAST was permanently unavailable and NO TICKET COULD EVER BE MACHINE-ACCEPTED; (3) the close gate\u2019s own validator telemetry dirtied the worktree, so every review reported incomplete evidence and every verdict was capped at UNVERIFIABLE; (4) receipt freshness compared the LAST element of a manifest whose commits are newest-first, and did not tolerate a harness commit, so a repaired ticket refused with accept-stale-receipt on code that had not changed.",
+        "THIS IS THE ARGUMENT FOR THE CARD. Every piece had passing tests at its own seam; the chain had never been run. The same shape this wave has now found five times (resolvePauseAction, decideApprovedBuildAction, recordApprovedBuild, runPhaseGate, and these four).",
+        "WHAT IS FAKED IS EXACTLY WHAT THE CARD PERMITS: the model endpoint (Law 9a) and the semgrep binary (not installed here or in CI \u2014 without it nothing can be accepted anywhere, which is the honest environment fact the report states). The adapters, sandbox, gate, ladder, park, review, repair and acceptance are all real.",
+        "ALSO FIXED: a run that parked everything was recorded verified \u2014 \"every ticket this run landed was verified and accepted\", true only because it landed none. A parked ticket is released to ready, so counting only in_review missed it.",
+        "FILED: W23-23, the telemetry-into-the-audited-project defect W21-28 wrote down and could not fix (the content pack is signed). This card is the third check to work around it."
+      ]
+    },
+    {
+      "id": "W23-17",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [
+        "W23-16"
+      ],
+      "lane": "quality",
+      "module": "quality",
+      "points": 3,
+      "title": "a wave of work with no measurement, and a release that could claim anything",
+      "write_scope": [
+        "docs/work/automated-build/EVALUATION_PROTOCOL.md",
+        "docs/work/automated-build/EVALUATION_RESULTS.md",
+        "docs/RELEASE_TRACKER.md",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "The protocol is executable as written: named configuration, five tasks with hidden acceptance and planted ground truth, two arms, three repeats, scoring fixed in advance",
+        "The results file distinguishes not-run, fixture-only, live-model and novice-observed evidence, and records that the benchmark was not run and why",
+        "The release tracker states which private-beta thresholds are met and which are not, so no release claim can be made from the wave merely existing",
+        "No runtime implementation changed: this card is documentation, and says so"
+      ],
+      "notes": [
+        "AB-17. DOCUMENTATION ONLY \u2014 no runtime code changed; the full gate was run to prove that (lint 0, typecheck 0, test 0 with 5326 passed / 2 skipped over 610 files, e2e 0 with 76, validate 0), and the counts are identical to W23-16\u2019s.",
+        "THE PROTOCOL IS WRITTEN BEFORE ANY RESULT, which is the whole point: a scoring rule invented after seeing the numbers is not a measurement. It fixes the configuration, the five tasks with their hidden acceptance tests and planted ground truth, the two arms (guarded vs the same model with no gate, no re-run, no review), three repeats, and the ten recorded quantities. Infrastructure failures stay in the denominator with their own label \u2014 dropping them would inflate every rate, and \"the model could not\" vs \"the machine could not\" is the distinction this product exists to make visible.",
+        "IT WAS NOT RUN, AND THAT IS THE RESULT. Live model evaluation is a separate evidence class (START_HERE 9) and AB-17 step 4 forbids launching paid models or recruiting users from a coding session. Two of the four private-beta thresholds are unmet \u2014 zero-false-acceptances is NOT MEASURED (there is no bounded test set yet) and no novice has been observed \u2014 so this is not private-beta evidence, stated in those words.",
+        "THE RELEASE TRACKER NOW CARRIES THE SAME SENTENCE, because a release document that says nothing about a feature\u2019s evidence is how a claim gets made from the feature merely existing. It names what may be claimed (the observed fixture workflow) and what may not (any lift number, any recall rate, any statement about being safe unattended).",
+        "AB-18 IS OUT OF SCOPE FOR THIS REPOSITORY: it targets Attest, and START_HERE says to work in Dokima, not Attest \u2014 and that it must not delay a proven Dokima private beta. Recorded in PROGRESS rather than attempted."
+      ]
+    },
+    {
+      "id": "W23-24",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [],
+      "lane": "quality",
+      "module": "quality",
+      "points": 2,
+      "title": "the pre-commit secrets scan reads REMOVED diff lines, so a line quoting an example key can never be edited again",
+      "write_scope": [
+        "hooks/pre-commit",
+        "scripts/hooks-install.test.mjs",
+        "docs/STATUS.md",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "acceptance": [
+        "The staged-diff secrets scan considers only added lines; a commit whose only match is on a removed line is not refused",
+        "A commit that ADDS a matching literal is still refused, proven by a fixture that plants one"
+      ],
+      "notes": [
+        "FOUND AT WAVE-23 CLOSEOUT, 2026-09-08, appending the wave record to docs/STATUS.md. That file is not prettier-clean at HEAD, so any edit forces a whole-file reformat; the reformat restages a 2026-08-03 line quoting AWS published example access-key id, and the hook greps the staged diff WITHOUT filtering to added lines, so the literal matched on the REMOVED side.",
+        "THAT MAKES THE LINE PERMANENTLY UNEDITABLE. Every possible edit to it \u2014 including deleting the literal, which is exactly what was attempted \u2014 puts the literal on the removed side. A guard that refuses the REMOVAL of a secret is refusing the fix, which is the wrong direction for a secrets check to point.",
+        "THE FIX IS ONE FILTER: keep only lines that begin with a single plus before matching. Removing a secret should always be allowed; adding one never. The history scanner (W10-27) is unaffected \u2014 it reads blobs, not diffs.",
+        "CONSEQUENCE AT CLOSE: docs/STATUS.md was left WITHOUT the wave-23 record. The prepared 39-line append is saved and lands either with this ticket or with an approved one-time --no-verify commit.",
+        "PRE-CLAIM SCOPE CHECK, and the filed path was wrong: the hook is tracked at hooks/pre-commit (core.hooksPath=hooks), not scripts/hooks/pre-commit, and its fixture home is scripts/hooks-install.test.mjs, which already plants an AWS-shaped secret. docs/TESTING.md dropped from scope \u2014 the hook tier is documented by the fixture, and there is nothing new to describe. docs/STATUS.md added, because the append this ticket unblocks is the proof the fix works.",
+        "FIXED: the staged diff is filtered to ADDED lines (a leading plus, minus the +++ header) before the six patterns run. Red fixture in scripts/hooks-install.test.mjs, proven red by reverting the filter: the removal commit is refused without it and passes with it. The existing add-a-secret refusal fixture still passes, so the guard did not get weaker in the direction that matters.",
+        "NECESSARY BUT NOT SUFFICIENT, and the original framing was wrong about that. Allowing removals did NOT let the docs/STATUS.md append through: prettier reformats that line, and a reformatted line is an ADDED line, so the AWS example literal landed on the plus side and was refused exactly as designed. The literal is therefore described instead of quoted \u2014 the redaction was still required, and the ticket bought the general rule rather than this one commit. A value-level exemption mirroring history-secrets-baseline.json would have kept the literal verbatim; not built, because it is more guard surface than the finding justifies.",
+        "PRETTIER IS NOT IDEMPOTENT ON docs/STATUS.md: --write has to run twice before --check passes, observed on two separate occasions during this work. Deliberately NOT filed, and this is the judgement rather than an oversight \u2014 it is a formatter behaviour on one very large markdown file, the whole cost is one extra command, and there is no defect for a ticket to fix. Recorded here so the next person who sees --check fail after --write knows to run it again instead of hunting.",
+        "GATE AT CLOSE: lint 0, typecheck 0, 610 files / 5327 passed / 2 skipped, 76 e2e passed, six validators clean (6.2s) plus temp-leaks clean."
+      ]
+    },
+    {
+      "id": "W23-25",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [
+        "US-701"
+      ],
+      "depends_on": [],
+      "lane": "core",
+      "module": "harbormaster",
+      "points": 5,
+      "title": "the clarifications and runs verbs have no production caller \u2014 a whole surface, not eight slips",
+      "write_scope": [
+        "packages/harbormaster/src/breakpoints-clarifications.ts",
+        "packages/harbormaster/src/breakpoints-runs.ts",
+        "packages/harbormaster/src/berths-dial.ts",
+        "packages/events/src/receipts/query.ts",
+        "scripts/validate-exports.test.mjs",
+        "conductor.config.json"
+      ],
+      "acceptance": [
+        "Each of the eleven symbols is decided one of three ways \u2014 wired to the caller its requirement implies, kept with an @unreached marker whose reason names the ticket that will wire it, or deleted \u2014 and none of them is answered by moving a ratchet",
+        "The clarifications verbs are decided against FR-N1/UC-03 specifically: either a route and a caller exist, or the marker records which ticket owes them one",
+        "Whatever the decisions, both ratchets are re-measured afterwards and lowered to the measured numbers"
+      ],
+      "notes": [
+        "FOUND AT W23-21, 2026-09-08, and hand-verified the way W12-39 verified its own newly visible symbols rather than trusting the count. Every one of these has exactly two non-test mentions: its own declaration, and a re-export line in a barrel chapter. Nothing calls them.",
+        "THE SHAPE IS WHY THIS IS ONE TICKET AND NOT ELEVEN: askClarification, answerClarification, dismissClarification, listOpenClarifications, isTicketCheckpointed, completeRun and listRuns are a coherent clarifications/runs verb set \u2014 a whole surface built and never wired \u2014 plus resolveBerthCount and resolveAutorunBreakpoint (the berths dial) and events getReceiptActor. This is the W12-04 packer shape at a larger scale: complete, tested, reachable, adopted by nothing.",
+        "DO NOT ANSWER THIS BY RAISING A BASELINE. The ratchet was raised to 54/46 at W23-21 because the COUNTING got sharper, which is the one legitimate raise; absorbing this debt would be the forbidden one. The honest answers are a caller or a deletion.",
+        "CHECK THE SERVER ROUTES FIRST. A clarifications surface with no in-repo caller may be waiting on an HTTP route that was never registered, in which case the fix is the route and not the verbs \u2014 the same question W21-95 answered for the onboard analysis.",
+        "ACCEPTANCE AMENDED BEFORE ANYONE CLAIMED IT, 2026-09-08, because the filed version forced a false binary. This repo already uses a third answer: runReviewPass carries an @unreached marker reading \"an external caller of the published package may still use it\" \u2014 W23-10 kept an uncalled export because @dokima/harbormaster is one registry release away from being a public API. \"Wire it or delete it\" executed literally would strip eleven exports from a package about to ship v1.0.0.",
+        "AND THE REQUIREMENTS CLAIM THE CLARIFICATIONS VERBS, checked rather than assumed: FR-N1 (\"Clarification cards (context, specific question, options, default-if-unanswered) suspend only work dependent on the answer... dismissal takes the documented default + ledger row\"), US-701 and UC-03 all describe exactly askClarification / answerClarification / dismissClarification / listOpenClarifications / isTicketCheckpointed. These are an UNWIRED FEATURE, not residue from an abandoned design \u2014 which makes this a requirements gap and a product decision, not cleanup. FR-H4 orders the morning queue by leverage with clarifications in it, so the missing piece is plausibly the route and the queue, not the verbs.",
+        "FOUNDER SCOPE, DELIBERATELY NOT DONE HERE: everything else closed in this closeout wave (W23-21, W23-22, W23-24, W23-26) was tooling. This is trust-core production surface on a branch whose merge is already a founder decision, and the honest hand-off is a decided question rather than an unrequested wiring."
+      ]
+    },
+    {
+      "id": "W23-26",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "done",
+      "stories": [],
+      "depends_on": [],
+      "lane": "quality",
+      "module": "quality",
+      "points": 3,
+      "title": "no tsconfig includes vitest.setup.ts, so the file that pins DOKIMA_HOME is never typechecked",
+      "write_scope": [
+        "apps/server/tsconfig.json",
+        "apps/web/tsconfig.json",
+        "packages/events/tsconfig.json",
+        "packages/forge/tsconfig.json",
+        "packages/gateway/tsconfig.json",
+        "packages/git/tsconfig.json",
+        "packages/harbormaster/tsconfig.json",
+        "packages/loop/tsconfig.json",
+        "packages/mcp/tsconfig.json",
+        "packages/memory/tsconfig.json",
+        "packages/pipeline/tsconfig.json",
+        "packages/shared/tsconfig.json",
+        "packages/tickets/tsconfig.json",
+        "packages/validators/tsconfig.json",
+        "tsconfig.root.json",
+        "package.json",
+        "scripts/tsconfig-coverage.test.mjs"
+      ],
+      "acceptance": [
+        "pnpm typecheck covers every workspace TS file outside src/ that is executed by the test run \u2014 setup files and vitest configs included",
+        "A deliberately broken reference planted in a setup file fails pnpm typecheck, proven and then removed"
+      ],
+      "notes": [
+        "FOUND AT W23-19, 2026-09-08. apps/server/tsconfig.json is `\"include\": [\"src\"]`, so vitest.setup.ts \u2014 the file that pins DOKIMA_HOME, DOKIMA_NO_KEYCHAIN and the model seam for the whole apps/server suite \u2014 is invisible to tsc. It contained a call to `w22_16_write`, a helper that does not exist anywhere in the repo: leftover W22-16 instrumentation that would have thrown ReferenceError the moment its beforeExit handler fired, in the one file whose failure would mis-configure every test in the package.",
+        "THE HANDLER NEVER FIRED, WHICH IS THE POINT: under the forks pool the pool terminates its children, so beforeExit is unreachable \u2014 the same fact W22-16 measured. Dead code in an unchecked file, in the suite bootstrap, is a bad place for both properties to meet. The call is removed under W23-19 (same file, same investigation); making tsc see the file is this ticket.",
+        "SCOPE WIDENED AT CLAIM (Law 1): the survey found this is not one file. Every package tsconfig is `\"include\": [\"src\"]` while each package carries an unchecked vitest.config.ts; apps/web adds playwright.config.ts and vite.config.ts; and the repo root has vitest.workspace.ts and vitest.network-guard.ts with no tsconfig at all. Fourteen configs, a new root config for the two root files, and a fixture that fails when a workspace TS file executed by the test run is outside every include \u2014 otherwise this closes today and re-opens the next time someone adds a config file.",
+        "DONE. Fourteen package configs now include their own root-level TS files (each vitest.config.ts, apps/server/vitest.setup.ts, apps/web playwright.config.ts and vite.config.ts), and the repo root gained tsconfig.root.json for vitest.workspace.ts and vitest.network-guard.ts \u2014 which no config covered at all. `pnpm typecheck` runs the root config first, because a config nobody runs checks nothing.",
+        "PLANTED-DEFECT PROOF, as the second criterion asks: `w23_26_does_not_exist();` appended to apps/server/vitest.setup.ts produced `vitest.setup.ts(183,1): error TS2304: Cannot find name` and a red typecheck; removed, and typecheck returned to 0. That is the same file that carried the real dead call for a whole wave.",
+        "AND A FIXTURE SO IT LASTS: scripts/tsconfig-coverage.test.mjs asserts coverage rather than correctness \u2014 every root-level .ts in a configured directory is inside that directory\u2019s include, the root config covers every root .ts file, and the typecheck script actually invokes it. Without it the fix holds only until the next config file is added.",
+        "NOTHING WAS FOUND BY WIDENING, WHICH IS WORTH SAYING: after the includes grew, typecheck was clean across all fourteen projects. The one real defect this class had produced (w22_16_write) was already removed under W23-19. The value here is the next one, not this one.",
+        "GATE: lint 0, typecheck 0, 611 files / 5347 passed / 2 skipped, 76 e2e passed, six validators clean plus temp-leaks clean."
+      ]
     }
   ]
 }

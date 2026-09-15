@@ -146,7 +146,6 @@ test('model matrix: pick a model from the provider-discovered list, and a copilo
   const copilotRow = page.getByRole('row', { name: /challenger/ });
   await expect(copilotRow.getByText('Copilot-backed')).toBeVisible();
 
-
   const matrixForm = page.getByRole('form', { name: 'Add matrix row' });
   await matrixForm.getByLabel('Role').fill('coding-agent');
   const modelSelect = matrixForm.getByLabel('Model');
@@ -188,7 +187,11 @@ test('autonomy dial always shows the immutable NEVER-AUTO list', async ({ page }
   const auto = page.getByLabel(/^Auto — /);
   await expect(auto).toBeDisabled();
   await expect(auto).not.toBeChecked();
-  await expect(page.getByText(/Unattended defaults are not enforced yet/)).toBeVisible();
+  // W23-14: the hint changed when the approved build landed. It no longer
+  // says unattended defaults are "not enforced yet" — it says what actually
+  // makes a run unattended, which is a per-run approval on the board over a
+  // specification the person read, and never this dial.
+  await expect(page.getByText(/This dial does not make a run unattended/)).toBeVisible();
 
   // Interactive is what actually happens, and stays selectable.
   await expect(page.getByLabel(/^Interactive — /)).toBeChecked();

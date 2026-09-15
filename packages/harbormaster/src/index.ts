@@ -258,7 +258,12 @@ export type { TicketBase, TicketBaseInput } from './loop-land-base.js';
 export type { ReviewState, TicketReviewStatus } from './review-status.js';
 
 /** W15-01: the review pass — cross-model verdicts over in_review tickets, composed by apps/server. */
-export { DEFAULT_REVIEW_VERIFY_TIMEOUT_MS, runReviewPass } from './loop-review.js';
+// @unreached runReviewPass: a deliberately KEPT compatibility surface, not a symbol awaiting a caller. W23-10 moved this repo's own call to reviewTicketDecisions, which returns the structured decision; runReviewPass stays because AB-10 step 1 asks for it and because an external caller of the published package may still use it.
+export {
+  DEFAULT_REVIEW_VERIFY_TIMEOUT_MS,
+  reviewTicketDecisions,
+  runReviewPass,
+} from './loop-review.js';
 export type {
   ReviewOutcome,
   ReviewPassOptions,
@@ -266,10 +271,9 @@ export type {
 } from './loop-review.js';
 
 /**
- * W16-02: the berth concurrency layer, exported for its first production
- * caller (apps/server's run-build berths path). `runBerths` was complete,
- * lane-aware, and unreachable; `landClaimedTicket` is the shared one-ticket
- * engine both it and `runLandLoop` now drive.
+ * W16-02: the berth concurrency layer, exported for its first production caller
+ * (apps/server's run-build berths path). `runBerths` was complete, lane-aware and
+ * unreachable; `landClaimedTicket` is the one-ticket engine it and `runLandLoop` share.
  */
 export { berthIdOf, runBerths } from './berths.js';
 export type {
@@ -281,7 +285,13 @@ export type {
   RunBerthsOptions,
   RunBerthsResult,
 } from './berths.js';
-export { landClaimedTicket } from './loop-land-ticket.js';
+export { landClaimedTicket, processTicket } from './loop-land-ticket.js';
+/** W23-12 (AB-12): the post-close verify/review/accept operation, injected into the one-ticket engine. */
+export { currentSourceOf, verifyAndAcceptTicket } from './verified-ticket-decision.js';
+export type { VerifiedTicketOutcome } from './verified-ticket-decision.js';
+/** W23-11 (AB-11): the bounded repair loop — reject, remake, re-review, at most three rounds. */
+export { REPAIR_STOPPED_EVENT, runRepairRounds } from './build-repair-loop.js';
+export type { RepairTicketInputs, RepairTicketOutcome } from './build-repair-loop.js';
 
 /** W17-03: the measured turns profile — observations emitted per session, multiplier computed by the composing caller. */
 export { measuredTurnsMultiplier } from './agent-session/session-progress.js';
@@ -318,3 +328,72 @@ export {
   CROSS_SESSION_REPEAT_THRESHOLD,
   type RepeatedCall,
 } from './loop-land-repetition.js';
+
+// The automated-build surface (wave 23). Each module's own header carries the
+// reasoning; the contract and its @unreached markers must stay IN THIS FILE,
+// because validate-exports does not follow `export * from` and a chapter would
+// hide these symbols from the ratchet rather than tidy them (W23-21).
+export {
+  decideApprovedBuildAction,
+  APPROVED_BUILD_POLICY_VERSION,
+  type ApprovedBuildAction,
+  type ApprovedBuildDecision,
+  type ApprovedBuildFacts,
+  type ApprovedBuildPolicy,
+  type ApprovedBuildRequest,
+  type ApprovedBuildReviewFacts,
+  type ApprovedBuildSituationKind,
+} from './approved-build-policy.js';
+
+export {
+  checksPermitAutomaticCompletion,
+  executableIsInstalled,
+  runSecurityChecks,
+  sandboxedToolRunner,
+  SECURITY_TOOLS,
+  type CheckEvidence,
+  type CheckStatus,
+  type NetworkPolicy,
+  type ProjectProfile,
+  type SecurityToolAdapter,
+  type ToolRunResult,
+} from './security-checks.js';
+
+export {
+  runCheckSchedule,
+  type NodeOutcome,
+  type NodeRecord,
+  type SchedulableNode,
+  type ScheduleOptions,
+  type ScheduleResult,
+  type SchedulerEvent,
+} from './check-scheduler.js';
+
+export {
+  invalidatedDescendants,
+  type DependencyEdge,
+  type EvidenceKeyParts,
+  type ReuseDecision,
+  type StoredEvidence,
+} from './check-evidence.js';
+
+export {
+  consolidateFindings,
+  findingIdentity,
+  groupByOwner,
+  normalizeFindingPath,
+  type ConfidenceKind,
+  type ConsolidateInput,
+  type FindingSeverity,
+  type RawFinding,
+  type RejectedFinding,
+  type RepairBatch,
+  type RepairFinding,
+  type TicketScope,
+} from './repair-findings.js';
+
+// Only the decision TYPE is published: `decideReview` and the reviewer
+// identity have their caller inside this package, and publishing a symbol no
+// app calls is how an export ratchet fills with things used perfectly well
+// where they are.
+export type { ReviewCheckStatus, ReviewDecision } from './review-decision.js';

@@ -89,6 +89,13 @@ interface StartCommand {
    * own quota on unattended runs, which is their decision to make.
    */
   readonly agentCommand?: string;
+  /**
+   * W23-02: `--approved-build`. This RUN asks to proceed under the project's
+   * recorded `approved-build-v1` approval; `executeBuildRun` refuses if there
+   * is none or the specification has moved since. Deliberately a per-run flag
+   * and not a stored setting — see run-types.ts's field of the same name.
+   */
+  readonly approvedBuild?: boolean;
 }
 
 interface RunTargetCommand {
@@ -106,7 +113,7 @@ const START_USAGE =
   'usage: dokima run start --project <id> --mode <new_product|onboard|feature|improve> ' +
   '--breakpoint <ticket|wave|never> --berths <n> --actor <id> ' +
   '[--phase <n>] [--budget-usd <n>] [--budget-tokens <n>] [--db <path>] ' +
-  '[--agent-command <cli>]';
+  '[--agent-command <cli>] [--approved-build]';
 
 function parseStart(rest: string[]): StartCommand {
   const { values } = parseArgs({
@@ -122,6 +129,10 @@ function parseStart(rest: string[]): StartCommand {
       'budget-tokens': { type: 'string' },
       db: { type: 'string' },
       'agent-command': { type: 'string' },
+      // W23-02: opting a run into approved-build-v1. A FLAG, not a setting:
+      // inheriting a project's legacy `autonomy=auto` here would opt existing
+      // users into unattended completion they never agreed to (D-032).
+      'approved-build': { type: 'boolean' },
     },
     allowPositionals: false,
   });
@@ -160,6 +171,7 @@ function parseStart(rest: string[]): StartCommand {
     actorId: values.actor,
     dbPath: values.db,
     agentCommand: values['agent-command'],
+    approvedBuild: values['approved-build'] === true,
   };
 }
 

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { appendEvent, createIdentity, listEvents, openEventLog } from '@dokima/events';
 import { createTicket } from '@dokima/tickets';
 import { registerProject } from '../projects.js';
+import { buildRunStopped, startBuildRun } from './approved-build-run-state.js';
 import { buildApiServer, type ApiServer } from '../server.js';
 
 const TOKEN = 'test-token-0123456789abcdef';
@@ -295,7 +296,20 @@ describe('build runs (W12-20)', () => {
               verify_command, verify_exit, signed_by, payload, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run('r-1', 'close', 'p', null, null, '[]', 'hash', 'true', 0, 'mac', '{}', '2026-08-19T00:00:00.000Z');
+        .run(
+          'r-1',
+          'close',
+          'p',
+          null,
+          null,
+          '[]',
+          'hash',
+          'true',
+          0,
+          'mac',
+          '{}',
+          '2026-08-19T00:00:00.000Z',
+        );
     } finally {
       log.close();
     }
@@ -366,6 +380,66 @@ describe('build runs (W12-20)', () => {
     30_000,
   );
 
+  it(
+    'W23-02: a run that opts into approved-build-v1 with NO recorded approval ' +
+      'refuses BEFORE it claims anything, and says so where a user can read it',
+    async () => {
+      const previous = process.env.DOKIMA_SIGNING_KEY;
+      process.env.DOKIMA_SIGNING_KEY = 'test-signing-key-w2302';
+      try {
+        const { app, id, h } = await boot2();
+        const start = await app.inject({
+          method: 'POST',
+          url: `/api/v1/projects/${id}/build-runs`,
+          headers: h,
+          payload: { actor_id: 'operator', run_id: 'run-w2302', approved_build: true },
+        });
+        // 202: the route promises to TRY. The refusal is the job's, because
+        // the approval lives in the project's event log and the shared
+        // preflight in executeBuildRun is the only place both entrances agree.
+        expect(start.statusCode).toBe(202);
+
+        const outcome = await pollUntilSettled(app, id, h, 'run-w2302');
+        expect(outcome.status).toBe('refused');
+        expect(outcome.exit_code).toBe(2);
+        expect(outcome.stderr.join('\n')).toMatch(/recorded no approval/);
+        expect(outcome.stderr.join('\n')).toMatch(/Nothing was claimed/);
+      } finally {
+        if (previous !== undefined) process.env.DOKIMA_SIGNING_KEY = previous;
+        else delete process.env.DOKIMA_SIGNING_KEY;
+      }
+    },
+    30_000,
+  );
+
+  it(
+    'W23-02: the same run WITHOUT the opt-in is not refused by the approval gate — ' +
+      'a legacy start keeps its legacy behaviour, whatever it goes on to do',
+    async () => {
+      const previous = process.env.DOKIMA_SIGNING_KEY;
+      process.env.DOKIMA_SIGNING_KEY = 'test-signing-key-w2302b';
+      try {
+        const { app, id, h } = await boot2();
+        const start = await app.inject({
+          method: 'POST',
+          url: `/api/v1/projects/${id}/build-runs`,
+          headers: h,
+          payload: { actor_id: 'operator', run_id: 'run-w2302-legacy' },
+        });
+        expect(start.statusCode).toBe(202);
+        const outcome = await pollUntilSettled(app, id, h, 'run-w2302-legacy');
+        // It may still fail for its own unrelated reasons (there is no agent
+        // configured in this fixture). What it must never say is that an
+        // approval it never asked for is missing.
+        expect(outcome.stderr.join('\n')).not.toMatch(/recorded no approval/);
+      } finally {
+        if (previous !== undefined) process.env.DOKIMA_SIGNING_KEY = previous;
+        else delete process.env.DOKIMA_SIGNING_KEY;
+      }
+    },
+    30_000,
+  );
+
   it('an unknown run id is a 404 rather than a fabricated "running"', async () => {
     const { app, id, h } = await boot2();
     const res = await app.inject({
@@ -416,6 +490,83 @@ describe('run stop (W17-06)', () => {
     };
   }
 
+  /**
+   * W23-13 (AB-13) acceptance 3. The stop route used to answer from a Map that
+   * a fresh process leaves empty, so stopping a run the core had been
+   * restarted under returned 404 — and the run, whose own switch was the same
+   * dead flag, carried on. Here nothing in this process ever started the run:
+   * only the ledger knows it exists, which is exactly the position a restarted
+   * core is in.
+   */
+  it('a run started before this process can still be stopped, and the stop is durable (W23-13)', async () => {
+    const { app, id, dir, h } = await boot3();
+    const log = openEventLog(path.join(dir, '.dokima', 'state.db'));
+    try {
+      createIdentity(log, { id: 'operator', name: 'Operator', kind: 'human' });
+      startBuildRun(log, {
+        runId: 'run-before-restart',
+        projectId: id,
+        actorId: 'operator',
+        approvedBuild: true,
+      });
+    } finally {
+      log.close();
+    }
+
+    const stop = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${id}/build-runs/run-before-restart/stop`,
+      headers: h,
+      payload: { actor_id: 'operator' },
+    });
+    expect(stop.statusCode).toBe(202);
+
+    const after = openEventLog(path.join(dir, '.dokima', 'state.db'));
+    try {
+      expect(buildRunStopped(after, 'run-before-restart')).toBe(true);
+    } finally {
+      after.close();
+    }
+
+    // And the status route reports it from the ledger rather than 404ing on a
+    // run this process never executed.
+    const status = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${id}/build-runs/run-before-restart`,
+      headers: h,
+    });
+    expect(status.statusCode).toBe(200);
+    expect(status.json()).toMatchObject({ stop_requested: true });
+  });
+
+  it('RED FIXTURE: a run id belonging to ANOTHER project is a 404, never another project’s run', async () => {
+    const { app, id, dir, h } = await boot3();
+    const log = openEventLog(path.join(dir, '.dokima', 'state.db'));
+    try {
+      createIdentity(log, { id: 'operator', name: 'Operator', kind: 'human' });
+      startBuildRun(log, {
+        runId: 'someone-elses-run',
+        projectId: 'a-different-project',
+        actorId: 'operator',
+        approvedBuild: true,
+      });
+    } finally {
+      log.close();
+    }
+    for (const url of [
+      `/api/v1/projects/${id}/build-runs/someone-elses-run`,
+      `/api/v1/projects/${id}/build-runs/someone-elses-run/stop`,
+    ]) {
+      const res = await app.inject({
+        method: url.endsWith('/stop') ? 'POST' : 'GET',
+        url,
+        headers: h,
+        ...(url.endsWith('/stop') ? { payload: { actor_id: 'operator' } } : {}),
+      });
+      expect(res.statusCode).toBe(404);
+    }
+  });
+
   it('RED FIXTURE: a running build run can be STOPPED from the API — 202 stopping, ledgered with who asked; a second stop is a clean 409; an unknown run is 404', async () => {
     const previous = process.env.DOKIMA_SIGNING_KEY;
     process.env.DOKIMA_SIGNING_KEY = 'test-signing-key-w1706';
@@ -457,9 +608,7 @@ describe('run stop (W17-06)', () => {
       // Ledgered with who asked.
       const db = openEventLog(path.join(dir, '.dokima', 'state.db'));
       try {
-        const events = listEvents(db).filter(
-          (e) => e.eventType === 'run.stop_requested',
-        );
+        const events = listEvents(db).filter((e) => e.eventType === 'run.stop_requested');
         expect(events).toHaveLength(1);
         expect((events[0] as { actorId: string }).actorId).toBe('brad');
       } finally {
@@ -471,3 +620,33 @@ describe('run stop (W17-06)', () => {
     }
   });
 });
+
+/**
+ * Polls the build-run status route until the job settles. The job runs OFF the
+ * request (the route returns 202), so a status read taken immediately is a
+ * race — and asserting on `running` would pass for a run that never refused.
+ */
+async function pollUntilSettled(
+  app: ApiServer['app'],
+  projectId: string,
+  headers: Record<string, string>,
+  runId: string,
+): Promise<{ status: string; exit_code: number; stderr: string[] }> {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/build-runs/${runId}`,
+      headers,
+    });
+    const body = res.json() as { status: string; exit_code?: number; stderr?: string[] };
+    if (body.status !== 'running') {
+      return {
+        status: body.status,
+        exit_code: body.exit_code ?? -1,
+        stderr: body.stderr ?? [],
+      };
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(`build run ${runId} never settled`);
+}

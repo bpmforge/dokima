@@ -27,11 +27,8 @@ import { conflict } from './settings-route-helpers.js';
 import { resolveSigningKey } from '../../cli/signing-key.js';
 import { PROBLEM_CONTENT_TYPE } from './board-errors.js';
 import { resolveProjectRecord, stateDbPath } from './board-project.js';
-import {
-  buildRunStatus,
-  executeBuildRunJob,
-  requestBuildRunStop,
-} from './runs-job.js';
+import { buildRunStatus, executeBuildRunJob, requestBuildRunStop } from './runs-job.js';
+import { readBuildRunState } from './approved-build-run-state.js';
 import { stopRun } from '@dokima/harbormaster';
 
 export interface RunsRoutesOptions {
@@ -50,7 +47,6 @@ function wireEvent(record: EventRecord) {
     created_at: record.createdAt,
   };
 }
-
 
 export function registerRunsRoutes(
   app: FastifyInstance,
@@ -86,9 +82,22 @@ export function registerRunsRoutes(
       const { id } = request.params as { id: string };
       const projectPath = await projectPathOr404(request, reply, id);
       if (!projectPath) return reply;
-      const body = (request.body ?? {}) as { actor_id?: string; run_id?: string };
+      const body = (request.body ?? {}) as {
+        actor_id?: string;
+        run_id?: string;
+        /**
+         * W23-02: opting THIS run into approved-build-v1. Explicit and
+         * per-request; a project's stored autonomy dial cannot set it, because
+         * a user who chose `auto` months ago chose the old meaning (D-032).
+         * The body only ASKS — `executeBuildRun` reconstructs the policy from
+         * the recorded approval event and refuses if the specification moved.
+         */
+        approved_build?: boolean;
+        budget_usd?: number;
+      };
       const actorId = body.actor_id ?? 'operator';
       const runId = body.run_id ?? `run-${Date.now().toString(36)}`;
+      const approvedBuild = body.approved_build === true;
 
       /**
        * ENSURE THE ACTOR BEFORE STARTING (W22-27).
@@ -172,6 +181,8 @@ export function registerRunsRoutes(
       // sessions and re-runs gates. Holding the request open for that is the
       // shape W10-58 removed from the creation path.
       void executeBuildRunJob({
+        approvedBuild,
+        budgetUsd: typeof body.budget_usd === 'number' ? body.budget_usd : null,
         projectPath,
         projectId: id,
         actorId,
@@ -196,7 +207,26 @@ export function registerRunsRoutes(
       const body = (request.body ?? {}) as { actor_id?: string };
       const actorId = body.actor_id ?? 'operator';
 
-      const outcome = requestBuildRunStop(runId, actorId);
+      /**
+       * W23-13: the durable record, so a stop works after a restart. Before
+       * this the answer came from a Map that a fresh process leaves empty, so
+       * stopping a run the core had been restarted under returned 404 — and
+       * the run, whose own switch was also a dead flag, carried on.
+       */
+      const durableLog = openEventLog(stateDbPath(projectPath));
+      let durableState;
+      try {
+        durableState = readBuildRunState(durableLog, runId);
+      } finally {
+        durableLog.close();
+      }
+      if (durableState && durableState.projectId !== id) {
+        return reply
+          .code(404)
+          .type(PROBLEM_CONTENT_TYPE)
+          .send(notFound(request, `no build run ${runId}`));
+      }
+      const outcome = requestBuildRunStop(runId, actorId, { state: durableState });
       if (outcome === 'unknown') {
         return reply
           .code(404)
@@ -208,7 +238,11 @@ export function registerRunsRoutes(
           .code(409)
           .type(PROBLEM_CONTENT_TYPE)
           .send(
-            conflict(request, `build run ${runId} is already stopping`, 'already-stopping'),
+            conflict(
+              request,
+              `build run ${runId} is already stopping`,
+              'already-stopping',
+            ),
           );
       }
 
@@ -256,10 +290,34 @@ export function registerRunsRoutes(
       if (!projectPath) return reply;
       const outcome = buildRunStatus(runId);
       if (outcome === undefined) {
-        return reply
-          .code(404)
-          .type(PROBLEM_CONTENT_TYPE)
-          .send(notFound(request, `no build run ${runId}`));
+        /**
+         * W23-13: this process did not run it — which is not the same as it
+         * never having existed. The ledger knows, and after a restart it is
+         * the only thing that does.
+         */
+        const durableLog = openEventLog(stateDbPath(projectPath));
+        let state;
+        try {
+          state = readBuildRunState(durableLog, runId);
+        } finally {
+          durableLog.close();
+        }
+        if (!state || state.projectId !== id) {
+          return reply
+            .code(404)
+            .type(PROBLEM_CONTENT_TYPE)
+            .send(notFound(request, `no build run ${runId}`));
+        }
+        return reply.send({
+          run_id: runId,
+          // A run with no recorded outcome and no live worker in THIS process
+          // is not running here; saying `running` would be the lie this card
+          // exists to remove.
+          status: state.outcome ?? 'interrupted',
+          detail: state.detail,
+          exit_code: state.exitCode,
+          stop_requested: state.stopRequested,
+        });
       }
       if (outcome === 'running') return reply.send({ run_id: runId, status: 'running' });
       return reply.send({

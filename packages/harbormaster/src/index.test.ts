@@ -34,6 +34,11 @@ describe('@dokima/harbormaster public surface (W10-77)', () => {
     // The pieces a caller cannot construct the above without.
     'defaultHandoffBuilder',
     'createFileStopSwitch',
+    // W23-01: the approved-build decision. On this list from the day it is
+    // exported rather than the day it is called — the surface is the contract
+    // W23-02 codes against, and an @unreached marker in index.ts records that
+    // the caller is still owed.
+    'decideApprovedBuildAction',
   ])('exports %s — the engine is reachable, not merely built', (name) => {
     expect(typeof (harbormaster as Record<string, unknown>)[name]).toBe('function');
   });

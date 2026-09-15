@@ -22,7 +22,14 @@ if [ -n "$fmt" ]; then
 fi
 
 # 2) secrets scan on the staged DIFF, not the tree (budget: <1s)
-if git diff --cached -U0 | grep -E -i \
+#
+# ADDED LINES ONLY (W23-24). This read the whole diff, removals included, and
+# so refused the one edit a secrets guard should always allow: taking a secret
+# OUT. The line that found it quotes AWS's own published example key in
+# docs/STATUS.md — every possible edit to that line, deleting the literal most
+# of all, puts the literal on the removed side, which made the line permanently
+# uneditable. Adding one is still refused; removing one never was the risk.
+if git diff --cached -U0 | grep -E '^\+' | grep -Ev '^\+\+\+ ' | grep -E -i \
   -e '-----BEGIN (RSA|EC|OPENSSH|DSA|PGP) PRIVATE KEY-----' \
   -e '(api[_-]?key|secret|token|passwd|password)["'"'"':= ]+[A-Za-z0-9_\-]{20,}' \
   -e 'AKIA[0-9A-Z]{16}' \

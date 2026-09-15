@@ -129,9 +129,18 @@ export function AutonomyBudgetPanel({ projectId }: AutonomyBudgetPanelProps) {
           />
           Auto — not in effect yet: every gated pause still asks
         </label>
+        {/*
+          W23-14 (AB-14 step 5): updated only now that the behaviour exists.
+          The dial is still not what makes a run unattended — an APPROVED BUILD
+          is, and it is approved per run on the board, over a specification the
+          person can read. A project that chose Auto months ago chose the old
+          meaning and does not inherit the new one (D-032).
+        */}
         <p className="settings__hint">
-          Unattended defaults are not enforced yet. Until they are, this project
-          behaves as Interactive whichever option is selected.
+          This dial does not make a run unattended. A run works by itself only when you
+          approve that exact build on the board — the tickets, the scopes, the models and
+          the budget — and that approval stops applying the moment any of them changes.
+          Merging to your main branch and publishing stay separate decisions either way.
         </p>
         <h3>NEVER-AUTO (always pauses, not editable)</h3>
         <ul className="settings__never-auto" data-testid="never-auto-list">

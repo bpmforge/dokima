@@ -1,0 +1,609 @@
+{
+  "schema_version": 1,
+  "purpose": "Planning manifest only; not directly consumable by Dokima plan.json or a conductor. Register cards using the repository schema.",
+  "repository": "/Users/bmatthews/Code/shipwright",
+  "reviewed_head": "307ed76288f656cb764cb1dad4dc7bd049c8ec72",
+  "tasks": [
+    {
+      "id": "AB-00",
+      "title": "Capture a clean baseline and register this work",
+      "status": "planned",
+      "depends_on": [],
+      "existing_files": [
+        "plan.json",
+        "CLAUDE.md",
+        "MASTER_PROMPT.md",
+        "PLAYBOOK.md",
+        "package.json",
+        "conductor.config.json",
+        "docs/DECISIONS.md",
+        "docs/TESTING.md"
+      ],
+      "proposed_files": [
+        "docs/work/automated-build/BASELINE.md",
+        "docs/work/automated-build/PROGRESS.md"
+      ],
+      "steps": [
+        "Read START_HERE.md and the contracts in IMPLEMENTATION_PLAN.md. Work in the Dokima repository, not Attest. Do not start a live model run.",
+        "Record git HEAD, git status, Node and pnpm versions. Use Node 22 and pnpm 11. Read the repository instructions before installing dependencies. Preserve unrelated changes.",
+        "Run the full gate commands listed in START_HERE.md once. Capture exit codes, duration and test totals. Record pre-existing failures separately; never call a failed baseline green.",
+        "Register only the next card in plan.json before implementing it. Map AB ids to unused repository ticket ids and record that mapping. For autonomy wiring, extend/split W13-32 with linked children rather than duplicate it. Include actual touched exports, test files and composition roots in scope.",
+        "Keep the new work out of the existing unattended conductor until its ticket mapping and first claim are correct. Claim through the normal repository process. No source changes in this card."
+      ],
+      "acceptance": [
+        "BASELINE.md records the checkout and every gate outcome, including skips and failures.",
+        "PROGRESS.md contains AB ids, repository ticket mapping, status, commits and evidence slots. Nothing is marked implemented."
+      ],
+      "focused_command": "node scripts/validate-plan.mjs"
+    },
+    {
+      "id": "AB-01",
+      "title": "Define the approved-run policy and pause rules",
+      "status": "planned",
+      "depends_on": [
+        "AB-00"
+      ],
+      "existing_files": [
+        "packages/harbormaster/src/autonomy.ts",
+        "packages/harbormaster/src/autonomy-types.ts",
+        "packages/harbormaster/src/review-queue-classifier.ts",
+        "packages/harbormaster/src/breakpoints-clarifications.ts",
+        "docs/DECISIONS.md"
+      ],
+      "proposed_files": [
+        "packages/harbormaster/src/approved-build-policy.ts",
+        "packages/harbormaster/src/approved-build-policy.test.ts",
+        "docs/work/automated-build/PAUSE_SITES.md"
+      ],
+      "steps": [
+        "Inventory actual callers with rg, not just exported helpers. In this reviewed checkout askClarification and resolvePauseAction did not have the expected production wiring. Record missing callers honestly.",
+        "Implement a pure decision function using the pause table in IMPLEMENTATION_PLAN.md. Inputs come from runtime-owned approved policy and action facts; never accept a model field such as safe=true as authorization.",
+        "Use isNeverAutoPauseSite and existing classifier. Do not change their protected sets. An ordinary bounded coding/test/repair action needs no clarification. Unclear requirements are not ordinary implementation choices.",
+        "Keep resolvePauseAction compatibility for old callers; put new opted-in behavior behind a versioned approved-build policy. Missing or legacy settings select the old interactive behavior.",
+        "Record that D-032 review is completed only for the enumerated cases. Any unenumerated pause remains human-gated. Do not blanket-dismiss existing clarification rows."
+      ],
+      "acceptance": [
+        "Table-driven tests cover every pause-table row in auto and interactive modes.",
+        "Unknown kind, forged safe flag, missing approval, changed scope, higher budget, and protected actions cannot auto-proceed.",
+        "Routine implementation inside an approved scope can proceed without an extra approval."
+      ],
+      "focused_command": "pnpm exec vitest run packages/harbormaster/src/approved-build-policy.test.ts packages/harbormaster/src/autonomy.test.ts packages/harbormaster/src/review-queue-classifier.test.ts --retry=0"
+    },
+    {
+      "id": "AB-02",
+      "title": "Persist approval of the exact build inputs",
+      "status": "planned",
+      "depends_on": [
+        "AB-01"
+      ],
+      "existing_files": [
+        "apps/server/src/api/server/runs-routes.ts",
+        "apps/server/src/cli/run-build.ts",
+        "packages/pipeline/src/phases/revision.ts",
+        "packages/pipeline/src/phases/staleness.ts",
+        "packages/events/src/index.ts"
+      ],
+      "proposed_files": [
+        "apps/server/src/cli/approved-build.ts",
+        "apps/server/src/cli/approved-build.test.ts"
+      ],
+      "steps": [
+        "Reuse existing phase/decision receipts to establish approved design and stories. Inspect their real types first. An artifact existing on disk is not proof that the user approved it.",
+        "Build a canonical input digest for design, stories, acceptance, ticket dependency/write scopes, model policy and budget. Store a versioned approval event with the human actor and those digests. Do not include credentials.",
+        "Use a new explicit opt-in at the existing build-start API; old autonomy=auto alone is insufficient. Do not create a new unrelated settings store.",
+        "Validate the approval in a shared function invoked from executeBuildRun so CLI and HTTP cannot disagree. Refuse an invalid snapshot before claiming any ticket. Approval is tied to this project/run intent.",
+        "On a resumed run permit completed statuses and new evidence to change; hash the approved specification, not mutable execution status. Any material specification change needs renewed approval. Carry the validated policy into the runtime, not the raw HTTP body."
+      ],
+      "acceptance": [
+        "API and CLI refuse missing/stale approval before claims on the opted-in path.",
+        "Changing story text, acceptance, write scope, model policy or budget invalidates the approval; ticket progress does not.",
+        "Legacy runs preserve existing behavior; a legacy auto flag cannot turn on the new pipeline."
+      ],
+      "focused_command": "pnpm exec vitest run apps/server/src/cli/approved-build.test.ts apps/server/src/api/server/runs-routes.test.ts --retry=0"
+    },
+    {
+      "id": "AB-03",
+      "title": "Give the reviewer the actual source change",
+      "status": "planned",
+      "depends_on": [
+        "AB-02"
+      ],
+      "existing_files": [
+        "packages/harbormaster/src/loop-review.ts",
+        "packages/harbormaster/src/loop-review.test.ts",
+        "packages/harbormaster/src/loop-gates-verify.ts",
+        "packages/git/src/index.ts"
+      ],
+      "proposed_files": [
+        "packages/harbormaster/src/review-evidence.ts",
+        "packages/harbormaster/src/review-evidence.test.ts"
+      ],
+      "steps": [
+        "Build a runtime-owned review evidence bundle from the ticket worktree and validated base/head commits. Include a real diff, acceptance criteria, relevant bounded source context, independent verify result, and the source digest.",
+        "Resolve refs using existing git utilities and argument arrays. Do not interpolate model text into shell commands. Disable external git diff helpers/text conversion when reading untrusted repo content.",
+        "Redact secrets before sending data to the reviewer and before ledgering summaries. Keep byte/token limits. If relevant changes exceed the limit, mark the review incomplete; do not silently approve an omitted diff.",
+        "Pass the bundle to reviewPrompt. Existing prompt lists filenames/commits but no diff; fix the real function, not a second helper with no caller.",
+        "Bind verdict events to the reviewed head and input digest. Reject stale evidence when the worktree changes between evidence collection and decision. Preserve the independently executed verify result as authoritative."
+      ],
+      "acceptance": [
+        "A fake reviewer captures a prompt containing the planted changed line, not merely its filename.",
+        "Passing tests plus an insecure code change remain visible to the reviewer.",
+        "Secrets are redacted; oversized/dirty/stale evidence cannot produce an eligible automated acceptance.",
+        "A nonzero independent verify result cannot be overridden by model CONFIRMED."
+      ],
+      "focused_command": "pnpm exec vitest run packages/harbormaster/src/review-evidence.test.ts packages/harbormaster/src/loop-review.test.ts --retry=0"
+    },
+    {
+      "id": "AB-04",
+      "title": "Run real security tools and preserve their results",
+      "status": "planned",
+      "depends_on": [
+        "AB-03"
+      ],
+      "existing_files": [
+        "apps/server/src/api/pipeline/onboard-dispatch-port.ts",
+        "apps/server/src/api/pipeline/onboard-run.ts",
+        "content/validators/secrets-scan.sh",
+        "packages/harbormaster/src/sandbox/index.ts",
+        "packages/validators/src/run.ts"
+      ],
+      "proposed_files": [
+        "packages/harbormaster/src/security-checks.ts",
+        "packages/harbormaster/src/security-checks.test.ts"
+      ],
+      "steps": [
+        "Implement a small runtime tool registry: static analysis, secrets, and dependency audit for the first supported Node web-app profile. Inspect bundled scripts before reuse. Never edit signed content files by hand.",
+        "Run tools through the existing sandbox with fixed executable/argument templates, deadlines and bounded output. Tool commands are selected by trusted adapter code, not generated by a model. Do not substitute verify=true.",
+        "Use structured results and adapter-specific exit-code interpretation. Tool found vulnerabilities is different from tool failed to run. Missing executable, missing rules/database, timeout, invalid JSON and unavailable network produce ERROR/UNAVAILABLE, not PASS.",
+        "Run dependency audit only under the selected network policy. Local-only needs an available local advisory snapshot to claim a completed audit; otherwise disclose unavailable coverage. Never silently call a cloud advisory service.",
+        "Expose the same tool registry to both onboard analysis and the build verification path. Model specialists receive actual tool results for interpretation; a specialist named semgrep-runner is not itself evidence Semgrep ran.",
+        "CI injects process results/fixtures; a separate opt-in smoke run may exercise installed tools. No auto-installation or downloaded rule changes in unit tests."
+      ],
+      "acceptance": [
+        "Fixtures distinguish clean scan, findings, timeout, unavailable tool and malformed output.",
+        "A planted defect is detected by an actual selected tool in the opt-in smoke path; mocked adapter tests alone are not reported as that proof.",
+        "Local-only policy prevents network access; absent advisory data is visible and blocks a required dependency check.",
+        "Both onboard and build paths invoke the registry; plain model completion cannot manufacture scanner evidence."
+      ],
+      "focused_command": "pnpm exec vitest run packages/harbormaster/src/security-checks.test.ts --retry=0"
+    },
+    {
+      "id": "AB-05",
+      "title": "Declare security dependencies and applicability",
+      "status": "planned",
+      "depends_on": [
+        "AB-04"
+      ],
+      "existing_files": [
+        "packages/pipeline/src/modes/security-cluster.ts",
+        "packages/pipeline/src/modes/onboard.ts",
+        "packages/pipeline/src/modes/types.ts",
+        "packages/pipeline/src/run/run-onboard.ts"
+      ],
+      "proposed_files": [
+        "packages/pipeline/src/modes/security-plan.ts",
+        "packages/pipeline/src/modes/security-plan.test.ts"
+      ],
+      "steps": [
+        "Keep the seven existing general onboarding steps sequential for this first release. Optimize security groups first; do not rewrite the whole six-phase product pipeline.",
+        "Define the exact graph in IMPLEMENTATION_PLAN.md using existing step ids. Add an exported plan representation instead of discovering hidden topology through fake execution for the new async path.",
+        "Classify applicability from a runtime-owned project profile and file inventory. OWASP web applies to the web-app profile; LLM checks to apps integrating LLM features; cloud/IaC to relevant deployed/configured surfaces. Unknown applicability stays required or unresolved, never silently skipped.",
+        "Represent a supported skip as NOT_APPLICABLE with reason and inventory digest. Do not count it as a passed scan. Synthesis must know missing and skipped categories.",
+        "Validate unique ids, known predecessors, no cycles, and no same-output writers in a concurrent group before any model/tool call."
+      ],
+      "acceptance": [
+        "Security graph has no missing/cyclic edges; attack synthesis waits for every applicable specialist result.",
+        "Cloud/IaC absence produces an explicit reason; unknown detection never becomes a clean security result.",
+        "Existing seven-step onboarding output remains compatible."
+      ],
+      "focused_command": "pnpm exec vitest run packages/pipeline/src/modes/security-plan.test.ts packages/pipeline/src/modes/security-cluster.test.ts packages/pipeline/src/run/run-onboard.test.ts --retry=0"
+    },
+    {
+      "id": "AB-06",
+      "title": "Share endpoint limits across coding and review",
+      "status": "planned",
+      "depends_on": [
+        "AB-05"
+      ],
+      "existing_files": [
+        "apps/server/src/cli/run-build-spawn.ts",
+        "apps/server/src/cli/review-pass.ts",
+        "apps/server/src/api/pipeline/onboard-dispatch-port.ts",
+        "packages/gateway/src/pool/gateway-pool.ts",
+        "packages/gateway/src/providers/request-queue.ts"
+      ],
+      "proposed_files": [
+        "apps/server/src/cli/shared-gateway-pool.ts",
+        "apps/server/src/cli/shared-gateway-pool.test.ts"
+      ],
+      "steps": [
+        "Move the existing SHARED_GATEWAY_POOL ownership into one shared composition module. Import that same instance in coding, review and onboard dispatch paths. Do not construct one pool per call.",
+        "Normalize endpoint identity so two role/provider aliases targeting one endpoint share a limit. Keep secrets out of keys. Test trailing slash/base URL normalization explicitly.",
+        "Default to one active model request per endpoint. Permit a validated explicit limit for capable endpoints; do not assume all cloud endpoints accept unlimited work.",
+        "Preserve existing adapter queues and rate-limit handling. Avoid acquiring the same non-reentrant pool twice for one request; one outer pool acquisition per real request.",
+        "Keep CPU scanner concurrency separate. Check that stop/timeout releases slots and that errors cannot leak active counts. If shared scheduler lacks cancellation, add it with a regression before relying on immediate cancellation."
+      ],
+      "acceptance": [
+        "Two roles sharing an endpoint never exceed one default active request even if providers are constructed separately.",
+        "Two distinct endpoints can overlap; failed/cancelled requests do not wedge the pool.",
+        "Coding, review and onboard production call paths all use the shared pool."
+      ],
+      "focused_command": "pnpm exec vitest run apps/server/src/cli/shared-gateway-pool.test.ts packages/gateway/src/pool/gateway-pool.test.ts packages/gateway/src/providers/request-queue.test.ts --retry=0"
+    },
+    {
+      "id": "AB-07",
+      "title": "Execute security checks in bounded groups",
+      "status": "planned",
+      "depends_on": [
+        "AB-06"
+      ],
+      "existing_files": [
+        "apps/server/src/api/pipeline/onboard-executor.ts",
+        "apps/server/src/api/pipeline/onboard-executor.test.ts",
+        "packages/validators/src/run.ts"
+      ],
+      "proposed_files": [
+        "packages/harbormaster/src/check-scheduler.ts",
+        "packages/harbormaster/src/check-scheduler.test.ts"
+      ],
+      "steps": [
+        "Implement the scheduling algorithm in IMPLEMENTATION_PLAN.md using injected execute callbacks. Keep model routing in apps/server; packages must not import apps.",
+        "Run ready independent nodes under a finite worker pool. Scanner concurrency starts at the existing validator pool limit; model requests also pass the endpoint limiter.",
+        "Each node reads only its completed predecessor artifacts and a fixed source snapshot. Never hand out a mutable shared cache while other workers are writing.",
+        "Persist started/completed/failed events as work occurs through the existing single writer. Await all started work on failure/stop before returning; no orphan promises.",
+        "Wire the scheduler to real onboard execution and export it for build checks. Preserve public result fields where practical. Update tests that intentionally asserted obsolete serial security order; retain dependency assertions.",
+        "Report complete, incomplete and failed distinctly. A failure must not mint an all-clear coverage/gate receipt or final completed plan."
+      ],
+      "acceptance": [
+        "Deferred-promise tests prove independent scanner overlap and predecessor ordering without flaky wall-clock assertions.",
+        "Source mutation, failure, thrown dispatch and stop do not yield a clean final result.",
+        "A runtime integration test traverses the actual onboard entry point, not only the scheduler helper."
+      ],
+      "focused_command": "pnpm exec vitest run packages/harbormaster/src/check-scheduler.test.ts apps/server/src/api/pipeline/onboard-executor.test.ts --retry=0"
+    },
+    {
+      "id": "AB-08",
+      "title": "Invalidate dependent evidence on retry",
+      "status": "planned",
+      "depends_on": [
+        "AB-07"
+      ],
+      "existing_files": [
+        "apps/server/src/api/pipeline/onboard-executor.ts",
+        "packages/harbormaster/src/review-status.ts"
+      ],
+      "proposed_files": [
+        "packages/harbormaster/src/check-evidence.ts",
+        "packages/harbormaster/src/check-evidence.test.ts"
+      ],
+      "steps": [
+        "Implement canonical evidence keys from source tree, command/args, tool/rules version, configuration and predecessor result digests. Start with the whole relevant source tree rather than clever incomplete dependency hashing.",
+        "On a failed step retry, invalidate all transitive descendants. If a previously successful predecessor changes output, recompute its descendants too.",
+        "Reuse only successful runtime-owned evidence whose exact key still matches and whose artifact exists and hashes correctly. Never reuse model prose as a signed scanner pass.",
+        "Keep initial reuse run-scoped and optionally persisted via existing events/artifacts for restart. Defer a global cross-project cache. Missing version/digest means rerun.",
+        "Update reviewStatusFor so an old CONFIRMED cannot remain current after reject/new close/new source revision. Render it as stale or never-reviewed until a fresh matching verdict arrives."
+      ],
+      "acceptance": [
+        "An upstream failure followed by success reruns attack-chain/threat-model descendants.",
+        "Unchanged independent work is not repeated in the same retry round.",
+        "Changed rules/config/source/missing output invalidates reuse; old verdict cannot authorize new code."
+      ],
+      "focused_command": "pnpm exec vitest run packages/harbormaster/src/check-evidence.test.ts packages/harbormaster/src/review-status.test.ts apps/server/src/api/pipeline/onboard-executor.test.ts --retry=0",
+      "prerequisite_created_files": [
+        "packages/harbormaster/src/check-scheduler.ts (created by AB-07)"
+      ]
+    },
+    {
+      "id": "AB-09",
+      "title": "Consolidate findings into one repair batch",
+      "status": "planned",
+      "depends_on": [
+        "AB-08"
+      ],
+      "existing_files": [
+        "apps/server/src/api/pipeline/onboard-types.ts",
+        "apps/server/src/api/pipeline/onboard-board-lifecycle.ts",
+        "packages/harbormaster/src/loop-review.ts"
+      ],
+      "proposed_files": [
+        "packages/harbormaster/src/repair-findings.ts",
+        "packages/harbormaster/src/repair-findings.test.ts"
+      ],
+      "steps": [
+        "Add the normalized Finding record described in IMPLEMENTATION_PLAN.md. Preserve original tool/reviewer records and origin ids.",
+        "Deduplicate exact findings by check/rule, normalized relative path, location and evidence fingerprint. Retain all origins. Do not merge unrelated vulnerabilities because titles sound similar.",
+        "Group open findings by owning ticket/write scope. A repair outside approved scope becomes an explicit scoped proposal, not a silent scope extension.",
+        "Include required verification check ids in the repair batch. Model-suggested commands are suggestions; trusted runtime chooses executable checks.",
+        "Keep unverified specialist hypotheses distinguishable from confirmed tool defects. Consolidation must not promote a hypothesis to proven defect or erase it silently."
+      ],
+      "acceptance": [
+        "Two identical tool findings produce one repair with two origins.",
+        "Similar titles at different paths/locations remain separate.",
+        "Out-of-scope repair is parked with evidence; invalid paths and missing verification cannot pass normalization."
+      ],
+      "focused_command": "pnpm exec vitest run packages/harbormaster/src/repair-findings.test.ts --retry=0"
+    },
+    {
+      "id": "AB-10",
+      "title": "Make review return structured, fresh decisions",
+      "status": "planned",
+      "depends_on": [
+        "AB-09"
+      ],
+      "existing_files": [
+        "packages/harbormaster/src/loop-review.ts",
+        "apps/server/src/cli/review-pass.ts",
+        "packages/harbormaster/src/review-status.ts",
+        "packages/harbormaster/src/index.ts"
+      ],
+      "proposed_files": [
+        "packages/harbormaster/src/review-decision.test.ts"
+      ],
+      "steps": [
+        "Expose a one-ticket review operation; retain runReviewPass as a compatibility wrapper. Allow selecting current-run ticket ids so old in_review tickets are not reprocessed by accident.",
+        "Return a structured decision containing reviewed head/input digest, independent check statuses, normalized findings and model/identity provenance. Keep existing human-readable verdict events compatible.",
+        "Independent check failure dominates the verdict. Parse failure, same maker model, missing reviewer, truncated evidence and unavailable required scan are inconclusive, never automated success.",
+        "Use a genuine dedicated reviewer machine identity minted by the runtime. Do not attribute machine review/acceptance to the human who started the build. Keep makerModels refusal across every rung.",
+        "For independent specialist reviews over a fixed snapshot, call the common scheduler. Keep one final consolidated decision after all required results arrive."
+      ],
+      "acceptance": [
+        "Maker identity/model cannot review its own work, including maker models used during escalation.",
+        "A fresh complete review returns an eligible decision; every unavailable/stale/inconclusive condition returns an ineligible one.",
+        "Current-run selection does not review unrelated parked tickets."
+      ],
+      "focused_command": "pnpm exec vitest run packages/harbormaster/src/review-decision.test.ts packages/harbormaster/src/loop-review.test.ts --retry=0"
+    },
+    {
+      "id": "AB-11",
+      "title": "Automatically repair a rejected ticket with a bounded loop",
+      "status": "planned",
+      "depends_on": [
+        "AB-10"
+      ],
+      "existing_files": [
+        "packages/tickets/src/reject.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/loop-land-session.ts",
+        "packages/harbormaster/src/loop-land-repetition.ts"
+      ],
+      "proposed_files": [
+        "packages/harbormaster/src/build-repair-loop.ts",
+        "packages/harbormaster/src/build-repair-loop.test.ts"
+      ],
+      "steps": [
+        "Use the existing rejectTicket verb under the reviewer identity to return in_review work to ready. Never write ticket status directly and never impersonate the maker to reject.",
+        "Pass the normalized repair batch into the next maker handoff via existing rejection feedback. Retain the ticket worktree and verified base; do not reset/delete user work.",
+        "Limit automatic review-repair rounds to 3 total by default, additionally constrained by existing session/token/time budgets. An existing tighter bound wins. Track the count durably per ticket/source lineage so restart does not reset it.",
+        "After each repair rerun affected checks and their dependencies, close through the existing gate, and review the new head. One maker writer per ticket; reviewer checks can be grouped.",
+        "If findings and source are unchanged for two attempts, stop early. Provider outage is not a code defect: use bounded infrastructure handling without multiplying nested retries.",
+        "On exhaustion or scope/policy conflict, retain artifacts and emit one actionable decision with attempted fixes and remaining defects. Other independent tickets may continue."
+      ],
+      "acceptance": [
+        "Planted failing check -> review rejection -> maker fix -> independent rerun -> fresh confirmed result occurs without a person intervening.",
+        "Persistent defect ends at the bound; restart cannot grant 3 new rounds.",
+        "Maker cannot reject as verifier; out-of-scope changes never auto-expand the ticket."
+      ],
+      "focused_command": "pnpm exec vitest run packages/harbormaster/src/build-repair-loop.test.ts packages/tickets/src/reject.test.ts --retry=0"
+    },
+    {
+      "id": "AB-12",
+      "title": "Review and accept between tickets so dependents unlock",
+      "status": "planned",
+      "depends_on": [
+        "AB-11"
+      ],
+      "existing_files": [
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/loop-land-base.ts",
+        "packages/harbormaster/src/berths.ts",
+        "packages/tickets/src/verbs.ts",
+        "packages/tickets/src/reflow.ts",
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/cli/run-build-berths.ts"
+      ],
+      "proposed_files": [
+        "packages/harbormaster/src/verified-ticket-decision.ts",
+        "packages/harbormaster/src/verified-ticket-decision.test.ts"
+      ],
+      "steps": [
+        "Inject one post-close verify/review/repair/accept operation into the common one-ticket engine used by both sequential and berth execution. Do not wait until executeBuildRun returns to review required predecessor work.",
+        "On a fresh eligible decision and opted-in approved policy, call the existing acceptTicket under the real reviewer identity. Validate the current receipt and head immediately before acceptance. Inconclusive decisions stay in_review.",
+        "After acceptance let existing reflow discover newly ready dependents. Keep depsDone requiring done; never treat in_review as accepted to make a demo finish.",
+        "Build dependents from existing accepted-dependency base composition. Main/master merge remains a separate decision. Fix an integration conflict on an isolated composed branch only within approved scope.",
+        "Keep the legacy final review pass only for unreviewed/legacy cases; it must not duplicate the fresh post-close review.",
+        "Check both berths=1 and berths>1. Preserve same-lane and overlapping-write serialization. Wire budget/stop checks before every new ticket and repair attempt."
+      ],
+      "acceptance": [
+        "Three dependent tickets build, verify and become done in order without per-ticket human acceptance under opted-in policy.",
+        "The same test leaves main unchanged; the dependent sees its predecessor source.",
+        "A red/stale/missing review blocks acceptance and dependents, while an unrelated ticket can proceed.",
+        "Sequential and multi-berth production paths have equivalent acceptance behavior."
+      ],
+      "focused_command": "pnpm exec vitest run packages/harbormaster/src/verified-ticket-decision.test.ts packages/harbormaster/src/loop-land.test.ts packages/harbormaster/src/loop-land-base.test.ts --retry=0"
+    },
+    {
+      "id": "AB-13",
+      "title": "Persist run state, stop requests and resumable progress",
+      "status": "planned",
+      "depends_on": [
+        "AB-12"
+      ],
+      "existing_files": [
+        "apps/server/src/api/server/runs-job.ts",
+        "apps/server/src/api/server/runs-routes.ts",
+        "packages/harbormaster/src/breakpoints-runs.ts",
+        "packages/harbormaster/src/resume.ts"
+      ],
+      "proposed_files": [
+        "apps/server/src/api/server/approved-build-run-state.ts",
+        "apps/server/src/api/server/approved-build-run-state.test.ts"
+      ],
+      "steps": [
+        "Reuse existing RunRecord/events for HTTP-started runs. The current buildRuns and stopRequests Maps may remain caches, but must not be the only source of status or stop intent.",
+        "Persist accepted start before dispatch. Validate run-id/project ownership and make repeated start with same id idempotent. Refuse a conflicting duplicate instead of starting a second writer.",
+        "Persist phase/check/repair progress and terminal outcome; distinguish completed verification, awaiting decision, stopped, failed and interrupted. Exit 0 alone is not build completion.",
+        "On restart mark orphan running work interrupted and offer/resume only through existing drift checks with the same approved snapshot and budgets. Do not replay publication, acceptance or completed external actions.",
+        "Stop prevents new tasks promptly; describe whether in-flight work drains or is cancelled. Use existing watchdog/sandbox termination for hard timeout. Close the event log only after started workers settle."
+      ],
+      "acceptance": [
+        "Recreate the server/job module after a simulated crash: status remains visible and retry counters survive.",
+        "Duplicate start does not create duplicate work; cross-project run id cannot read/control another project.",
+        "Stop survives restart and blocks new work until explicit resume."
+      ],
+      "focused_command": "pnpm exec vitest run apps/server/src/api/server/approved-build-run-state.test.ts apps/server/src/api/server/runs-routes.test.ts --retry=0"
+    },
+    {
+      "id": "AB-14",
+      "title": "Expose one approval and a readable build experience",
+      "status": "planned",
+      "depends_on": [
+        "AB-13"
+      ],
+      "existing_files": [
+        "apps/web/src/settings/AutonomyBudgetPanel.tsx",
+        "apps/web/src/settings/AutonomyBudgetPanel.test.tsx",
+        "apps/web/src/board/RunSummary.tsx",
+        "apps/web/src/notifications/TicketEvidence.tsx",
+        "apps/server/src/api/server/autonomy-budget-routes.ts"
+      ],
+      "proposed_files": [
+        "apps/web/src/board/ApprovedBuildPanel.tsx",
+        "apps/web/src/board/ApprovedBuildPanel.test.tsx"
+      ],
+      "steps": [
+        "Add a reachable approved-build confirmation to the existing start flow. Show design/story revision, scope, model choices, budget and what still requires a decision. It must issue the versioned approval/start request from AB-02.",
+        "Wire the new component into the actual board route that owns Start run; locate and include that parent file in the ticket scope before coding. An unmounted component does not satisfy this card.",
+        "Show Building, Checking, Fixing, Ready to review, Needs your decision and Stopped from durable state. Show one consolidated findings/decision summary with drill-down to receipts.",
+        "Expose Stop/Resume and a working preview or explicit preview-unavailable reason. Use the existing preview/artifact surface if present; do not embed a second IDE.",
+        "Update the autonomy panel copy only after the new behavior is wired. Existing auto selections require the new confirmation. Publication/main merge remains visibly separate.",
+        "If only one maker/reviewer model is available, explain before launch that independent machine review needs another model or human review; never advertise a fully unattended finish in that configuration."
+      ],
+      "acceptance": [
+        "The real UI can start an approved run and display a build/check/fix sequence.",
+        "Reload restores progress and decisions from server state.",
+        "No repeated routine confirmation; protected decision remains visible; keyboard navigation works."
+      ],
+      "focused_command": "pnpm exec vitest run apps/web/src/board/ApprovedBuildPanel.test.tsx apps/web/src/settings/AutonomyBudgetPanel.test.tsx --retry=0"
+    },
+    {
+      "id": "AB-15",
+      "title": "Remove duplicate developer gates without dropping coverage",
+      "status": "planned",
+      "depends_on": [
+        "AB-14"
+      ],
+      "existing_files": [
+        "scripts/run-validators.mjs",
+        "conductor.config.json",
+        "CLAUDE.md",
+        "PLAYBOOK.md",
+        "package.json"
+      ],
+      "proposed_files": [
+        "scripts/gate-plan.mjs",
+        "scripts/gate-plan.test.mjs",
+        "docs/work/automated-build/GATE_TIMINGS.md"
+      ],
+      "steps": [
+        "Treat this as a separate repository-development optimization, not a product scheduler change. First inspect all gate definitions in conductor.config.json and CI; list exact duplicate executions and dependency constraints.",
+        "Parallelize only independent read-only source validators with bounded child processes and stable grouped output. Keep aggregate exit nonzero if any child fails. Preserve configured ratchet arguments.",
+        "Keep validate-temp-leaks after every test process settles. Do not put it in the parallel group; it inspects machine state and would misclassify live workers.",
+        "Do not remove full per-ticket checks in this initial handoff. Measure affected-check selection in shadow/report-only mode first. Receipt-independent reviewer reruns are intentional until evidence-sharing receives its own trust test.",
+        "Update instructions to match the actual parallel command only after equivalent failure detection is demonstrated. Do not weaken ratchets, omit tests, or raise timeouts as a performance fix."
+      ],
+      "acceptance": [
+        "A deliberately failing validator fails the whole gate while preserving all group output.",
+        "Ratchet arguments match the serial baseline; temp leak check starts only after workers exit.",
+        "Before/after timings include identical input snapshot and check set. No speedup is claimed without measurement."
+      ],
+      "focused_command": "node --test scripts/gate-plan.test.mjs"
+    },
+    {
+      "id": "AB-16",
+      "title": "Prove the complete workflow through the real entry points",
+      "status": "planned",
+      "depends_on": [
+        "AB-15"
+      ],
+      "existing_files": [
+        "apps/web/e2e/fixtures/fake-model-gateway.ts",
+        "apps/web/e2e/plans.spec.ts",
+        "apps/web/e2e/decisions-resume.spec.ts",
+        "apps/server/src/api/server/runs-routes.test.ts"
+      ],
+      "proposed_files": [
+        "apps/web/e2e/approved-build.spec.ts",
+        "docs/work/automated-build/ACCEPTANCE_REPORT.md"
+      ],
+      "steps": [
+        "Create a small Node web-app fixture with 3 dependent tickets and 1 independent ticket. Seed an insecure/failing implementation on the first maker attempt and a correct repair on the next fake response.",
+        "Drive the actual HTTP/UI start route, executeBuildRun, ticket engine, scanner adapters, reviewer, repair and acceptance. Fake only external model/tool processes where necessary; do not mock the orchestrator into returning done.",
+        "Assert dependency source inheritance, source-bound verification, machine identity separation, repair counts and grouped scanner overlap.",
+        "Add distinct red scenarios for same-model review, false model approval, missing scanner, exhausted repair, stale receipt, restart, duplicate start, changed approval and separate main/deploy decision.",
+        "Run full gates with retries disabled for the new scenarios at least once so a flaky first attempt is visible. Record actual counts and limitations, not expected counts."
+      ],
+      "acceptance": [
+        "End-to-end happy path reaches verified preview with no routine intervention and no main merge.",
+        "Every red scenario ends in the stated non-success status and preserves evidence.",
+        "Acceptance report links real commands/results and names any untested external behavior."
+      ],
+      "focused_command": "pnpm --filter @dokima/web exec playwright test approved-build.spec.ts --workers=1 --retries=0"
+    },
+    {
+      "id": "AB-17",
+      "title": "Measure model lift and conduct a bounded pilot",
+      "status": "planned",
+      "depends_on": [
+        "AB-16"
+      ],
+      "existing_files": [
+        "docs/dogfood/DOGFOOD_REPORT.md",
+        "docs/TESTING.md",
+        "docs/RELEASE_TRACKER.md"
+      ],
+      "proposed_files": [
+        "docs/work/automated-build/EVALUATION_PROTOCOL.md",
+        "docs/work/automated-build/EVALUATION_RESULTS.md"
+      ],
+      "steps": [
+        "First write the benchmark protocol with the exact tasks and scoring before collecting results. Use 5 small web-app tasks, each with a change request, three repeats per configuration.",
+        "Compare same model/runtime on the same inputs with and without Dokima guardrails. Keep hardware, model settings and task tests fixed. Include a known-defect ground truth and hidden acceptance tests.",
+        "Record completed acceptance criteria, false blocks, defect recall/false positives, wall time, calls/tokens/cost, retries, human interventions and whether main was changed. Infrastructure failures remain in denominators with their own label.",
+        "Do not launch paid models or recruit/message users from this coding handoff. Produce runnable evaluation instructions; run live only within explicitly supplied endpoints/budgets. Network-free CI stays separate.",
+        "For private beta require all mechanical red tests passing, reproducible supported configuration, zero false automatic acceptances in the bounded test set, and at least one observed novice finishing the journey. Describe these as limited pilot evidence, not security certification.",
+        "If thresholds fail, file specific reproduction tickets instead of expanding product scope or tweaking scoring after the fact."
+      ],
+      "acceptance": [
+        "Protocol is executable with a named configuration and fixed scoring.",
+        "Results distinguish not-run, fixture-only, live-model and novice-observed evidence.",
+        "Only observed findings appear in release claims."
+      ],
+      "focused_command": "Documentation review; live evaluation is a separate explicitly budgeted operation."
+    },
+    {
+      "id": "AB-18",
+      "title": "Port the proven review grouping to Attest",
+      "status": "planned",
+      "depends_on": [
+        "AB-17"
+      ],
+      "existing_files": [],
+      "proposed_files": [],
+      "steps": [
+        "Work in /Users/bmatthews/Code/attest only after Dokima AB-16 is green. Read its own instructions and current git status first. Do not copy Dokima package imports into Attest.",
+        "Inspect scripts/conductor/conductor.mjs runReviewRound and its conductor tests. Capture one fixed implementation head and prepare distinct reviewer report paths before dispatch.",
+        "Replace the serial reviewer loop with a small bounded pool appropriate to the configured endpoint/model runner. Preserve reviewer selection, archiveStaleReview, missing-verdict refusal, independent identities and fix-before-reverify order.",
+        "Wait for the whole review group, consolidate results in deterministic order, then run the existing fix loop. No reviewer writes implementation; no fixes race with active reviews.",
+        "Add a shared budget/stop path if missing; do not multiply concurrent sessions beyond authorized capacity. Keep the original serial limit as the default for a single constrained local model.",
+        "Run conductor regression tests and the repository-required checks. Release/version/content-pack updates are a subsequent deliberate action, not automatic collateral work."
+      ],
+      "acceptance": [
+        "Independent fake reviewer sessions overlap at limit>1 and stay serial at limit=1.",
+        "Failure/missing report still blocks, report paths do not collide, repair waits for every started reviewer.",
+        "Attest regression tests pass without modifying Dokima signed content."
+      ],
+      "focused_command": "node --test scripts/conductor/conductor.test.mjs scripts/conductor/conductor.hardening.test.mjs"
+    }
+  ]
+}

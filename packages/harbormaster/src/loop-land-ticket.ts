@@ -46,10 +46,7 @@ import {
 import { beginRungAttempt, consultRungZero } from './loop-land-rungs.js';
 import { fallBackToRememberedRung, startAttemptFor } from './loop-land-rungmemory.js';
 import { fireVerbMirror } from './loop-land-verbs.js';
-import {
-  preflightClaimedTicket,
-  releaseUnlessTakenOver,
-} from './loop-land-preflight.js';
+import { preflightClaimedTicket, releaseUnlessTakenOver } from './loop-land-preflight.js';
 import {
   parkBeforeAttempting,
   requireTicket,
@@ -74,8 +71,16 @@ export async function processTicket(
   ticket: Ticket,
   baseRef: string,
 ): Promise<LandLoopTicketOutcome> {
-  claimTicket(options.log, { ticketId: ticket.id, actorId: options.actorId }, { runId: options.runId ?? null });
-  startTicket(options.log, { ticketId: ticket.id, actorId: options.actorId }, { runId: options.runId ?? null });
+  claimTicket(
+    options.log,
+    { ticketId: ticket.id, actorId: options.actorId },
+    { runId: options.runId ?? null },
+  );
+  startTicket(
+    options.log,
+    { ticketId: ticket.id, actorId: options.actorId },
+    { runId: options.runId ?? null },
+  );
   let worktree: WorktreeHandle;
   try {
     worktree = await resolveWorktree(options, ticket, baseRef);
@@ -132,7 +137,11 @@ export async function landClaimedTicket(
   // W13-29: the previous attempt's gaps — see `loop-land-session.ts`.
   // W16-03: seeded by the R0 consult when the playbook already holds a verified
   // answer. W22-10: plus what the gate observed in an earlier RUN, from the log.
-  let feedback = withObservedGateOutput(await consultRungZero(options, ticket), options.log, ticket.id);
+  let feedback = withObservedGateOutput(
+    await consultRungZero(options, ticket),
+    options.log,
+    ticket.id,
+  );
   // W13-27: infra failures retry free — see `loop-land-infra.ts`.
   const freeRetry = createFreeRetryGate(options, ticket.id, ceiling);
   let current = requireTicket(options.log, ticket.id);
@@ -142,7 +151,8 @@ export async function landClaimedTicket(
   let decideCard: ReturnType<typeof tokenBoundaryDecideCard> | undefined;
 
   // W21-46/55: a failed rung shifts the RUNG, never the attempt budget.
-  let rungOffset = startAttemptFor(options.log, ticket.id, options.actorId, options.runId) - 1;
+  let rungOffset =
+    startAttemptFor(options.log, ticket.id, options.actorId, options.runId) - 1;
   for (
     let attempt = 1;
     attempt <= freeRetry.limit() && current.status === 'in_progress';
@@ -165,7 +175,13 @@ export async function landClaimedTicket(
     }
     // W16-01: which rung this attempt runs at (the chapter also ledgers a
     // climb, evidence attached). Without a seam, options come back untouched.
-    const rungStart = await beginRungAttempt(options, policy, ticket.id, attempts, rungOffset);
+    const rungStart = await beginRungAttempt(
+      options,
+      policy,
+      ticket.id,
+      attempts,
+      rungOffset,
+    );
     // W21-44: the ledger marker this attempt's tool calls are counted from.
     const attemptStartSeq = latestSeq(options.log);
     const { session, closeGate, infraFailure, silent } = await attemptOnce(
@@ -210,7 +226,11 @@ export async function landClaimedTicket(
         policy,
         attempt,
       }) &&
-      parkIfAttemptedNothing({ ...options, ticketId: ticket.id, sinceSeq: attemptStartSeq })
+      parkIfAttemptedNothing({
+        ...options,
+        ticketId: ticket.id,
+        sinceSeq: attemptStartSeq,
+      })
     ) {
       parkedReason = 'attempted_nothing';
       break;
@@ -274,6 +294,20 @@ export async function landClaimedTicket(
     }
   }
 
+  /**
+   * W23-12: the post-close operation, HERE rather than after the loop returns,
+   * because a dependent's base is its predecessor's accepted work and the
+   * engine is about to pick the next ticket. Failures are ledgered by the seam
+   * itself and never fail the landing: the work is landed either way, and a
+   * reviewer that could not run must not undo a close.
+   */
+  if (landed && options.postClose) {
+    await runAttemptOutcomeHook(options, () =>
+      options.postClose!({ ticketId: ticket.id, worktreePath: worktree.path }),
+    );
+    current = requireTicket(options.log, ticket.id);
+  }
+
   const parked = !landed && current.status === 'in_progress';
   if (parked) {
     parkedReason ??= defaultParkReason(attempts, policy.mode);
@@ -291,11 +325,15 @@ export async function landClaimedTicket(
       // W21-64/67: from the ledger, like the line above it.
       ledgerEvidenceFor(options.log, ticket.id, options.runId ?? null),
     );
-    commentTicket(options.log, {
-      ticketId: ticket.id,
-      actorId: options.actorId,
-      body: parkBody,
-    }, { runId: options.runId ?? null });
+    commentTicket(
+      options.log,
+      {
+        ticketId: ticket.id,
+        actorId: options.actorId,
+        body: parkBody,
+      },
+      { runId: options.runId ?? null },
+    );
     await fireVerbMirror(options, {
       kind: 'evidence',
       ticketId: ticket.id,
@@ -324,4 +362,3 @@ export async function landClaimedTicket(
     finalStatus: current.status,
   };
 }
-

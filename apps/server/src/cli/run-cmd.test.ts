@@ -109,8 +109,20 @@ describe('dokima run (FR-C7 — CLI drives the same @dokima/harbormaster verbs a
 
         const out = collectIO();
         const code = await runCli(
-          ['run', 'start', '--project', record.id, '--mode', 'feature',
-           '--breakpoint', 'wave', '--berths', '1', '--actor', 'operator-1'],
+          [
+            'run',
+            'start',
+            '--project',
+            record.id,
+            '--mode',
+            'feature',
+            '--breakpoint',
+            'wave',
+            '--berths',
+            '1',
+            '--actor',
+            'operator-1',
+          ],
           // Standing somewhere that is NOT the project — which is the whole
           // point of the flag, per `--help`: "address a project with --project
           // <id> from the Fleet".
@@ -361,7 +373,7 @@ describe('dokima run (FR-C7 — CLI drives the same @dokima/harbormaster verbs a
     });
   }
 
-  async function startBuildRun(cwd: string, agent: string) {
+  async function startBuildRun(cwd: string, agent: string, extra: string[] = []) {
     const io = collectIO();
     const previousKey = process.env.DOKIMA_SIGNING_KEY;
     process.env.DOKIMA_SIGNING_KEY = 'test-signing-key';
@@ -382,6 +394,7 @@ describe('dokima run (FR-C7 — CLI drives the same @dokima/harbormaster verbs a
           'worker-1',
           '--agent-command',
           agent,
+          ...extra,
         ],
         { cwd, ...io.io },
       );
@@ -391,6 +404,38 @@ describe('dokima run (FR-C7 — CLI drives the same @dokima/harbormaster verbs a
       else process.env.DOKIMA_SIGNING_KEY = previousKey;
     }
   }
+
+  it(
+    'W23-02: `run start --approved-build` with no recorded approval refuses ' +
+      'with exit 2 and claims NOTHING — the CLI and the HTTP route go through ' +
+      'the one preflight, so they cannot disagree about what an approval is',
+    async () => {
+      project = await gitRepoProject();
+      const log = openWritableLog(resolveDbPath(project.cwd));
+      seedBoard(log);
+      log.close();
+
+      const agent = await writeAgent(project.cwd, true);
+      const { code, io } = await startBuildRun(project.cwd, agent, ['--approved-build']);
+
+      expect(code).toBe(2);
+      expect(io.stderr.join('\n')).toMatch(/recorded no approval/);
+      expect(io.stderr.join('\n')).toMatch(/Nothing was claimed/);
+
+      // And the board is untouched: the refusal is BEFORE the claim, not a
+      // rollback after one.
+      const after = openWritableLog(resolveDbPath(project.cwd));
+      try {
+        // `ready` is what createTicket leaves a ticket at — unclaimed. The
+        // point is that no claim happened, not the name of the resting state.
+        expect(getTicket(after, 'T-1')?.status).toBe('ready');
+        expect(getTicket(after, 'T-1')?.ownerId).toBeNull();
+      } finally {
+        after.close();
+      }
+    },
+    30_000,
+  );
 
   it('RED FIXTURE: `run start` on a build mode claims a ticket, runs an agent session, and LANDS it', async () => {
     project = await gitRepoProject();
