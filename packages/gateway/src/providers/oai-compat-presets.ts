@@ -25,12 +25,26 @@ const MTPLX_DEFAULT_BASE_URL = 'http://localhost:8088/v1';
  * nothing. MTPLX is a scheduler with its own `max_active_requests` /
  * `decode_batch_max`, both 4, and it genuinely runs four streams at once.
  *
- * Measured 2026-09-16, Qwen3.8-27B-Q4 on an M5 Max, aggregate tok/s:
- *   conc 1 -> 45.7    conc 4 -> 81.6    conc 6 -> 68.4    conc 8 -> 67.1
- * Four is the peak and it is not a coincidence: past four the server queues
- * instead of batching, and the extra streams collapse to ~9 tok/s while four
- * hold ~24. So this is the server's number, not a tuning preference — raising
- * it past `max_active_requests` makes throughput WORSE, not better.
+ * Four is the server's number, not a tuning preference: past `max_active_requests`
+ * it queues instead of batching and throughput gets WORSE, not better.
+ *
+ * On the GAIN, be careful what you promise. Measured 2026-09-16 through this
+ * gateway against a real server (Qwen3.8-27B-Q4, M4 Max), four 400-token
+ * completions, IDENTICAL token counts in both arms so the ratio is honest:
+ *   conc 1 -> 38.6 tok/s aggregate    conc 4 -> 53.1 tok/s    = 1.37x
+ *
+ * It is NOT the ~1.8x a naive benchmark suggests, and the reason matters:
+ * MTPLX turns OFF speculative decoding once batch > 1. Same box, same prompts,
+ * only the pool size differing — draft_n 1451 at 73% acceptance in flight
+ * alone, and exactly 0 under batch 4, with per-stream throughput falling
+ * 43.9 -> 15.7 tok/s. Four slots at a third of the speed is most of the way
+ * to a wash.
+ *
+ * So the win scales with how much PREFILL there is to overlap, not with the
+ * slot count. Short prompts and long generations gain little; a decode-bound
+ * pass can gain nothing at all (a reasoning-saturated triage measured 167s at
+ * four vs 173s at one). And per-request latency gets ~4x worse under batch 4,
+ * which is its own cost for anything interactive. Measure the real workload.
  */
 const MTPLX_DEFAULT_CONCURRENCY = 4;
 
