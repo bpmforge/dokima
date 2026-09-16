@@ -229,7 +229,7 @@ export function reachability(
   if (catalog.status === 'ok') {
     if (catalog.models.length === 0) {
       const hint =
-        kind === 'ollama' || kind === 'lm-studio'
+        kind === 'ollama' || kind === 'lm-studio' || kind === 'mtplx'
           ? ' Pull or load a model on this endpoint, then Refresh.'
           : '';
       return { chip: 'Reachable', detail: `Reachable, but serves no models yet.${hint}` };
