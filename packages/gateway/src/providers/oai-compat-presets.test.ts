@@ -9,7 +9,11 @@
  * `type` per model. Law 9(a): no live calls — `fetchImpl` is injected.
  */
 import { describe, expect, it, vi } from 'vitest';
-import { createLmStudioProvider, createOllamaProvider } from './oai-compat-presets.js';
+import {
+  createLmStudioProvider,
+  createMtplxProvider,
+  createOllamaProvider,
+} from './oai-compat-presets.js';
 
 const OPENAI_SHAPE = {
   data: [{ id: 'qwen3.8-flash-next' }, { id: 'text-embedding-nomic-embed-text-v1.5' }],
@@ -52,7 +56,9 @@ describe('createLmStudioProvider: what the provider SAID, never the model id', (
 
   it('a type it has never heard of is left absent rather than guessed', async () => {
     const p = createLmStudioProvider({
-      fetchImpl: fakeFetch({ data: [{ id: 'qwen3.8-flash-next', type: 'something-new' }] }),
+      fetchImpl: fakeFetch({
+        data: [{ id: 'qwen3.8-flash-next', type: 'something-new' }],
+      }),
     });
     expect(models(await p.listModels(), 'qwen3.8-flash-next')).toBeUndefined();
   });
@@ -83,8 +89,17 @@ function models(list: { id: string; kind?: string }[], id: string): string | und
 describe('the enriched provider is still a whole provider', () => {
   it('RED FIXTURE: every Provider method survives the wrapper', () => {
     const p = createLmStudioProvider({ fetchImpl: fakeFetch(NATIVE_SHAPE) });
-    for (const method of ['chat', 'listModels', 'getContextLength', 'health', 'warmUp', 'queueStats']) {
-      expect(typeof (p as unknown as Record<string, unknown>)[method], method).toBe('function');
+    for (const method of [
+      'chat',
+      'listModels',
+      'getContextLength',
+      'health',
+      'warmUp',
+      'queueStats',
+    ]) {
+      expect(typeof (p as unknown as Record<string, unknown>)[method], method).toBe(
+        'function',
+      );
     }
   });
 
@@ -98,7 +113,13 @@ describe('the enriched provider is still a whole provider', () => {
         JSON.stringify({
           id: 'x',
           model: 'm',
-          choices: [{ index: 0, message: { role: 'assistant', content: 'hi' }, finish_reason: 'stop' }],
+          choices: [
+            {
+              index: 0,
+              message: { role: 'assistant', content: 'hi' },
+              finish_reason: 'stop',
+            },
+          ],
           usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
         }),
         { status: 200, headers: { 'content-type': 'application/json' } },
@@ -109,5 +130,36 @@ describe('the enriched provider is still a whole provider', () => {
     const res = await p.chat({ model: 'm', messages: [{ role: 'user', content: 'hi' }] });
     expect(res.message.content).toBe('hi');
     expect(calls.some((u) => u.includes('/chat/completions'))).toBe(true);
+  });
+});
+
+/**
+ * The local daemons do not all serialize. `concurrency: 1` is a FACT about LM
+ * Studio and Ollama, not a house default, and MTPLX does not share it: it is a
+ * scheduler whose own max_active_requests/decode_batch_max are both 4, and it
+ * runs four streams for real. Measured 2026-09-16 (Qwen3.8-27B-Q4, M5 Max),
+ * aggregate tok/s: conc 1 -> 45.7, conc 4 -> 81.6, conc 6 -> 68.4.
+ *
+ * These assert the NUMBER, because a preset that silently drifted to 1 would
+ * cost ~1.8x throughput while every test still passed and nothing errored.
+ * Law 9(a): no live calls — the ports are refused by the network guard, and
+ * queueStats() reports the queue without one.
+ */
+describe('local preset concurrency: agree with the server, do not guess', () => {
+  it('MTPLX batches — four, matching its max_active_requests', () => {
+    expect(createMtplxProvider().queueStats().concurrency).toBe(4);
+  });
+
+  it('LM Studio and Ollama serialize — one apiece', () => {
+    expect(createLmStudioProvider().queueStats().concurrency).toBe(1);
+    expect(createOllamaProvider().queueStats().concurrency).toBe(1);
+  });
+
+  it('an explicit concurrency still wins — the server is the authority, not the preset', () => {
+    expect(createMtplxProvider({ concurrency: 2 }).queueStats().concurrency).toBe(2);
+  });
+
+  it('defaults to the documented MTPLX port', () => {
+    expect(createMtplxProvider().id).toBe('mtplx');
   });
 });

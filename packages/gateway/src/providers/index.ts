@@ -65,10 +65,7 @@ export {
  * names the route that was meant to call it and says the poll cadence belongs
  * to that caller, which is exactly what the server now owns.
  */
-export {
-  requestDeviceCode,
-  pollDeviceAuthorization,
-} from './copilot-device-auth.js';
+export { requestDeviceCode, pollDeviceAuthorization } from './copilot-device-auth.js';
 export { createHttpFns } from './copilot-http.js';
 export type { CopilotRuntime } from './copilot-types.js';
 
@@ -85,4 +82,8 @@ export { VertexProvider, createVertexProvider, type VertexConfig } from './verte
  */
 export { OpenAiProvider, createOpenAiProvider, type OpenAiConfig } from './openai.js';
 // W13-22: split out of oai-compat.ts, which was at the 400-line cap.
-export { createLmStudioProvider, createOllamaProvider } from './oai-compat-presets.js';
+export {
+  createLmStudioProvider,
+  createOllamaProvider,
+  createMtplxProvider,
+} from './oai-compat-presets.js';

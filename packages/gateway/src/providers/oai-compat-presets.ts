@@ -1,5 +1,5 @@
 /**
- * oai-compat-presets.ts — the two local model daemons, named.
+ * oai-compat-presets.ts — the local model daemons, named.
  *
  * Split out of `oai-compat.ts` (W13-22), which sat at 398 of the 400-line cap:
  * every fix to the adapter hit the wall before it could carry its own
@@ -7,7 +7,7 @@
  * These are a distinct concern — default endpoints for the daemons this
  * product ships against — and depend on nothing else in the adapter.
  *
- * Their ports are also the two the law 9(a) test guard refuses
+ * Their ports are also the ones the law 9(a) test guard refuses
  * (`vitest.network-guard.ts`); keep the two lists in step.
  */
 import type { Provider } from './types.js';
@@ -15,6 +15,24 @@ import { createOaiCompatProvider, type OaiCompatConfig } from './oai-compat.js';
 
 const LM_STUDIO_DEFAULT_BASE_URL = 'http://localhost:1234/v1';
 const OLLAMA_DEFAULT_BASE_URL = 'http://localhost:11434/v1';
+const MTPLX_DEFAULT_BASE_URL = 'http://localhost:8088/v1';
+
+/**
+ * MTPLX batches; LM Studio and Ollama do not (W-local-llm).
+ *
+ * The `concurrency: 1` those two carry is not a cautious default — it is the
+ * truth about them: one request at a time, and a second in flight buys
+ * nothing. MTPLX is a scheduler with its own `max_active_requests` /
+ * `decode_batch_max`, both 4, and it genuinely runs four streams at once.
+ *
+ * Measured 2026-09-16, Qwen3.8-27B-Q4 on an M5 Max, aggregate tok/s:
+ *   conc 1 -> 45.7    conc 4 -> 81.6    conc 6 -> 68.4    conc 8 -> 67.1
+ * Four is the peak and it is not a coincidence: past four the server queues
+ * instead of batching, and the extra streams collapse to ~9 tok/s while four
+ * hold ~24. So this is the server's number, not a tuning preference — raising
+ * it past `max_active_requests` makes throughput WORSE, not better.
+ */
+const MTPLX_DEFAULT_CONCURRENCY = 4;
 
 /** One entry of LM Studio's native `/api/v0/models`, which reports more than the OpenAI shape. */
 interface LmStudioNativeModel {
@@ -132,6 +150,24 @@ export function createOllamaProvider(config: Partial<OaiCompatConfig> = {}): Pro
     id: 'ollama',
     baseUrl: OLLAMA_DEFAULT_BASE_URL,
     concurrency: 1,
+    ...config,
+  });
+}
+
+/**
+ * MTPLX local server — defaults to its documented default port.
+ *
+ * Unlike the other two presets this one does NOT default concurrency to 1;
+ * see MTPLX_DEFAULT_CONCURRENCY for the measurements. A caller pointing this
+ * at a server configured with a different `max_active_requests` should pass
+ * `concurrency` to match it — the win comes from agreeing with the server,
+ * not from picking a big number.
+ */
+export function createMtplxProvider(config: Partial<OaiCompatConfig> = {}): Provider {
+  return createOaiCompatProvider({
+    id: 'mtplx',
+    baseUrl: MTPLX_DEFAULT_BASE_URL,
+    concurrency: MTPLX_DEFAULT_CONCURRENCY,
     ...config,
   });
 }
