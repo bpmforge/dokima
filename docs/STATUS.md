@@ -2154,3 +2154,11 @@ of kinds has it, and nothing mechanical checks that today.
 **Gate at close (branch head `e28b6b68`):** lint clean, typecheck 0, **5349
 tests passing** (611 files, 4 skipped), **76 e2e passing**, six validators plus
 `temp-leaks` clean.
+
+**W23-27 — a provider kind is enumerated in nine places, and now something
+checks they agree** (same day, filed from the MTPLX branch). A coverage fixture
+in `scripts/`, the W23-26 shape: the gateway's `PROVIDER_KINDS` is the truth,
+the preset ids are the local subset, and every hand-mirror in apps/web and
+apps/server must mention every kind. Planted kind in the gateway alone: five
+failures, each naming its file. Gate: lint 0, typecheck 0, **5359 tests**
+(612 files, 4 skipped), **76 e2e**, six validators + `temp-leaks` clean.

@@ -16391,7 +16391,7 @@
       "id": "W23-27",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "depends_on": [],
       "lane": "quality",
@@ -16409,7 +16409,12 @@
       "notes": [
         "FOUND 2026-09-17 on feat/mtplx-preset-concurrency. 3486645f added mtplx to the gateway ProviderKind and reached three of nine enumeration sites; pnpm typecheck caught ONE of the six misses (TS2367 in apps/web reachability()) and the other five were found by hand: KIND_LABEL, LOCAL_DEFAULT_BASE_URL, AUTH_METHODS_BY_KIND, server KNOWN_KINDS (a registered mtplx entry silently skipped by loadConfiguredProviders \u2014 the W12-17 defect, again), UNPRICED_BY_DESIGN, tierKindFor. Fixed in e28b6b68.",
         "WHY A FIXTURE AND NOT AN IMPORT: apps/web cannot import @dokima/gateway (ARCHITECTURE \u00a74, web talks to the server over REST/WS only), and providers-core.ts already imports the type but still keeps its own runtime Set. The mirrors are deliberate; the check that they agree is what is missing. Same shape as W23-26 tsconfig-coverage: assert coverage, let the real code do the work.",
-        "Record<ProviderKind, ...> maps (KIND_LABEL, AUTH_METHODS_BY_KIND) already fail typecheck when the WEB union grows \u2014 but nothing makes the web union grow when the gateway one does. That first hop is the one this fixture closes."
+        "Record<ProviderKind, ...> maps (KIND_LABEL, AUTH_METHODS_BY_KIND) already fail typecheck when the WEB union grows \u2014 but nothing makes the web union grow when the gateway one does. That first hop is the one this fixture closes.",
+        "CLAIMED 2026-09-17. Pre-claim scope check: write_scope is one new file in scripts/, unowned; the nine sites it reads are read-only here.",
+        "DONE 2026-09-17. scripts/provider-kinds-mirror.test.mjs reads PROVIDER_KINDS from the gateway registry as the source of truth and the preset ids as the local subset, then asserts each of the five every-kind mirrors and the three local-kind mirrors mentions every kind, as a quoted string or a bare object key. It reads SOURCE TEXT, not modules: apps/web cannot import the gateway and the point is that declarations agree, not that they execute.",
+        "PLANTED-DEFECT PROOF, as the third criterion asks: w23-27-planted added to the gateway PROVIDER_KINDS alone failed five tests, each naming its file and declaration (\"apps/web/src/settings/providers-api.ts: export type ProviderKind = lacks w23-27-planted\", KIND_LABEL, PROVIDER_KINDS, AUTH_METHODS_BY_KIND, server KNOWN_KINDS); reverted, 10/10 green.",
+        "A VACUOUS-PASS GUARD IS PART OF IT: the fixture asserts the gateway list holds at least seven kinds and the local subset at least three before anything else, so a regex that stops matching fails loudly rather than passing an empty list against everything.",
+        "GATE: lint 0, typecheck 0, 612 files / 5359 passed / 4 skipped, 76 e2e passed, six validators clean, temp-leaks clean (the first temp-leaks run reported 17 while e2e was live in another process \u2014 the check warns of exactly that; alone afterwards, 0)."
       ]
     }
   ]
