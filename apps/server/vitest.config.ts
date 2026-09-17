@@ -7,5 +7,8 @@ export default defineConfig({
     // developer's real ~/.dokima/config.json. See vitest.setup.ts for why that
     // stopped being harmless once the global settings scope became resolvable.
     setupFiles: ['./vitest.setup.ts', '../../vitest.network-guard.ts'],
+    // W23-19: a worker the pool terminates never runs its afterAll, so the RUN
+    // sweeps the suite home it left. See vitest.global-teardown.ts.
+    globalSetup: ['./vitest.global-teardown.ts'],
   },
 });
