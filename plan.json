@@ -16177,7 +16177,7 @@
       "id": "W23-23",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "blocked",
       "stories": [],
       "depends_on": [],
       "lane": "content",
@@ -16197,7 +16197,8 @@
       "notes": [
         "W21-28 WROTE THIS DOWN AND COULD NOT DO IT: \"The better fix is for that telemetry to land in .dokima/ (already hard-excluded) instead of inside the audited project \u2014 but content/ is a SIGNED pack, so changing it there needs a re-sign with a key held outside this repo.\" Filed now, at W23-16, because a third check has just had to work around it.",
         "THE THIRD WORKAROUND IS THE REASON TO FILE. content/validators/_lib.sh appends to ${ROOT}/docs/work/telemetry.jsonl on every validator run, so the CLOSE GATE dirties the worktree it just gated \u2014 and the review evidence check read that as the agent having edited past the reviewed commit, reported incomplete evidence, and capped EVERY verdict at UNVERIFIABLE. Machine acceptance was unreachable in production because a validator writes a log file.",
-        "The key lives outside the repo (see the signing-key note in the session memory); this ticket cannot close without it, which is exactly why it is a ticket and not a comment."
+        "The key lives outside the repo (see the signing-key note in the session memory); this ticket cannot close without it, which is exactly why it is a ticket and not a comment.",
+        "STATUS DRIFT CLOSED 2026-09-17: docs/STATUS.md has called this ticket blocked since the W23 closeout while the board still said todo. The board is the record the conductor and validate-plan read, so it is the one corrected. Blocked on the signing key, per the note above; nothing else changed."
       ]
     },
     {
@@ -16384,6 +16385,31 @@
         "AND A FIXTURE SO IT LASTS: scripts/tsconfig-coverage.test.mjs asserts coverage rather than correctness \u2014 every root-level .ts in a configured directory is inside that directory\u2019s include, the root config covers every root .ts file, and the typecheck script actually invokes it. Without it the fix holds only until the next config file is added.",
         "NOTHING WAS FOUND BY WIDENING, WHICH IS WORTH SAYING: after the includes grew, typecheck was clean across all fourteen projects. The one real defect this class had produced (w22_16_write) was already removed under W23-19. The value here is the next one, not this one.",
         "GATE: lint 0, typecheck 0, 611 files / 5347 passed / 2 skipped, 76 e2e passed, six validators clean plus temp-leaks clean."
+      ]
+    },
+    {
+      "id": "W23-27",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [],
+      "depends_on": [],
+      "lane": "quality",
+      "module": "quality",
+      "points": 2,
+      "title": "a provider kind is enumerated in nine places and nothing checks they agree",
+      "write_scope": [
+        "scripts/provider-kinds-mirror.test.mjs"
+      ],
+      "acceptance": [
+        "A fixture in scripts/ reads PROVIDER_KINDS from packages/gateway/src/registry/types.ts and asserts every kind appears in each hand-mirror: apps/web providers-api.ts (ProviderKind, PROVIDER_KINDS, KIND_LABEL), apps/web providers-auth-methods.ts (AUTH_METHODS_BY_KIND), apps/server cli/ops/providers-core.ts (KNOWN_KINDS)",
+        "Local kinds (those the gateway presets construct with a default base URL) are additionally asserted present in apps/web LOCAL_DEFAULT_BASE_URL, apps/server pricing UNPRICED_BY_DESIGN, and run-build-policy tierKindFor",
+        "A planted kind added only to the gateway union fails the fixture with a message naming the file that lacks it, proven and then removed"
+      ],
+      "notes": [
+        "FOUND 2026-09-17 on feat/mtplx-preset-concurrency. 3486645f added mtplx to the gateway ProviderKind and reached three of nine enumeration sites; pnpm typecheck caught ONE of the six misses (TS2367 in apps/web reachability()) and the other five were found by hand: KIND_LABEL, LOCAL_DEFAULT_BASE_URL, AUTH_METHODS_BY_KIND, server KNOWN_KINDS (a registered mtplx entry silently skipped by loadConfiguredProviders \u2014 the W12-17 defect, again), UNPRICED_BY_DESIGN, tierKindFor. Fixed in e28b6b68.",
+        "WHY A FIXTURE AND NOT AN IMPORT: apps/web cannot import @dokima/gateway (ARCHITECTURE \u00a74, web talks to the server over REST/WS only), and providers-core.ts already imports the type but still keeps its own runtime Set. The mirrors are deliberate; the check that they agree is what is missing. Same shape as W23-26 tsconfig-coverage: assert coverage, let the real code do the work.",
+        "Record<ProviderKind, ...> maps (KIND_LABEL, AUTH_METHODS_BY_KIND) already fail typecheck when the WEB union grows \u2014 but nothing makes the web union grow when the gateway one does. That first hop is the one this fixture closes."
       ]
     }
   ]
