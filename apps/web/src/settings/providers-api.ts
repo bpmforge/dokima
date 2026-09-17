@@ -28,11 +28,19 @@ export {
 } from './api-client.js';
 
 export type ProviderKind =
-  'ollama' | 'lm-studio' | 'oai-compat' | 'anthropic' | 'openai' | 'vertex' | 'copilot';
+  | 'ollama'
+  | 'lm-studio'
+  | 'mtplx'
+  | 'oai-compat'
+  | 'anthropic'
+  | 'openai'
+  | 'vertex'
+  | 'copilot';
 
 export const PROVIDER_KINDS: readonly ProviderKind[] = [
   'ollama',
   'lm-studio',
+  'mtplx',
   'oai-compat',
   'anthropic',
   'openai',
@@ -43,6 +51,7 @@ export const PROVIDER_KINDS: readonly ProviderKind[] = [
 export const KIND_LABEL: Record<ProviderKind, string> = {
   ollama: 'Ollama (local)',
   'lm-studio': 'LM Studio (local)',
+  mtplx: 'MTPLX (local)',
   'oai-compat': 'OpenAI-compatible endpoint',
   anthropic: 'Anthropic',
   openai: 'OpenAI',
@@ -54,9 +63,11 @@ export const KIND_LABEL: Record<ProviderKind, string> = {
 export const ENDPOINT_KINDS: readonly ProviderKind[] = ['oai-compat'];
 
 /** Local kinds whose base URL is optional — a well-known default is prefilled and editable. */
-export const LOCAL_DEFAULT_BASE_URL: Record<'ollama' | 'lm-studio', string> = {
+export const LOCAL_DEFAULT_BASE_URL: Record<'ollama' | 'lm-studio' | 'mtplx', string> = {
   ollama: 'http://localhost:11434/v1',
   'lm-studio': 'http://localhost:1234/v1',
+  // Mirrors `MTPLX_DEFAULT_BASE_URL` in packages/gateway's oai-compat-presets.
+  mtplx: 'http://localhost:8088/v1',
 };
 
 /** Kinds with no user-editable endpoint field at all (UX_SPEC §6a kind table). */
@@ -229,7 +240,7 @@ export function reachability(
   if (catalog.status === 'ok') {
     if (catalog.models.length === 0) {
       const hint =
-        kind === 'ollama' || kind === 'lm-studio'
+        kind === 'ollama' || kind === 'lm-studio' || kind === 'mtplx'
           ? ' Pull or load a model on this endpoint, then Refresh.'
           : '';
       return { chip: 'Reachable', detail: `Reachable, but serves no models yet.${hint}` };

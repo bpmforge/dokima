@@ -122,7 +122,9 @@ export function resolveMaxToolIterations(
 export function resolvePinnedModel(
   raw: JsonValue | undefined,
   role: string,
-): { readonly role: string; readonly model: string; readonly providerId?: string } | undefined {
+):
+  | { readonly role: string; readonly model: string; readonly providerId?: string }
+  | undefined {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
   const value = raw as Record<string, unknown>;
   if (value.mode !== 'pinned') return undefined;
@@ -143,7 +145,11 @@ export function resolvePinnedModel(
  * someone's money is the failure that matters here.
  */
 export function tierKindFor(providerKind: unknown): 'local' | 'metered' {
-  return providerKind === 'lm-studio' || providerKind === 'ollama' ? 'local' : 'metered';
+  return providerKind === 'lm-studio' ||
+    providerKind === 'ollama' ||
+    providerKind === 'mtplx'
+    ? 'local'
+    : 'metered';
 }
 
 export function resolvePolicyScope(
@@ -209,7 +215,8 @@ export function resolvePolicyScope(
   if (mode === 'locked') {
     const pinnedTier = value.pinnedTier;
     const tierKind = value.tierKind;
-    if (typeof pinnedTier !== 'string' || typeof tierKind !== 'string') return { scope: {} };
+    if (typeof pinnedTier !== 'string' || typeof tierKind !== 'string')
+      return { scope: {} };
     return {
       scope: {
         global: {
@@ -240,7 +247,6 @@ export function resolvePolicyScope(
   // `parseAgentRunnerSetting` already uses.
   return { scope: {} };
 }
-
 
 /**
  * The per-turn output ceiling the user chose (W13-43).

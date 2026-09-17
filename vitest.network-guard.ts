@@ -23,7 +23,7 @@
  * The law is about live *model* calls, so that is the line drawn here:
  *
  *   - any non-loopback host — a real cloud API, the failure the law names;
- *   - loopback on 1234 or 11434 — LM Studio and Ollama, the two local model
+ *   - loopback on 1234, 11434 or 8088 — LM Studio, Ollama and MTPLX, the local model
  *     daemons the product defaults to (oai-compat.ts:377-378). A test cannot
  *     have started these: they are a daemon the developer happens to be
  *     running, which is exactly what made W13-18 pass and then fail.
@@ -41,7 +41,7 @@ import { afterEach, beforeEach } from 'vitest';
 const realFetch = globalThis.fetch;
 
 /** The local model daemons the product defaults to. Not test-startable. */
-const MODEL_DAEMON_PORTS = new Set(['1234', '11434']);
+const MODEL_DAEMON_PORTS = new Set(['1234', '11434', '8088']);
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]', '::1', '0.0.0.0']);
 
 export function isForbiddenTestUrl(raw: string): boolean {

@@ -1,5 +1,5 @@
 /**
- * oai-compat-presets.ts — the two local model daemons, named.
+ * oai-compat-presets.ts — the local model daemons, named.
  *
  * Split out of `oai-compat.ts` (W13-22), which sat at 398 of the 400-line cap:
  * every fix to the adapter hit the wall before it could carry its own
@@ -7,7 +7,7 @@
  * These are a distinct concern — default endpoints for the daemons this
  * product ships against — and depend on nothing else in the adapter.
  *
- * Their ports are also the two the law 9(a) test guard refuses
+ * Their ports are also the ones the law 9(a) test guard refuses
  * (`vitest.network-guard.ts`); keep the two lists in step.
  */
 import type { Provider } from './types.js';
@@ -15,6 +15,38 @@ import { createOaiCompatProvider, type OaiCompatConfig } from './oai-compat.js';
 
 const LM_STUDIO_DEFAULT_BASE_URL = 'http://localhost:1234/v1';
 const OLLAMA_DEFAULT_BASE_URL = 'http://localhost:11434/v1';
+const MTPLX_DEFAULT_BASE_URL = 'http://localhost:8088/v1';
+
+/**
+ * MTPLX batches; LM Studio and Ollama do not (W-local-llm).
+ *
+ * The `concurrency: 1` those two carry is not a cautious default — it is the
+ * truth about them: one request at a time, and a second in flight buys
+ * nothing. MTPLX is a scheduler with its own `max_active_requests` /
+ * `decode_batch_max`, both 4, and it genuinely runs four streams at once.
+ *
+ * Four is the server's number, not a tuning preference: past `max_active_requests`
+ * it queues instead of batching and throughput gets WORSE, not better.
+ *
+ * On the GAIN, be careful what you promise. Measured 2026-09-16 through this
+ * gateway against a real server (Qwen3.8-27B-Q4, M4 Max), four 400-token
+ * completions, IDENTICAL token counts in both arms so the ratio is honest:
+ *   conc 1 -> 38.6 tok/s aggregate    conc 4 -> 53.1 tok/s    = 1.37x
+ *
+ * It is NOT the ~1.8x a naive benchmark suggests, and the reason matters:
+ * MTPLX turns OFF speculative decoding once batch > 1. Same box, same prompts,
+ * only the pool size differing — draft_n 1451 at 73% acceptance in flight
+ * alone, and exactly 0 under batch 4, with per-stream throughput falling
+ * 43.9 -> 15.7 tok/s. Four slots at a third of the speed is most of the way
+ * to a wash.
+ *
+ * So the win scales with how much PREFILL there is to overlap, not with the
+ * slot count. Short prompts and long generations gain little; a decode-bound
+ * pass can gain nothing at all (a reasoning-saturated triage measured 167s at
+ * four vs 173s at one). And per-request latency gets ~4x worse under batch 4,
+ * which is its own cost for anything interactive. Measure the real workload.
+ */
+const MTPLX_DEFAULT_CONCURRENCY = 4;
 
 /** One entry of LM Studio's native `/api/v0/models`, which reports more than the OpenAI shape. */
 interface LmStudioNativeModel {
@@ -132,6 +164,24 @@ export function createOllamaProvider(config: Partial<OaiCompatConfig> = {}): Pro
     id: 'ollama',
     baseUrl: OLLAMA_DEFAULT_BASE_URL,
     concurrency: 1,
+    ...config,
+  });
+}
+
+/**
+ * MTPLX local server — defaults to its documented default port.
+ *
+ * Unlike the other two presets this one does NOT default concurrency to 1;
+ * see MTPLX_DEFAULT_CONCURRENCY for the measurements. A caller pointing this
+ * at a server configured with a different `max_active_requests` should pass
+ * `concurrency` to match it — the win comes from agreeing with the server,
+ * not from picking a big number.
+ */
+export function createMtplxProvider(config: Partial<OaiCompatConfig> = {}): Provider {
+  return createOaiCompatProvider({
+    id: 'mtplx',
+    baseUrl: MTPLX_DEFAULT_BASE_URL,
+    concurrency: MTPLX_DEFAULT_CONCURRENCY,
     ...config,
   });
 }

@@ -19,11 +19,19 @@
 
 /** The adapter kinds `buildProvider` already knows how to construct. */
 export type ProviderKind =
-  'ollama' | 'lm-studio' | 'oai-compat' | 'anthropic' | 'openai' | 'vertex' | 'copilot';
+  | 'ollama'
+  | 'lm-studio'
+  | 'mtplx'
+  | 'oai-compat'
+  | 'anthropic'
+  | 'openai'
+  | 'vertex'
+  | 'copilot';
 
 export const PROVIDER_KINDS: readonly ProviderKind[] = [
   'ollama',
   'lm-studio',
+  'mtplx',
   'oai-compat',
   'anthropic',
   'openai',

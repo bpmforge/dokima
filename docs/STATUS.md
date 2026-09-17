@@ -2123,3 +2123,34 @@ content pack re-signed, and the private key lives outside this repo at a stale
 **Gate at close (branch head `2e7cd266`):** lint clean, typecheck 0, **5347
 tests passing** (611 files, 2 skipped), **76 e2e passing**, six validators plus
 `temp-leaks` clean. (AB-17 closed at `1290cb27` with 5326 across 610 files.)
+
+## 2026-09-17 — MTPLX: a third local daemon, and the presets that assumed LM Studio
+
+Branch `feat/mtplx-preset-concurrency`, four commits.
+
+**The local presets all carried `concurrency: 1`** as if it were a property of
+"local daemon". It is a property of LM Studio and Ollama — one request at a
+time, a second in flight buys nothing. MTPLX is a scheduler: `max_active_requests`
+and `decode_batch_max` are both 4 and it runs four streams for real. Measured
+2026-09-16 against a live server (Qwen3.8-27B-Q4, M5 Max), aggregate tok/s peaks
+at concurrency 4 (45.7 → 81.6) and gets WORSE past it — the server queues instead
+of batching. Through this gateway's own RequestQueue the honest end-to-end
+claim is **1.37x**, and the preset's header says why not more. The tests pin the
+number, not "is configured": a preset drifting back to 1 would cost the speedup
+while every test stayed green.
+
+**The kind is mirrored in nine places, and the wiring commit reached three.**
+`3486645f` added `mtplx` to the gateway's `ProviderKind`, the provider.ts
+switch, and one web branch, then called the gate clean — `pnpm typecheck` was
+red on it (TS2367: apps/web's ProviderKind is a hand-mirror with no import path,
+ARCHITECTURE §4). `e28b6b68` finishes the mirror: web kind list, label, default
+base URL, auth method, panel prefill; server `KNOWN_KINDS` (a registered mtplx
+entry was being silently skipped by `loadConfiguredProviders` — the W12-17
+defect again, for a new kind), `UNPRICED_BY_DESIGN`, and `tierKindFor` (owned
+hardware, 12 attempts not 8). The lesson is the one W12-17 already wrote down:
+a kind added to the gateway is not added to the product until every enumeration
+of kinds has it, and nothing mechanical checks that today.
+
+**Gate at close (branch head `e28b6b68`):** lint clean, typecheck 0, **5349
+tests passing** (611 files, 4 skipped), **76 e2e passing**, six validators plus
+`temp-leaks` clean.

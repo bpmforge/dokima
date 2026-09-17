@@ -22,6 +22,7 @@ import {
   createAnthropicProvider,
   createCopilotProvider,
   createLmStudioProvider,
+  createMtplxProvider,
   createOaiCompatProvider,
   createOllamaProvider,
   createOpenAiProvider,
@@ -175,6 +176,24 @@ export async function providerForConfig(
       });
     case 'lm-studio':
       return createLmStudioProvider({
+        ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),
+        ...(config.requestTimeoutMs === undefined
+          ? {}
+          : { requestTimeoutMs: config.requestTimeoutMs }),
+        ...(config.streamIdleMs === undefined
+          ? {}
+          : { streamIdleMs: config.streamIdleMs }),
+      });
+
+    /**
+     * MTPLX takes the same local treatment as the two above — same timeout
+     * story, same laptop — but NOT their concurrency. It schedules four
+     * streams itself, and the preset carries that number; see
+     * `MTPLX_DEFAULT_CONCURRENCY`. A registry entry may still override it to
+     * match a server configured differently.
+     */
+    case 'mtplx':
+      return createMtplxProvider({
         ...(config.baseUrl ? { baseUrl: config.baseUrl } : {}),
         ...(config.requestTimeoutMs === undefined
           ? {}
