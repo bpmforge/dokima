@@ -2162,3 +2162,15 @@ the preset ids are the local subset, and every hand-mirror in apps/web and
 apps/server must mention every kind. Planted kind in the gateway alone: five
 failures, each naming its file. Gate: lint 0, typecheck 0, **5359 tests**
 (612 files, 4 skipped), **76 e2e**, six validators + `temp-leaks` clean.
+
+**W23-19 — the suite home a terminated worker leaves is swept by the run**
+(same day). The W23-19 lead held: a forks-pool worker terminated on an RPC
+timeout never reaches its `afterAll`, so no per-file teardown can be complete.
+`apps/server/vitest.global-teardown.ts` runs once every file has finished and
+removes any `dokima-suite-home-*` whose `.created-by` pid is dead, printing the
+marker as it goes — verified against vitest's source that global teardown runs
+BEFORE the pool closes, which is why the rule is dead-pid and never everything.
+Planted proof: dead-pid home removed and named, live-pid and markerless left.
+Three consecutive full runs, zero homes, `temp-leaks` 0 after each. No live
+sighting occurred, so the leak is closed as a class, not caught as an instance.
+Gate: lint 0, typecheck 0, **5359 tests** (612 files, 4 skipped), **76 e2e**.
