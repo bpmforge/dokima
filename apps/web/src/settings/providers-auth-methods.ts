@@ -43,6 +43,7 @@ export const AUTH_METHOD_LABEL: Record<AuthMethod, string> = {
 const AUTH_METHODS_BY_KIND: Record<ProviderKind, readonly AuthMethod[]> = {
   ollama: ['none'],
   'lm-studio': ['none'],
+  mtplx: ['none'],
   // A self-hosted endpoint may or may not want a key — genuinely both, and
   // `api-key` leads because that field has ALWAYS been optional here ("API key
   // (optional)"). Leading with `none` would hide it and change behaviour for

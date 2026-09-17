@@ -50,7 +50,7 @@ interface PricingFile {
 }
 
 /** Kinds that are honestly free per token — see pricing.v1.json `notes`. */
-export const UNPRICED_BY_DESIGN = new Set(['ollama', 'lm-studio', 'copilot']);
+export const UNPRICED_BY_DESIGN = new Set(['ollama', 'lm-studio', 'mtplx', 'copilot']);
 
 let cached: PricingFile | null = null;
 

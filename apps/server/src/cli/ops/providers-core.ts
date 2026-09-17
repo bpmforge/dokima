@@ -41,6 +41,7 @@ export interface ProviderConfigEntry {
 const KNOWN_KINDS: ReadonlySet<string> = new Set<ProviderKind>([
   'ollama',
   'lm-studio',
+  'mtplx',
   'oai-compat',
   'anthropic',
   'openai',

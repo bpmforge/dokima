@@ -150,7 +150,9 @@ export function ProvidersPanel({
 
   const handleKindChange = (kind: ProviderKind) => {
     const baseUrl =
-      kind === 'ollama' || kind === 'lm-studio' ? LOCAL_DEFAULT_BASE_URL[kind] : '';
+      kind === 'ollama' || kind === 'lm-studio' || kind === 'mtplx'
+        ? LOCAL_DEFAULT_BASE_URL[kind]
+        : '';
     // W12-21: the method follows the kind. Leaving a stale method selected
     // would let a user submit an API key for a kind that takes none.
     setDraft((d) => ({ ...d, kind, baseUrl, authMethod: defaultAuthMethod(kind) }));
