@@ -34,7 +34,10 @@ import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { appendEvent, type EventLog } from '@dokima/events';
-import { commitHarnessChanges } from './worktree-harness-paths.js';
+import {
+  commitHarnessChanges,
+  removeLegacyHarnessLeavings,
+} from './worktree-harness-paths.js';
 
 /** How long a provision may take before it is killed. Installs are slow. */
 export const PROVISION_TIMEOUT_MS = 300_000;
@@ -237,6 +240,9 @@ export interface ProvisionInput {
  * was never provisioned at all.
  */
 export async function provisionWorktree(input: ProvisionInput): Promise<ProvisionResult> {
+  // W23-32: before anything else, drop the harness's own pre-W23-23 leavings,
+  // so the session diff is only the agent's (W21-28's invariant, kept).
+  await removeLegacyHarnessLeavings(input.worktreePath);
   /**
    * W21-86: ignore tool artifacts on BOTH paths, before deciding whether to
    * install. `planProvision` returns null the moment `node_modules` exists,

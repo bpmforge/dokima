@@ -395,3 +395,69 @@ describe('W21-86b — the ignore reaches a worktree that skips provisioning', ()
     expect(ignore).toContain('*.tsbuildinfo');
   });
 });
+
+describe('pre-W23-23 telemetry leavings are the harness’s history, not the agent’s diff (W23-32)', () => {
+  const gitInit = async (dir: string) => {
+    const { execFile } = await import('node:child_process');
+    const run = (args: string[]) =>
+      new Promise<void>((resolve, reject) =>
+        execFile('git', args, { cwd: dir }, (err) => (err ? reject(err) : resolve())),
+      );
+    await run(['init', '-q']);
+    await run(['config', 'user.email', 'harness@dokima.test']);
+    await run(['config', 'user.name', 'Harness']);
+    await fs.writeFile(path.join(dir, 'seed.txt'), 'seed');
+    await run(['add', '-A']);
+    await run(['commit', '-q', '-m', 'seed']);
+  };
+  it('RED FIXTURE (Vault run 2): an UNTRACKED docs/work/telemetry.jsonl is removed at provisioning and its empty directory pruned; a COMMITTED one is left alone', async () => {
+    const dir = await tempDir('legacy-leavings');
+    const log = await logIn(dir);
+    await gitInit(dir);
+    await fs.writeFile(path.join(dir, 'package.json'), '{"name":"x"}');
+    await fs.mkdir(path.join(dir, 'docs', 'work'), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, 'docs/work/telemetry.jsonl'),
+      '{"source":"validator"}\n',
+    );
+    await provisionWorktree({
+      worktreePath: dir,
+      log,
+      actorId: 'operator',
+      ticketId: 'T-1',
+      timeoutMs: 90_000,
+    });
+    const { execFile } = await import('node:child_process');
+    const status = await new Promise<string>((resolve) =>
+      execFile('git', ['status', '--porcelain'], { cwd: dir }, (_e, out) => resolve(out)),
+    );
+    expect(status).not.toContain('telemetry.jsonl');
+    await expect(fs.stat(path.join(dir, 'docs', 'work'))).rejects.toThrow();
+
+    // Committed history stays.
+    await fs.mkdir(path.join(dir, 'docs', 'work'), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, 'docs/work/telemetry.jsonl'),
+      '{"source":"validator"}\n',
+    );
+    await new Promise<void>((resolve) =>
+      execFile('git', ['add', '--', 'docs/work/telemetry.jsonl'], { cwd: dir }, () =>
+        resolve(),
+      ),
+    );
+    await new Promise<void>((resolve) =>
+      execFile('git', ['commit', '-m', 'history'], { cwd: dir }, () => resolve()),
+    );
+    await provisionWorktree({
+      worktreePath: dir,
+      log,
+      actorId: 'operator',
+      ticketId: 'T-1',
+      timeoutMs: 90_000,
+    });
+    await expect(
+      fs.stat(path.join(dir, 'docs/work/telemetry.jsonl')),
+    ).resolves.toBeTruthy();
+    log.close();
+  }, 120_000);
+});
