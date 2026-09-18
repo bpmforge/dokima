@@ -2339,3 +2339,21 @@ the pack is re-signed, the prefix is exempted by name, provisioning removes
 the old untracked reports. Gate at W23-34: lint 0, typecheck 0, **5386
 tests** (614 files), **76 e2e**, validators + leaks + file-size clean.
 **Board: 530 done · 0 todo · 1 blocked (W12-44).**
+
+**Vault runs 4 and 5, and the day's last finding** (2026-09-18, night). Run 4
+proved W23-33 live: the fabricated test script was refused at the gate on both
+rungs, naming the heredoc; nothing landed that should not have. The rejected
+landing was sent back with a ledgered `reject`, the 002 tickets were
+repointed onto the script fix with `depends-on`, and the ticket was `brief`ed
+with the honest fix. Run 5's briefed session then COMMITTED that fix —
+`node --test "src/**/*.spec.ts"`, 27 real tests — and its acceptance passed in
+the worktree; and no rung returned a Completion Manifest: the MTPLX model
+deliberated in 24k–27k-token turns until the 90-minute leash fired, and the
+coder rung exhausted its tool budget. 181k completion tokens on a one-line
+change, parked. The gate would have accepted that worktree at 17:05. Filed as
+**W23-35**: when the work is demonstrably done and no manifest came back, the
+harness should mint the manifest from git and run the real close gate — safe
+under Law 4 because the gate never trusted the manifest in the first place.
+Verbs used today from the product, all ledgered: widen-scope (refused,
+correctly), retarget-acceptance, depends-on, reject, brief. **Board: 530 done ·
+1 todo (W23-35) · 1 blocked (W12-44).**
