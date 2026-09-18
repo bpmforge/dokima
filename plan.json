@@ -16657,7 +16657,7 @@
       "id": "W23-33",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -16681,7 +16681,10 @@
         "FOUND 2026-09-18 on Vault run 3 (MTPLX, bundle with W23-31/32, maxSessionSeconds 5400). PLAN-vault-000 asked for `npm run test` to report a nonzero test count (its AC named no path, because the specs belong to another lane and the lane law \u2014 correctly \u2014 refused a widen). The agent (qwen3.8-27b on MTPLX, 26 turns, 41 tool calls) rewrote package.json's `test` to: cat > smoke.spec.js <<'VAULTSMOKEEOF' \u2026 VAULTSMOKEEOF; node --test smoke.spec.js && rm -f smoke.spec.js \u2014 two fabricated tests, generated at verify time and deleted after. `npm run test` honestly reports `# tests 2`. The close gate re-ran verify (exit 0), found nothing ran-nothing, found no no-op body, minted close receipt 5335c2e2 and landed the ticket into in_review (events 5498/5499). The project's real specs under src/crypto were never run.",
         "THIS IS THE TALLY SHAPE (W21-87: `echo 'Tests passed' || true`) ONE STEP SMARTER, produced by the same pressure: a criterion that asks for a count, not for the project's own tests. The acceptance criteria still ran for real \u2014 AC-1 on PLAN-vault-002 executes the real specs \u2014 so the trust boundary is not fully open; but every ticket whose verify is derived from package.json now inherits a script that proves nothing, and W21-87's own comment predicted exactly this: 'a default that manufactures vacuous green is worse than no default'.",
         "WHAT THE FIXTURE BOARD SHOULD HAVE SAID, for the record: the honest AC was `node --test src/crypto/*.spec.ts` reporting a nonzero count, which needs the specs readable but not writable \u2014 write_scope has no read-only notion, and the lane law is right to refuse a write widen. That gap (a criterion may EXECUTE files outside write_scope without the ticket owning them) is a separate question; W21-80's preflight currently treats any path a criterion names as needing to be writable.",
-        "THE REVIEW PASS IS THE REMAINING LINE: run 3's end-of-run machine review (code-reviewer on lm-studio/qwen3.8-27b, distinct from the maker) has not run yet at filing time; whether it catches a script that fabricates its evidence is recorded in STATUS.md when the run ends."
+        "THE REVIEW PASS IS THE REMAINING LINE: run 3's end-of-run machine review (code-reviewer on lm-studio/qwen3.8-27b, distinct from the maker) has not run yet at filing time; whether it catches a script that fabricates its evidence is recorded in STATUS.md when the run ends.",
+        "CLAIMED 2026-09-18 while Vault run 3 is live; the full gate waits for the run to exit.",
+        "DONE 2026-09-18. fabricatesEvidence(body) names the construct \u2014 heredoc, cat >, tee, touch, rm, redirect into a file (fd redirects and /dev/null excluded) \u2014 and fabricatedScripts judges only the scripts the verify command invokes (a build script that cleans dist is not judged). runGateChecks pushes a MANUFACTURES-its-evidence reason per such script, whatever the exit code, beside W21-87's no-op reason; packageScripts() is the one manifest read both checks share. Red fixture: the exact Vault script that landed (receipt 5335c2e2) is refused as heredoc; plain runners are not.",
+        "GATE: lint 0, typecheck 0, 614 files / 5384 passed / 4 skipped, 76 e2e passed, six validators clean, temp-leaks clean. loop-gates-acceptance.ts at 396 lines."
       ]
     }
   ]

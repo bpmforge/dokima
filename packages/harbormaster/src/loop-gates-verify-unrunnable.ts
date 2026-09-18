@@ -52,3 +52,49 @@ export function unrunnableVerifyReason(
 export function unrunnableVerifyIn(reasons: readonly string[]): string | null {
   return reasons.find((r) => r.startsWith(UNRUNNABLE_VERIFY_MARKER)) ?? null;
 }
+
+/**
+ * W23-33: a check that MANUFACTURES its evidence is not a check.
+ *
+ * Live (Vault run 3, 2026-09-18): asked to make `npm run test` report a
+ * nonzero count, the agent rewrote the script to write a throwaway spec file,
+ * run it, and delete it — `cat > smoke.spec.js <<'EOF' … EOF; node --test
+ * smoke.spec.js && rm -f smoke.spec.js`. The run honestly reported two
+ * tests; the close gate saw nothing ran-nothing and nothing no-op, minted a
+ * receipt, and the project's real specs were never run. W21-87's `echo
+ * 'Tests passed'` one step smarter, from the same pressure: a criterion that
+ * asked for a count rather than for the project's own tests.
+ *
+ * So a verify script may not create, write or remove files. The constructs
+ * are named so the refusal says which one; fd redirects (`2>&1`,
+ * `>/dev/null`) are I/O plumbing, not evidence, and are not counted.
+ */
+const FABRICATION_CONSTRUCTS: readonly (readonly [string, RegExp])[] = [
+  ['heredoc', /<<-?\s*['"]?[A-Za-z_][A-Za-z0-9_]*['"]?/],
+  ['cat >', /\bcat\s*>>?/],
+  ['tee', /\btee\b/],
+  ['touch', /\btouch\b/],
+  ['rm', /\brm\s+-?/],
+  ['redirect into a file', /(^|[^0-9&])>>?\s*(?!&|\/dev\/null)[\w./$'"-]/],
+];
+
+/** The construct by which `body` makes or unmakes files, or null when it only runs things. */
+export function fabricatesEvidence(body: string): string | null {
+  for (const [name, re] of FABRICATION_CONSTRUCTS) if (re.test(body)) return name;
+  return null;
+}
+
+/** Among `scripts`, those named in `names` whose body fabricates evidence. */
+export function fabricatedScripts(
+  scripts: Record<string, unknown>,
+  names: readonly string[],
+): { readonly name: string; readonly body: string; readonly construct: string }[] {
+  const found: { name: string; body: string; construct: string }[] = [];
+  for (const name of names) {
+    const body = scripts[name];
+    if (typeof body !== 'string') continue;
+    const construct = fabricatesEvidence(body);
+    if (construct) found.push({ name, body, construct });
+  }
+  return found;
+}
