@@ -11,6 +11,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createIdentity, listEvents, openEventLog } from '@dokima/events';
 import { createTicket } from '@dokima/tickets';
+import { completeRun, createRun } from '@dokima/harbormaster';
 import { registerProject } from '../projects.js';
 import { buildApiServer, type ApiServer } from '../server.js';
 import { startBuildRun } from './approved-build-run-state.js';
@@ -189,5 +190,86 @@ describe('the approved-build routes (W23-14)', () => {
       headers: h,
     });
     expect(list.json().runs.map((r: { runId: string }) => r.runId)).toEqual(['run-1']);
+  });
+});
+
+describe('GET .../build-runs carries the durable run status, CLI-started runs included (W23-28)', () => {
+  const dirs: string[] = [];
+  let active: ApiServer | undefined;
+  afterEach(async () => {
+    await active?.app.close();
+    active = undefined;
+    await Promise.all(
+      dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
+    );
+  });
+
+  it('a run the CLI created and completeRun (W23-25) finished is listed as done; one still running says so', async () => {
+    const fleetHome = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-w2328-runs-'));
+    dirs.push(fleetHome);
+    const server = await buildApiServer({
+      token: TOKEN,
+      port: PORT,
+      isDbOpen: () => true,
+      logger: false,
+      fleetHome,
+    });
+    active = server;
+    const projectDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'dokima-w2328-runs-proj-'),
+    );
+    dirs.push(projectDir);
+    const record = await registerProject(path.join(fleetHome, 'fleet.json'), {
+      path: projectDir,
+      mode: 'new',
+      name: 'w2328',
+    });
+    await fs.mkdir(path.join(projectDir, '.dokima'), { recursive: true });
+    const log = openEventLog(path.join(projectDir, '.dokima', 'state.db'));
+    try {
+      createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });
+      const t = (iso: string) => ({ now: () => iso });
+      createRun(
+        log,
+        {
+          id: 'run-cli-a',
+          projectId: record.id,
+          mode: 'feature',
+          breakpoint: 'never',
+          actorId: 'worker-1',
+        },
+        t('2026-09-18T12:00:00.000Z'),
+      );
+      createRun(
+        log,
+        {
+          id: 'run-cli-b',
+          projectId: record.id,
+          mode: 'feature',
+          breakpoint: 'wave',
+          actorId: 'worker-1',
+        },
+        t('2026-09-18T12:01:00.000Z'),
+      );
+      completeRun(log, 'run-cli-a', 'worker-1', t('2026-09-18T12:02:00.000Z'));
+    } finally {
+      log.close();
+    }
+    const h = { host: `127.0.0.1:${PORT}`, authorization: `Bearer ${TOKEN}` };
+    const res = await server.app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${record.id}/build-runs`,
+      headers: h,
+    });
+    expect(res.statusCode).toBe(200);
+    const runs = res.json().runs as { runId: string; status: string; source: string }[];
+    expect(runs.find((r) => r.runId === 'run-cli-a')).toMatchObject({
+      status: 'done',
+      source: 'cli',
+    });
+    expect(runs.find((r) => r.runId === 'run-cli-b')).toMatchObject({
+      status: 'running',
+      source: 'cli',
+    });
   });
 });

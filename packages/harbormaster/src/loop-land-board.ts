@@ -59,10 +59,19 @@ export function requireTicket(log: EventLog, ticketId: string): Ticket {
 export function pickNextTicket(
   tickets: readonly Ticket[],
   skip: ReadonlySet<string>,
+  /**
+   * W23-28 (UC-03): a ticket with an OPEN clarification against it is
+   * checkpointed — only work dependent on the answer pauses, so it is simply
+   * not claimable until answered or dismissed; everything else continues.
+   */
+  isCheckpointed: (ticketId: string) => boolean = () => false,
 ): Ticket | undefined {
   const byId = new Map(tickets.map((ticket) => [ticket.id, ticket]));
   return tickets
-    .filter((ticket) => !skip.has(ticket.id) && isClaimable(ticket, byId))
+    .filter(
+      (ticket) =>
+        !skip.has(ticket.id) && isClaimable(ticket, byId) && !isCheckpointed(ticket.id),
+    )
     .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))[0];
 }
 
@@ -190,7 +199,9 @@ async function containsBase(
   baseRef: string,
 ): Promise<boolean> {
   try {
-    const base = (await git(repoRoot, ['rev-parse', `${baseRef}^{commit}`])).stdout.trim();
+    const base = (
+      await git(repoRoot, ['rev-parse', `${baseRef}^{commit}`])
+    ).stdout.trim();
     await git(worktreePath, ['merge-base', '--is-ancestor', base, 'HEAD']);
     return true;
   } catch {
@@ -205,7 +216,9 @@ async function hasAgentCommits(
   baseRef: string,
 ): Promise<boolean> {
   try {
-    const forkPoint = (await git(repoRoot, ['rev-parse', `${baseRef}^{commit}`])).stdout.trim();
+    const forkPoint = (
+      await git(repoRoot, ['rev-parse', `${baseRef}^{commit}`])
+    ).stdout.trim();
     const count = (
       await git(worktreePath, ['rev-list', '--count', `${forkPoint}..HEAD`])
     ).stdout.trim();

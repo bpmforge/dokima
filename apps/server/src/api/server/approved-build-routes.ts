@@ -28,7 +28,26 @@ import { resolveModelTarget } from '../pipeline/model-resolution.js';
 import { recordApprovedBuild, approvedBuildDigest } from '../../cli/approved-build.js';
 import { approvedBuildRunInputs } from '../../cli/approved-build.js';
 import { stateDbPath } from './board-project.js';
-import { listBuildRuns, summarizeBuildRun } from './approved-build-summary.js';
+import {
+  listBuildRuns,
+  summarizeBuildRun,
+  type BuildRunSummary,
+} from './approved-build-summary.js';
+import { listRuns, type RunRecord } from '@dokima/harbormaster';
+
+/** One row of GET .../build-runs: an API-started run's summary, or a CLI-started run's durable row. */
+type BuildRunListItem =
+  | (BuildRunSummary & { status: RunRecord['status'] | null; source: 'api' })
+  | {
+      runId: string;
+      projectId: string;
+      status: RunRecord['status'];
+      source: 'cli';
+      mode: RunRecord['mode'];
+      breakpoint: RunRecord['breakpoint'];
+      startedAt: string;
+      endedAt: string | null;
+    };
 import { NEVER_AUTO_LIST } from './settings-types.js';
 import { badRequest, resolveProjectOrProblem } from './settings-route-helpers.js';
 
@@ -192,7 +211,14 @@ export function registerApprovedBuildRoutes(
     },
   );
 
-  /** Which runs this project has, newest first — so a reload can find the live one. */
+  /**
+   * Which runs this project has, newest first — so a reload can find the live
+   * one. W23-28: joined with the durable `runs` rows (`listRuns`, the
+   * harbormaster verb that had no caller), so a run's lifecycle status —
+   * `running`, `paused`, `done` after completeRun (W23-25) — is on every
+   * row, and a run the CLI started (no `build.run.started` event, because the
+   * API's job table never saw it) is still listed as this project's run.
+   */
   app.get(
     '/api/v1/projects/:id/build-runs',
     async (request: FastifyRequest, reply: FastifyReply) => {
@@ -201,9 +227,29 @@ export function registerApprovedBuildRoutes(
       if (!projectPath) return;
       const log = openEventLog(stateDbPath(projectPath));
       try {
-        const runs = listBuildRuns(log, id)
+        const durable = new Map(listRuns(log, id).map((run) => [run.id, run]));
+        const runs: BuildRunListItem[] = listBuildRuns(log, id)
           .map((runId) => summarizeBuildRun(log, runId))
-          .filter((s): s is NonNullable<typeof s> => s !== undefined);
+          .filter((s): s is NonNullable<typeof s> => s !== undefined)
+          .map((s) => ({
+            ...s,
+            status: durable.get(s.runId)?.status ?? null,
+            source: 'api',
+          }));
+        const seen = new Set(runs.map((r) => r.runId));
+        for (const run of [...durable.values()].reverse()) {
+          if (seen.has(run.id)) continue;
+          runs.push({
+            runId: run.id,
+            projectId: run.projectId,
+            status: run.status,
+            source: 'cli',
+            mode: run.mode,
+            breakpoint: run.breakpoint,
+            startedAt: run.startedAt,
+            endedAt: run.endedAt,
+          });
+        }
         return reply.send({ runs });
       } finally {
         log.close();

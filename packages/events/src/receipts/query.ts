@@ -7,11 +7,9 @@
  * pins that with hex values frozen from the pre-split implementation.
  */
 
-import { listEvents } from '../append.js';
 import type { EventLog } from '../types.js';
 import type { ReceiptKind, ReceiptRecord } from './types.js';
 import { rowToRecord, type ReceiptRow } from './mint.js';
-import { eventTypeForKind } from './mac.js';
 
 export function getReceipt(log: EventLog, id: string): ReceiptRecord | undefined {
   const row = log.db
@@ -24,30 +22,4 @@ export interface MintEventPayload {
   receiptId?: string;
   kind?: ReceiptKind;
   contentMac?: string;
-}
-
-/**
- * The event anchoring a receipt for *informational* reads (who minted it),
- * matched by kind-appropriate eventType and receiptId only. This does NOT
- * verify the MAC — reading the claimed actor is not a trust decision.
- * `verifyReceipt` does the MAC-checked lookup; the two must not be conflated.
- */
-export function findAnchorEvent(
-  log: EventLog,
-  receipt: ReceiptRecord,
-): { actorId: string } | undefined {
-  const expectedType = eventTypeForKind(receipt.kind);
-  return listEvents(log).find((event) => {
-    if (event.eventType !== expectedType) return false;
-    const payload = event.payload as MintEventPayload | null;
-    return payload?.receiptId === receipt.id;
-  });
-}
-
-/** The identity that minted a receipt, read off its anchoring event (receipts carry no actor column of their own). */
-// @unreached getReceiptActor: receipts carry no actor column, so this is the only way to name who minted one — the audit/answer surfaces that need it (clarification dismissal ledger rows, FR-N1) arrive with W23-28; kept for that caller (W23-25 decision, 2026-09-17).
-export function getReceiptActor(log: EventLog, receiptId: string): string | null {
-  const receipt = getReceipt(log, receiptId);
-  if (!receipt) return null;
-  return findAnchorEvent(log, receipt)?.actorId ?? null;
 }

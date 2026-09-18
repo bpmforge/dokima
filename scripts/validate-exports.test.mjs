@@ -408,32 +408,15 @@ describe('the @unreached marker (W22-02)', () => {
     // notifications routes; the berths dial is marked against W13-32, blocked
     // by D-032 until the defaults review. When either lands, its markers are
     // DELETED and this list shrinks — the same contract as every line above.
+    // W23-28 (2026-09-18) landed the clarifications route, the runs list and
+    // the claim-path consult, and DELETED getReceiptActor with its marker —
+    // seven markers gone in the change that wired (or removed) their symbols,
+    // the direction the contract demands. What is left: the berths dial,
+    // blocked by D-032, and the kept compatibility surface.
     expect([...reasons.keys()].sort()).toEqual(
-      [
-        'answerClarification',
-        'askClarification',
-        'dismissClarification',
-        'getReceiptActor',
-        'isTicketCheckpointed',
-        'listOpenClarifications',
-        'listRuns',
-        'resolveAutorunBreakpoint',
-        'resolveBerthCount',
-        'runReviewPass',
-      ].sort(),
+      ['resolveAutorunBreakpoint', 'resolveBerthCount', 'runReviewPass'].sort(),
     );
     expect(reasons.get('runReviewPass')).toMatch(/compatibility surface/);
-    for (const sym of [
-      'askClarification',
-      'answerClarification',
-      'dismissClarification',
-      'listOpenClarifications',
-      'isTicketCheckpointed',
-      'listRuns',
-      'getReceiptActor',
-    ]) {
-      expect(reasons.get(sym), sym).toMatch(/W23-28/);
-    }
     for (const sym of ['resolveBerthCount', 'resolveAutorunBreakpoint']) {
       expect(reasons.get(sym), sym).toMatch(/W13-32/);
     }

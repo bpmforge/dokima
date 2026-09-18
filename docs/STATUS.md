@@ -2264,3 +2264,16 @@ prefix, then gitignoring it, each let a planted `.dokima/state.db` slip past
 the sweep. The out-of-session sweep now calls the one shared filter. Gate:
 lint 0, typecheck 0, **5360 tests** (612 files), **76 e2e**, validators +
 `temp-leaks` clean. Board: 523 done · 2 todo (W23-28, W23-30) · 2 blocked.
+
+**W23-28 — FR-N1's clarification verbs, reached at last** (2026-09-18). Four
+routes beside the notifications routes; asking mints a Decide card of the
+existing `clarification` kind at leverage 20 in the one morning queue, and
+answering or dismissing resolves it. Dismissal's ledger row already named the
+actor, so `getReceiptActor` was deleted with its marker. `listRuns` joined the
+build-runs GET that already existed (a duplicate registration failed every boot
+on the first try), so CLI-started runs and their `done` status are visible.
+`isTicketCheckpointed` is consulted on the claim path: a ticket with an open
+question is not claimable, its siblings are (UC-03). Seven markers gone;
+ratchets re-measured at 46/44, unchanged and left there honestly. Gate: lint
+0, typecheck 0, **5372 tests** (614 files), **76 e2e**, validators + leaks +
+file-size clean. **Board: 525 done · 0 todo · 2 blocked (W12-44, W13-32).**

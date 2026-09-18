@@ -6,11 +6,18 @@
  * held the full explanation at the same moment. Only the report lost it.
  */
 import { promises as fs } from 'node:fs';
+import {
+  answerClarification,
+  askClarification,
+  isTicketCheckpointed,
+} from './breakpoints-clarifications.js';
+import { createRun } from './breakpoints-runs.js';
+import { pickNextTicket } from './loop-land-board.js';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createIdentity, listEvents, openEventLog, type EventLog } from '@dokima/events';
-import { createTicket, type Ticket } from '@dokima/tickets';
+import { createTicket, listTickets, type Ticket } from '@dokima/tickets';
 import { parkBeforeAttempting, requireTicket } from './loop-land-board.js';
 
 const dirs: string[] = [];
@@ -18,7 +25,9 @@ const logs: EventLog[] = [];
 
 afterEach(async () => {
   for (const log of logs.splice(0)) log.close();
-  await Promise.all(dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })));
+  await Promise.all(
+    dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
+  );
 });
 
 async function fixture(): Promise<{ log: EventLog; ticket: Ticket }> {
@@ -64,7 +73,12 @@ describe('a park before the first attempt keeps its reason (W21-72)', () => {
 
   it('still comments the same reason on the ticket, which was never the broken half', async () => {
     const { log, ticket } = await fixture();
-    parkBeforeAttempting({ log, actorId: 'worker-1' } as never, ticket, STALE_WORKTREE_REASON, () => {});
+    parkBeforeAttempting(
+      { log, actorId: 'worker-1' } as never,
+      ticket,
+      STALE_WORKTREE_REASON,
+      () => {},
+    );
 
     const comments = listEvents(log).filter((e) => e.eventType === 'ticket.commented');
     expect(comments.length).toBe(1);
@@ -83,5 +97,55 @@ describe('a park before the first attempt keeps its reason (W21-72)', () => {
       },
     );
     expect(released).toBe('T-1');
+  });
+});
+
+describe('pickNextTicket leaves a checkpointed ticket alone (W23-28, UC-03)', () => {
+  it('RED FIXTURE: a ticket with an open clarification is not claimable; its sibling is — only dependent work pauses', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-board-checkpoint-'));
+    const log = openEventLog(path.join(dir, 'state.db'));
+    try {
+      createIdentity(log, { id: 'worker-1', name: 'Worker One', kind: 'machine' });
+      createRun(log, {
+        id: 'run-1',
+        projectId: 'proj-1',
+        mode: 'feature',
+        breakpoint: 'never',
+        actorId: 'worker-1',
+      });
+      for (const id of ['T-1', 'T-2']) {
+        createTicket(log, 'worker-1', {
+          id,
+          type: 'task',
+          title: id,
+          lane: 'core',
+          writeScope: ['src/**'],
+          verify: 'true',
+        });
+      }
+      askClarification(log, {
+        id: 'clarification-1',
+        runId: 'run-1',
+        ticketId: 'T-1',
+        askedBy: 'worker-1',
+        question: 'which?',
+        defaultAction: 'a',
+        checkpointRef: 'pass-1',
+      });
+      const tickets = [...listTickets(log).values()];
+      const checkpointed = (ticketId: string) => isTicketCheckpointed(log, ticketId);
+      // Without the consult, T-1 (lowest id) would be picked first.
+      expect(pickNextTicket(tickets, new Set())?.id).toBe('T-1');
+      expect(pickNextTicket(tickets, new Set(), checkpointed)?.id).toBe('T-2');
+      answerClarification(log, {
+        id: 'clarification-1',
+        answer: 'a',
+        actorId: 'worker-1',
+      });
+      expect(pickNextTicket(tickets, new Set(), checkpointed)?.id).toBe('T-1');
+    } finally {
+      log.close();
+      await fs.rm(dir, { recursive: true, force: true });
+    }
   });
 });

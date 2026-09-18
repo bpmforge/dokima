@@ -42,7 +42,7 @@ export {
   type MintReceiptOptions,
 } from './receipts/mint.js';
 
-export { getReceipt, getReceiptActor } from './receipts/query.js';
+export { getReceipt } from './receipts/query.js';
 
 export {
   verifyReceipt,

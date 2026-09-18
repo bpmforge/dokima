@@ -66,7 +66,6 @@ export function getRun(log: EventLog, runId: string): RunRecord | undefined {
   return row ? rowToRecord(row) : undefined;
 }
 
-// @unreached listRuns: the read half of the runs surface — no route lists a project's runs yet; W23-28 owes it one beside the clarifications route (W23-25 decision, 2026-09-17). completeRun, its sibling, is now CALLED by apps/server/src/cli/run-cmd.ts.
 export function listRuns(log: EventLog, projectId?: string): RunRecord[] {
   const rows = projectId
     ? log.db
