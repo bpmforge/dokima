@@ -16473,7 +16473,7 @@
       "id": "W23-29",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "done",
       "stories": [],
       "depends_on": [],
       "lane": "quality",
@@ -16491,7 +16491,13 @@
       "notes": [
         "SIGHTED 2026-09-17 20:37:17, one hour after W23-19 closed. /var/folders/.../T/dokima-suite-home-Xo0KLd held ONE file, global.db (36864 bytes), and NO .created-by. vitest.setup.ts is the only creator of that prefix in the repo (grepped) and writes the marker in the statement after mkdtempSync, so the marker was written and then deleted \u2014 a test that removed the home's contents, or the home itself, and something re-created it with a global.db afterwards. No test greps as removing process.env.DOKIMA_HOME; the three fs.rm(home) hits are tests' own mkdtemp homes.",
         "CONDITIONS AT THE TIME: two full suites ran concurrently \u2014 this session's gate and a Stop hook's `npm test` in the same checkout \u2014 plus a Playwright e2e run. That is the load condition W23-19 named for the onTaskUpdate-timeout termination. The W23-19 sweep ran in both suites and removed nothing, correctly: it skips a home with no marker, and this one had none. So the mechanism held and the evidence still went missing, which is exactly what this ticket is about.",
-        "THE SIGHTING WAS REMOVED BY HAND after its contents were recorded above \u2014 no vitest or playwright process was alive and its mtime was minutes old \u2014 because it would fail every `pnpm validate` for ten minutes and validate-temp-leaks reports and never removes (W22-18)."
+        "THE SIGHTING WAS REMOVED BY HAND after its contents were recorded above \u2014 no vitest or playwright process was alive and its mtime was minutes old \u2014 because it would fail every `pnpm validate` for ten minutes and validate-temp-leaks reports and never removes (W22-18).",
+        "CLAIMED 2026-09-17. Pre-claim scope check: both files are W23-19-owned and W23-19 is done; nothing open overlaps.",
+        "DONE 2026-09-17, THE \"EITHER\" BRANCH OF CRITERION 1 PLUS ONE HARD FACT. The marker is rewritten after EVERY test (afterEach), and a test that finds it gone is named on stderr at that moment. The run-level teardown now REPORTS a markerless home by path and contents rather than skipping it silently (criterion 2). Planted proofs: a test that deletes .created-by is named \u2014 \"was REMOVED during \"deletes the marker on purpose\" (\u2026/w23-29-plant.test.ts)\" \u2014 and a planted markerless home is reported with its file list and left in place.",
+        "THE HARD FACT: the one survivor examined (dokima-suite-home-L91pNF, sighted again during this ticket) held global.db with FOUR EMPTY TABLES (global_playbook, model_fitness, projects, providers) and nothing else \u2014 the schema openGlobalDb creates on open. Nothing wrote state; something OPENED the global database against a home whose directory was already removed, and openGlobalDb's mkdirSync(recursive) resurrected the home without its marker. That is a timer or a promise outliving its test file in a reused worker, not a test deleting a file.",
+        "SO THE THIRD INSTRUMENT: once the per-file teardown has removed the home, fs.mkdirSync aimed under it prints its STACK (patched on the CJS fs object and pushed to the ESM named export with syncBuiltinESMExports). The next occurrence names the caller in the run log. Two production writers exist \u2014 memory-hooks.ts:203 openGlobalDb() and models-bench-route.ts:101 \u2014 and the scheduler/wave-automation timers server.ts starts on every boot are the obvious suspects; no test-booted server was proven to leave them running, and this ticket does not guess.",
+        "NOT REPRODUCED ON DEMAND: 8 single-file runs, 3 paired build-run-file runs and 2 clean full runs after instrumenting \u2014 zero. Two earlier full runs with an extra marker-deleting plant file present each left one markerless home. Intermittent, as every ticket on this leak has said.",
+        "GATE: lint 0, typecheck 0, 612 files / 5359 passed / 4 skipped (x2), 76 e2e passed, six validators clean, temp-leaks clean."
       ]
     }
   ]

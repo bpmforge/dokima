@@ -74,9 +74,24 @@ export function sweepOrphanedSuiteHomes(tmpdir = os.tmpdir()): string[] {
     const home = path.join(tmpdir, name);
     const by = readMarker(home);
     // No marker: not one of ours to judge (pre-W23-19 residue, or a home
-    // mid-creation whose marker is not written yet). Leave it and let
-    // validate-temp-leaks report it.
-    if (!by || typeof by.pid !== 'number') continue;
+    // mid-creation whose marker is not written yet). Left in place — but
+    // NAMED (W23-29): the one sighting after W23-19 was exactly this shape,
+    // global.db and nothing else, and it was found by hand. The run log is
+    // where the next one should appear.
+    if (!by || typeof by.pid !== 'number') {
+      let files: string[] = [];
+      try {
+        files = readdirSync(home);
+      } catch {
+        // Gone between readdir and here — nothing to report.
+        continue;
+      }
+      console.error(
+        `[global-teardown] W23-29: suite home with NO marker — not removed, cannot ` +
+          `tell a leak from a live run: ${home} (files: ${files.join(', ') || 'none'})`,
+      );
+      continue;
+    }
     if (isAlive(by.pid)) continue;
     console.error(
       `[global-teardown] W23-19: removing suite home its worker never cleaned up — ` +

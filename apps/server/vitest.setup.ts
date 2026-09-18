@@ -22,8 +22,9 @@
  * files can never see each other's global settings either.
  */
 
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { afterAll, beforeAll, expect } from 'vitest';
+import fs, { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
+import { afterAll, afterEach, beforeAll, expect } from 'vitest';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -49,44 +50,71 @@ process.env.DOKIMA_HOME = home;
  * early. `beforeAll` below fills it in, so a surviving home that names no test
  * file is itself the finding: the setup ran and the tests did not.
  */
-writeFileSync(
-  path.join(home, '.created-by'),
-  `${JSON.stringify(
-    {
-      pid: process.pid,
-      worker: process.env.VITEST_WORKER_ID ?? null,
-      pool: process.env.VITEST_POOL_ID ?? null,
-      createdAt: new Date().toISOString(),
-      testFile: null,
-    },
-    null,
-    2,
-  )}\n`,
-);
+const MARKER = path.join(home, '.created-by');
+const createdAt = new Date().toISOString();
+
+function writeMarker(testFile: string | null, lastTest: string | null = null): void {
+  writeFileSync(
+    MARKER,
+    `${JSON.stringify(
+      {
+        pid: process.pid,
+        worker: process.env.VITEST_WORKER_ID ?? null,
+        pool: process.env.VITEST_POOL_ID ?? null,
+        createdAt,
+        testFile,
+        lastTest,
+      },
+      null,
+      2,
+    )}\n`,
+  );
+}
+
+writeMarker(null);
 
 beforeAll(() => {
   // The file this home actually belongs to, recorded as soon as anything in it
   // runs. A leaked home carrying a testFile means the tests ran and the
   // teardown did not; one carrying null means the tests never started.
   try {
-    const state = expect.getState();
-    writeFileSync(
-      path.join(home, '.created-by'),
-      `${JSON.stringify(
-        {
-          pid: process.pid,
-          worker: process.env.VITEST_WORKER_ID ?? null,
-          pool: process.env.VITEST_POOL_ID ?? null,
-          createdAt: new Date().toISOString(),
-          testFile: state.testPath ?? null,
-        },
-        null,
-        2,
-      )}\n`,
-    );
+    writeMarker(expect.getState().testPath ?? null);
   } catch {
     // Instrumentation must never fail a test file. A home with a stale marker
     // is still a named home.
+  }
+});
+
+/**
+ * THE MARKER SURVIVES WHATEVER REMOVED IT (W23-29).
+ *
+ * One hour after W23-19 closed, a home survived holding global.db and NO
+ * marker — the one shape the run-level sweep may not judge, because a home it
+ * cannot attribute might belong to a live run. The setup above is the only
+ * creator of this prefix and writes the marker in the very next statement, so
+ * the marker was written and then removed by a test: something wiped the
+ * home's contents, or the home itself, and a later write recreated it with a
+ * global.db and nothing else.
+ *
+ * So the marker is rewritten after EVERY test, and a test that finds it gone
+ * is named on stderr at that moment — "with instrumentation output rather
+ * than a theory", which is the criterion every previous ticket on this leak
+ * fell short of. The write is a few hundred bytes per test; the naming is the
+ * whole point.
+ */
+afterEach(() => {
+  try {
+    const state = expect.getState();
+    if (!existsSync(MARKER)) {
+      console.error(
+        `[test-setup] W23-29: the suite home's .created-by was REMOVED during ` +
+          `"${state.currentTestName ?? '?'}" (${state.testPath ?? '?'}) — ` +
+          `this test deletes or recreates DOKIMA_HOME; rewriting the marker`,
+      );
+    }
+    writeMarker(state.testPath ?? null, state.currentTestName ?? null);
+  } catch {
+    // Same rule as beforeAll: instrumentation never fails a test.
   }
 });
 /**
@@ -130,6 +158,7 @@ afterAll(() => {
   // failure. `force` already absorbs "already gone".
   try {
     rmSync(home, { recursive: true, force: true, maxRetries: 8, retryDelay: 60 });
+    homeRemoved = true;
   } catch (err) {
     // Deliberately not a throw: failing a test FILE over housekeeping would
     // trade a leak for a red suite, and the leak is the lesser fault. But it is
@@ -138,6 +167,39 @@ afterAll(() => {
     console.error(`[test-setup] could not remove ${home}:`, err);
   }
 });
+
+/**
+ * WHOEVER RECREATES THE REMOVED HOME IS NAMED (W23-29).
+ *
+ * The one markerless survivor whose contents were examined held a global.db
+ * with four EMPTY tables — the schema `openGlobalDb` creates on open and
+ * nothing else. That is not a test writing state; it is something OPENING the
+ * global database against a DOKIMA_HOME whose directory has already been
+ * removed, and `openGlobalDb` does `mkdirSync(dirname, { recursive: true })`
+ * first, which resurrects the home with no marker. A timer or a promise that
+ * outlives its test file in a reused worker would do exactly this, and the
+ * only way to find out which one is to catch the mkdir in the act.
+ *
+ * So once this file's teardown has removed the home, any `mkdirSync` aimed
+ * under it prints its stack. `syncBuiltinESMExports` is what makes a patch on
+ * the CJS `fs` object visible to `import { mkdirSync } from 'node:fs'` — the
+ * ESM named exports of builtins are snapshots until told to resync.
+ */
+let homeRemoved = false;
+const realMkdirSync = fs.mkdirSync;
+fs.mkdirSync = ((
+  target: fs.PathLike,
+  options?: fs.MakeDirectoryOptions | fs.Mode | null,
+) => {
+  if (homeRemoved && String(target).startsWith(home)) {
+    console.error(
+      `[test-setup] W23-29: RECREATING the removed suite home ${home} via mkdirSync(${String(target)}) from:\n` +
+        `${new Error('mkdir after teardown').stack ?? '(no stack)'}`,
+    );
+  }
+  return realMkdirSync(target, options as fs.MakeDirectoryOptions);
+}) as typeof fs.mkdirSync;
+syncBuiltinESMExports();
 
 /**
  * Pins the FILE-BACKED credential store for the whole suite (W12-43).
