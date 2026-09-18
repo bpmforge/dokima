@@ -68,6 +68,14 @@ export const HARNESS_OWNED_PATHS = [
 export const HARNESS_WRITTEN_PATHS = ['.dokima/telemetry.jsonl'];
 
 /**
+ * W23-34: directories the harness writes INTO, exempted by prefix — still
+ * never the whole `.dokima/`. The close gate's validators write one
+ * RUNTIME_<kind>_<date>.md per run under .dokima/reviews/ (they wrote it to
+ * docs/reviews/ before, which refused every attempt on Vault run 3).
+ */
+export const HARNESS_WRITTEN_PREFIXES = ['.dokima/reviews/'];
+
+/**
  * Commit whatever the harness changed, so the next session's diff is only the
  * agent's. Returns the paths committed; empty when the worktree was already
  * clean of harness changes.
@@ -125,7 +133,8 @@ export function agentAuthoredPaths(paths: readonly string[]): string[] {
   return paths.filter(
     (p) =>
       !(HARNESS_OWNED_PATHS as readonly string[]).includes(p) &&
-      !(HARNESS_WRITTEN_PATHS as readonly string[]).includes(p),
+      !(HARNESS_WRITTEN_PATHS as readonly string[]).includes(p) &&
+      !HARNESS_WRITTEN_PREFIXES.some((prefix) => p.startsWith(prefix)),
   );
 }
 
@@ -142,28 +151,34 @@ export function agentAuthoredPaths(paths: readonly string[]): string[] {
  * of someone's history and is not the provisioner's to rewrite.
  */
 export const LEGACY_HARNESS_LEAVINGS = ['docs/work/telemetry.jsonl'];
+/** W23-34: the old runtime-report location, one dated file per validator kind. */
+export const LEGACY_HARNESS_LEAVING_PATTERNS: readonly RegExp[] = [
+  /^docs\/reviews\/RUNTIME_[A-Za-z0-9_-]+_\d{4}-\d{2}-\d{2}\.md$/,
+];
 
-/** Deletes untracked legacy leavings; returns the paths removed. Never a gate. */
+/** Deletes untracked legacy leavings (exact paths and dated patterns); returns the paths removed. Never a gate. */
 export async function removeLegacyHarnessLeavings(
   worktreePath: string,
 ): Promise<string[]> {
   const removed: string[] = [];
-  for (const rel of LEGACY_HARNESS_LEAVINGS) {
+  let untracked: string[] = [];
+  try {
+    const out = await git(worktreePath, ['ls-files', '--others', '--exclude-standard']);
+    untracked = out.stdout
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+  } catch {
+    // Not a git worktree — the pre-existing behaviour.
+    return removed;
+  }
+  const targets = untracked.filter(
+    (rel) =>
+      (LEGACY_HARNESS_LEAVINGS as readonly string[]).includes(rel) ||
+      LEGACY_HARNESS_LEAVING_PATTERNS.some((re) => re.test(rel)),
+  );
+  for (const rel of targets) {
     try {
-      const untracked = await git(worktreePath, [
-        'ls-files',
-        '--others',
-        '--exclude-standard',
-        '--',
-        rel,
-      ]);
-      if (
-        !untracked.stdout
-          .split('\n')
-          .map((l) => l.trim())
-          .includes(rel)
-      )
-        continue;
       await fs.unlink(path.join(worktreePath, rel));
       removed.push(rel);
       // Prune the directories the leaving made, while they are empty.
@@ -177,7 +192,7 @@ export async function removeLegacyHarnessLeavings(
         dir = path.dirname(dir);
       }
     } catch {
-      // Not a git worktree, or nothing to do — the pre-existing behaviour.
+      // Already gone, or not ours to remove — nothing to report.
     }
   }
   return removed;

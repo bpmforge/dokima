@@ -246,7 +246,8 @@ write_runtime_report() {
   local body="$4"
   local date
   date=$(date +%Y-%m-%d)
-  local out_dir="$root/docs/reviews"
+  # W23-34: under the product's own directory, never inside the audited tree (see W23-23).
+  local out_dir="$root/.dokima/reviews"
   mkdir -p "$out_dir"
   local out="$out_dir/RUNTIME_${kind}_${date}.md"
   cat > "$out" <<EOF

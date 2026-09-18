@@ -80,3 +80,17 @@ describe('refuseIfSessionExceededScope (W21-29)', () => {
     expect(await refuseIfSessionExceededScope(dir, ['src/**'])).toBeNull();
   });
 });
+
+describe('the close gate’s own runtime report is not the agent’s change (W23-34)', () => {
+  it('RED FIXTURE (Vault run 3): an untracked .dokima/reviews/RUNTIME_lint_<date>.md does not refuse a session; .dokima/state.db still does', async () => {
+    const dir = await repo();
+    await fs.mkdir(path.join(dir, '.dokima', 'reviews'), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, '.dokima/reviews/RUNTIME_lint_2026-09-18.md'),
+      '# RUNTIME_lint\n',
+    );
+    expect(await refuseIfSessionExceededScope(dir, ['src/**'])).toBeNull();
+    await fs.writeFile(path.join(dir, '.dokima/state.db'), 'not really a db');
+    expect(await refuseIfSessionExceededScope(dir, ['src/**'])).not.toBeNull();
+  });
+});

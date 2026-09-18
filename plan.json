@@ -16691,7 +16691,7 @@
       "id": "W23-34",
       "role": "coding-agent",
       "phase": 23,
-      "status": "in_progress",
+      "status": "done",
       "stories": [
         "US-501"
       ],
@@ -16699,7 +16699,7 @@
       "lane": "content",
       "module": "content",
       "points": 3,
-      "title": "the validators ALSO write docs/reviews/RUNTIME_*.md into the audited project \u2014 W23-23's sibling, found refusing every attempt on Vault run 3",
+      "title": "the validators ALSO write dated RUNTIME reports into the audited project \u2014 W23-23's sibling, found refusing every attempt on Vault run 3",
       "write_scope": [
         "content/validators/_lib_sdlc_config.sh",
         "content/manifest.json",
@@ -16710,12 +16710,14 @@
       "acceptance": [
         "write_runtime_report lands under ${root}/.dokima/reviews/ instead of docs/reviews/, and the content pack is re-signed",
         "agentAuthoredPaths exempts the .dokima/reviews/ prefix by name (never the whole .dokima/ \u2014 the SC-01 fixture for .dokima/state.db stays red), so the sweep and the review-evidence check do not blame the agent for a report the close gate wrote",
-        "Provisioning removes an UNTRACKED docs/reviews/RUNTIME_*.md the old writer left, like W23-32 does for telemetry; a committed one stays",
-        "Red fixtures: an untracked .dokima/reviews/RUNTIME_lint_2026-09-18.md does not refuse a session; .dokima/state.db still does; a stale docs/reviews/RUNTIME_lint_*.md is gone after provisioning"
+        "Provisioning removes an UNTRACKED dated RUNTIME reports into the project's docs/reviews folder the old writer left, like W23-32 does for telemetry; a committed one stays",
+        "Red fixtures: an untracked .dokima/reviews/RUNTIME_lint_2026-09-18.md does not refuse a session; .dokima/state.db still does; a stale a stale RUNTIME_lint report in docs/reviews is gone after provisioning"
       ],
       "notes": [
-        "FOUND 2026-09-18 on Vault run 3. PLAN-vault-002 was refused out-of-session on BOTH attempts for docs/reviews/RUNTIME_lint_2026-09-18.md (outside-scope) \u2014 written at 16:00 that day by validate-lint.sh through write_runtime_report in _lib_sdlc_config.sh, i.e. by the close gate itself, AFTER W23-23 had moved the telemetry writer. Five validators call it (build, deps, lint, \u2026). Same class as W23-23 and W23-32: the product writes into the tree it audits, then blames the agent for the difference. Filed and claimed together.",
-        "SCOPE: the five validator callers pass $ROOT and need no change; only the helper's out_dir moves. Lane content for the pack; the harbormaster files are done-owned (W23-23/W23-32) and widened into."
+        "FOUND 2026-09-18 on Vault run 3. PLAN-vault-002 was refused out-of-session on BOTH attempts for the dated RUNTIME_lint report under the project's docs/reviews folder (outside-scope) \u2014 written at 16:00 that day by validate-lint.sh through write_runtime_report in _lib_sdlc_config.sh, i.e. by the close gate itself, AFTER W23-23 had moved the telemetry writer. Five validators call it (build, deps, lint, \u2026). Same class as W23-23 and W23-32: the product writes into the tree it audits, then blames the agent for the difference. Filed and claimed together.",
+        "SCOPE: the five validator callers pass $ROOT and need no change; only the helper's out_dir moves. Lane content for the pack; the harbormaster files are done-owned (W23-23/W23-32) and widened into.",
+        "DONE 2026-09-18. write_runtime_report lands under ${root}/.dokima/reviews/ (pack re-signed; the five validator callers pass $ROOT and needed no change). HARNESS_WRITTEN_PREFIXES = ['.dokima/reviews/'] is exempted by prefix in agentAuthoredPaths \u2014 narrower than .dokima/, so the SC-01 fixture for .dokima/state.db stays red, asserted again beside the new fixture. removeLegacyHarnessLeavings now matches dated patterns as well as exact paths and removes the old untracked reports; an unrelated docs file beside them is kept.",
+        "GATE: lint 0, typecheck 0, 614 files / 5386 passed / 4 skipped, 76 e2e passed, six validators clean, temp-leaks clean, file-size clean. One detour: validate-traceability reads a docs/\u2026md path inside a ticket note as a document reference, so the notes name the report in words."
       ]
     }
   ]

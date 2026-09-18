@@ -461,3 +461,42 @@ describe('pre-W23-23 telemetry leavings are the harness’s history, not the age
     log.close();
   }, 120_000);
 });
+
+describe('the old runtime-report location is a harness leaving too (W23-34)', () => {
+  it('an untracked docs/reviews/RUNTIME_<kind>_<date>.md is removed at provisioning; an unrelated docs file is not', async () => {
+    const dir = await tempDir('legacy-runtime-report');
+    const log = await logIn(dir);
+    const { execFile } = await import('node:child_process');
+    const run = (args: string[]) =>
+      new Promise<void>((resolve, reject) =>
+        execFile('git', args, { cwd: dir }, (err) => (err ? reject(err) : resolve())),
+      );
+    await run(['init', '-q']);
+    await run(['config', 'user.email', 'harness@dokima.test']);
+    await run(['config', 'user.name', 'Harness']);
+    await fs.writeFile(path.join(dir, 'seed.txt'), 'seed');
+    await run(['add', '-A']);
+    await run(['commit', '-q', '-m', 'seed']);
+    await fs.writeFile(path.join(dir, 'package.json'), '{"name":"x"}');
+    await fs.mkdir(path.join(dir, 'docs', 'reviews'), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, 'docs/reviews/RUNTIME_lint_2026-09-18.md'),
+      '# RUNTIME_lint\n',
+    );
+    await fs.writeFile(path.join(dir, 'docs/reviews/DESIGN_NOTE.md'), '# mine\n');
+    await provisionWorktree({
+      worktreePath: dir,
+      log,
+      actorId: 'operator',
+      ticketId: 'T-1',
+      timeoutMs: 90_000,
+    });
+    await expect(
+      fs.stat(path.join(dir, 'docs/reviews/RUNTIME_lint_2026-09-18.md')),
+    ).rejects.toThrow();
+    await expect(
+      fs.stat(path.join(dir, 'docs/reviews/DESIGN_NOTE.md')),
+    ).resolves.toBeTruthy();
+    log.close();
+  }, 120_000);
+});
