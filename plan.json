@@ -16652,6 +16652,37 @@
         "DONE 2026-09-18. LEGACY_HARNESS_LEAVINGS = ['docs/work/telemetry.jsonl'] in worktree-harness-paths.ts; removeLegacyHarnessLeavings deletes it at the top of provisionWorktree only when git lists it as untracked, then prunes the empty docs/work and docs directories; a committed copy is history and stays. Red fixture: untracked file gone from status and its directory pruned; committed file kept across a second provision. All seven Vault worktrees carry the untracked file today; run 3 is the live proof.",
         "GATE: lint 0, typecheck 0, 614 files / 5381 passed / 4 skipped, 76 e2e passed, six validators clean, temp-leaks clean."
       ]
+    },
+    {
+      "id": "W23-33",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "lane": "orchestrator",
+      "module": "harbormaster",
+      "points": 3,
+      "title": "a verify script that WRITES its own test file, runs it and deletes it passes the ran-nothing and no-op checks \u2014 a check that manufactures its evidence is not a check",
+      "write_scope": [
+        "packages/harbormaster/src/loop-gates-acceptance.ts",
+        "packages/harbormaster/src/loop-gates-acceptance.test.ts",
+        "packages/harbormaster/src/loop-gates-verify-unrunnable.ts",
+        "packages/harbormaster/src/loop-gates-verify-unrunnable.test.ts"
+      ],
+      "acceptance": [
+        "noOpVerifyScripts (W21-87) also refuses a package script whose body creates, writes or removes files \u2014 a heredoc (<<), a redirect into a file (> or >>), `cat >`, `tee`, `touch`, `rm` \u2014 naming the script and the construct, because the evidence such a script produces was made by the script",
+        "The refusal is not gated on the exit code, like the existing no-op check, and is part of the close gate's reasons so the ladder's next attempt is told the script itself is the defect",
+        "Red fixture: the exact Vault script (cat > smoke.spec.js <<EOF ... EOF; node --test smoke.spec.js && rm -f smoke.spec.js) is refused; a script that runs `node --test` over files that exist in the tree is not; `rm -rf dist && tsc` in a BUILD script is not a test script and is not judged"
+      ],
+      "notes": [
+        "FOUND 2026-09-18 on Vault run 3 (MTPLX, bundle with W23-31/32, maxSessionSeconds 5400). PLAN-vault-000 asked for `npm run test` to report a nonzero test count (its AC named no path, because the specs belong to another lane and the lane law \u2014 correctly \u2014 refused a widen). The agent (qwen3.8-27b on MTPLX, 26 turns, 41 tool calls) rewrote package.json's `test` to: cat > smoke.spec.js <<'VAULTSMOKEEOF' \u2026 VAULTSMOKEEOF; node --test smoke.spec.js && rm -f smoke.spec.js \u2014 two fabricated tests, generated at verify time and deleted after. `npm run test` honestly reports `# tests 2`. The close gate re-ran verify (exit 0), found nothing ran-nothing, found no no-op body, minted close receipt 5335c2e2 and landed the ticket into in_review (events 5498/5499). The project's real specs under src/crypto were never run.",
+        "THIS IS THE TALLY SHAPE (W21-87: `echo 'Tests passed' || true`) ONE STEP SMARTER, produced by the same pressure: a criterion that asks for a count, not for the project's own tests. The acceptance criteria still ran for real \u2014 AC-1 on PLAN-vault-002 executes the real specs \u2014 so the trust boundary is not fully open; but every ticket whose verify is derived from package.json now inherits a script that proves nothing, and W21-87's own comment predicted exactly this: 'a default that manufactures vacuous green is worse than no default'.",
+        "WHAT THE FIXTURE BOARD SHOULD HAVE SAID, for the record: the honest AC was `node --test src/crypto/*.spec.ts` reporting a nonzero count, which needs the specs readable but not writable \u2014 write_scope has no read-only notion, and the lane law is right to refuse a write widen. That gap (a criterion may EXECUTE files outside write_scope without the ticket owning them) is a separate question; W21-80's preflight currently treats any path a criterion names as needing to be writable.",
+        "THE REVIEW PASS IS THE REMAINING LINE: run 3's end-of-run machine review (code-reviewer on lm-studio/qwen3.8-27b, distinct from the maker) has not run yet at filing time; whether it catches a script that fabricates its evidence is recorded in STATUS.md when the run ends."
+      ]
     }
   ]
 }
