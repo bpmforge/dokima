@@ -8034,13 +8034,16 @@
       "module": "harbormaster",
       "lane": "core",
       "points": 8,
-      "status": "blocked",
+      "status": "in_progress",
       "role": "coding-agent",
       "write_scope": [
         "packages/harbormaster/src/breakpoints-clarifications.ts",
         "packages/harbormaster/src/breakpoints-clarifications.test.ts",
         "packages/harbormaster/src/autonomy.ts",
-        "packages/harbormaster/src/autonomy.test.ts"
+        "packages/harbormaster/src/autonomy.test.ts",
+        "apps/server/src/api/server/clarifications-routes.ts",
+        "apps/server/src/api/server/clarifications-routes.test.ts",
+        "packages/harbormaster/src/autonomy-types.ts"
       ],
       "depends_on": [
         "W13-26"
@@ -8055,7 +8058,8 @@
       "notes": [
         "Filed by W13-26, which shipped the honest surface only. Today nothing reads the dial and every gated pause blocks, so the current state is conservative \u2014 there is no urgency here, and real risk in wiring it without the defaults review.",
         "BLOCKED 2026-08-30 by founder direction, recorded as D-032. A1 asked for the decision to be made and recorded FIRST, and this is that decision: not yet, and not until the per-pause-site defaults review happens. Recording 'no' is answering A1, not dodging it \u2014 the ticket stays open because the wiring is still wanted, and the review is now its named precondition rather than an assumption inside it.",
-        "REVIEW WRITTEN 2026-09-18, DECISION STILL PENDING (slate P-007): docs/work/AUTONOMY_DEFAULTS_REVIEW.md walks all seven pause sites. Measured on this machine: NO project has selected auto, so the D-032 population is empty here. Recommendation: wire clarification only, with three guards (default must be an offered option; per-run cap; ledger carries the checkpoint); escalation auto only to a local rung; budget never. resolvePauseAction is already consulted on the approved-build path (approved-build-policy.ts step 3) \u2014 the remaining wiring is the askClarification hop (AC2). Ready-to-record decision text (D-033) is at the end of the review; this ticket stays blocked until it is recorded."
+        "REVIEW WRITTEN 2026-09-18, DECISION STILL PENDING (slate P-007): docs/work/AUTONOMY_DEFAULTS_REVIEW.md walks all seven pause sites. Measured on this machine: NO project has selected auto, so the D-032 population is empty here. Recommendation: wire clarification only, with three guards (default must be an offered option; per-run cap; ledger carries the checkpoint); escalation auto only to a local rung; budget never. resolvePauseAction is already consulted on the approved-build path (approved-build-policy.ts step 3) \u2014 the remaining wiring is the askClarification hop (AC2). Ready-to-record decision text (D-033) is at the end of the review; this ticket stays blocked until it is recorded.",
+        "UNBLOCKED 2026-09-18 by D-033 (founder direction: unblock whatever we can; the review's recommendation adopted as drafted) and CLAIMED. Acceptance as amended by D-033: the safe-list is ['clarification'] and compiled; an auto clarification takes its default only when it is an offered option and fewer than three have been auto-taken this run; the ledger row records what would have been asked and the checkpoint; escalation and budget keep asking under auto. SCOPE WIDENED AT CLAIM (Law 1): the mode is injected from apps/server, so clarifications-routes.ts (+test, W23-28 done) carries the hop; autonomy-types.ts (done-owned) may host the safe-list beside NEVER-AUTO."
       ]
     },
     {
