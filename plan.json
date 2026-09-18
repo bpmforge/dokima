@@ -8034,7 +8034,7 @@
       "module": "harbormaster",
       "lane": "core",
       "points": 8,
-      "status": "in_progress",
+      "status": "done",
       "role": "coding-agent",
       "write_scope": [
         "packages/harbormaster/src/breakpoints-clarifications.ts",
@@ -8043,7 +8043,10 @@
         "packages/harbormaster/src/autonomy.test.ts",
         "apps/server/src/api/server/clarifications-routes.ts",
         "apps/server/src/api/server/clarifications-routes.test.ts",
-        "packages/harbormaster/src/autonomy-types.ts"
+        "packages/harbormaster/src/autonomy-types.ts",
+        "apps/web/src/settings/AutonomyBudgetPanel.tsx",
+        "apps/web/src/settings/AutonomyBudgetPanel.test.tsx",
+        "apps/web/e2e/settings.spec.ts"
       ],
       "depends_on": [
         "W13-26"
@@ -8059,7 +8062,13 @@
         "Filed by W13-26, which shipped the honest surface only. Today nothing reads the dial and every gated pause blocks, so the current state is conservative \u2014 there is no urgency here, and real risk in wiring it without the defaults review.",
         "BLOCKED 2026-08-30 by founder direction, recorded as D-032. A1 asked for the decision to be made and recorded FIRST, and this is that decision: not yet, and not until the per-pause-site defaults review happens. Recording 'no' is answering A1, not dodging it \u2014 the ticket stays open because the wiring is still wanted, and the review is now its named precondition rather than an assumption inside it.",
         "REVIEW WRITTEN 2026-09-18, DECISION STILL PENDING (slate P-007): docs/work/AUTONOMY_DEFAULTS_REVIEW.md walks all seven pause sites. Measured on this machine: NO project has selected auto, so the D-032 population is empty here. Recommendation: wire clarification only, with three guards (default must be an offered option; per-run cap; ledger carries the checkpoint); escalation auto only to a local rung; budget never. resolvePauseAction is already consulted on the approved-build path (approved-build-policy.ts step 3) \u2014 the remaining wiring is the askClarification hop (AC2). Ready-to-record decision text (D-033) is at the end of the review; this ticket stays blocked until it is recorded.",
-        "UNBLOCKED 2026-09-18 by D-033 (founder direction: unblock whatever we can; the review's recommendation adopted as drafted) and CLAIMED. Acceptance as amended by D-033: the safe-list is ['clarification'] and compiled; an auto clarification takes its default only when it is an offered option and fewer than three have been auto-taken this run; the ledger row records what would have been asked and the checkpoint; escalation and budget keep asking under auto. SCOPE WIDENED AT CLAIM (Law 1): the mode is injected from apps/server, so clarifications-routes.ts (+test, W23-28 done) carries the hop; autonomy-types.ts (done-owned) may host the safe-list beside NEVER-AUTO."
+        "UNBLOCKED 2026-09-18 by D-033 (founder direction: unblock whatever we can; the review's recommendation adopted as drafted) and CLAIMED. Acceptance as amended by D-033: the safe-list is ['clarification'] and compiled; an auto clarification takes its default only when it is an offered option and fewer than three have been auto-taken this run; the ledger row records what would have been asked and the checkpoint; escalation and budget keep asking under auto. SCOPE WIDENED AT CLAIM (Law 1): the mode is injected from apps/server, so clarifications-routes.ts (+test, W23-28 done) carries the hop; autonomy-types.ts (done-owned) may host the safe-list beside NEVER-AUTO.",
+        "DONE 2026-09-18 under D-033. THE SAFE-LIST IS COMPILED beside NEVER-AUTO (autonomy-types.ts AUTO_DEFAULT_SITES = ['clarification'], AUTO_DEFAULTS_PER_RUN_CAP = 3); resolvePauseAction asks C-5 first, then the safe-list, so escalation and budget ask under auto too (their tests changed from take_default to ask_human on purpose \u2014 that IS the decision).",
+        "AC2: askClarification takes the dial through ClarificationVerbOptions.autonomy ({ mode }), injected by apps/server clarifications-routes.ts from the project's `autonomy` setting; harbormaster still cannot read settings. In auto, at this site, with the guards satisfied (whyAutoDefaultMustAsk: the default must be an offered option; fewer than 3 auto-taken this run), the card is dismissed in the same transaction, a clarification.auto_defaulted event and an auto-default ledger row are appended under the ASKING identity with the checkpoint in wouldHaveAsked, and the route mints no Decide card.",
+        "AC3/AC4 RED FIXTURES: auto + clarification -> dismissed, ledgered (mode auto, decision auto-default, humanSignature null); interactive or no dial -> open and checkpointed; default not an offered option -> open; fourth in a run -> open; the same auto project still ASKS at main-merge and deploy (resolvePauseAction) and appendAutoDefaultRow refuses a NEVER-AUTO site. Route fixture: PUT autonomy auto, POST ask -> 201 dismissed auto_defaulted, no clarification card in the queue, one ledger row; a non-offered default still opens.",
+        "THE PANEL TELLS THE TRUTH AGAIN: the Auto radio is selectable and its label names the one thing it does and the cap; W13-26's 'not in effect yet' copy, its unit fixture and the e2e that pinned the radio disabled were all updated, and the e2e's reload round-trip (removed at W13-26 because there was nothing to persist) is back. validate-ui-copy: 0 new.",
+        "NOT DONE, ON PURPOSE (D-033): escalation's auto-climb to a LOCAL rung is a later, separate decision \u2014 its token path is untouched. The loop itself still never asks a clarification (no agent tool raises one); the route is the one caller, so the dial is real on the surface FR-N1 describes and inert where nothing asks.",
+        "GATE: lint 0, typecheck 0, 614 files / 5378 passed / 4 skipped, 76 e2e passed, six validators clean, temp-leaks clean, file-size clean, ui-copy 0 new."
       ]
     },
     {

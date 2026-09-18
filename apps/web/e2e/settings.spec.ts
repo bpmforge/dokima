@@ -179,14 +179,26 @@ test('autonomy dial always shows the immutable NEVER-AUTO list', async ({ page }
   await expect(page.getByTestId('never-auto-list')).toBeVisible();
   await expect(page.getByTestId('never-auto-list')).toContainText('Merges to main');
 
-  // W13-26: this used to click Auto and assert it round-tripped a reload.
-  // Auto is now disabled unless a project already selected it, because no run
-  // path reads the mode — a gated pause blocks in either one. The persistence
-  // assertion went with it deliberately: there is nothing for a user to persist
-  // from this surface any more, and the PUT itself is covered server-side.
+  // W13-32 / D-033: Auto is selectable again and round-trips a reload,
+  // because a run path reads the mode now — a clarification takes its offered
+  // default (ledgered, capped per run) and everything else still asks. W13-26
+  // had disabled it while the setting changed nothing; that is no longer true,
+  // and the label says exactly the one thing it does.
   const auto = page.getByLabel(/^Auto — /);
-  await expect(auto).toBeDisabled();
+  await expect(auto).toBeEnabled();
   await expect(auto).not.toBeChecked();
+  await expect(auto.locator('..')).toContainText(
+    'clarification takes its offered default',
+  );
+  // Controlled radio: the state flips after the PUT resolves, so click and wait.
+  await auto.click();
+  await expect(auto).toBeChecked();
+  await page.reload();
+  await page.getByRole('button', { name: 'Autonomy · Budget · Berths' }).click();
+  await expect(page.getByLabel(/^Auto — /)).toBeChecked();
+  // Back to interactive so the assertions below read the default state.
+  await page.getByLabel(/^Interactive — /).click();
+  await expect(page.getByLabel(/^Interactive — /)).toBeChecked();
   // W23-14: the hint changed when the approved build landed. It no longer
   // says unattended defaults are "not enforced yet" — it says what actually
   // makes a run unattended, which is a per-run approval on the board over a

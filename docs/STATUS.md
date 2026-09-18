@@ -2277,3 +2277,30 @@ question is not claimable, its siblings are (UC-03). Seven markers gone;
 ratchets re-measured at 46/44, unchanged and left there honestly. Gate: lint
 0, typecheck 0, **5372 tests** (614 files), **76 e2e**, validators + leaks +
 file-size clean. **Board: 525 done · 0 todo · 2 blocked (W12-44, W13-32).**
+
+## 2026-09-18 — MTPLX-first, and the autonomy dial wired (D-033)
+
+**Founder direction:** MTPLX is the primary engine; LM Studio is the fallback.
+Fleet-wide now: the global registry lists `mtplx` first and `lm-studio` second,
+the coding-agent rows route to `mtplx/qwen3.8-27b-uncensored-mtplx-q4-1` with
+`lm-studio/qwen/qwen3-coder-next` as fallback, and the code-reviewer row goes
+to `lm-studio/qwen/qwen3.8-27b` — a different model on a different engine, so
+machine review is no longer refused as maker == verifier (C-4). Every fleet
+project's own matrix rows were brought to the same shape (the Settings panel
+writes one project at a time, and Tally still carried unprefixed legacy rows
+that would have failed with two providers enabled).
+
+**W13-32 — the autonomy dial, wired under D-033.** The per-pause-site review
+(docs/work/AUTONOMY_DEFAULTS_REVIEW.md, slate P-007) found one safe site.
+The safe-list is compiled beside NEVER-AUTO and holds `clarification`;
+`escalation` and `budget` now ASK under auto too. `askClarification` takes the
+dial injected from apps/server; in auto, with the default an offered option
+and fewer than three auto-taken this run, the card is dismissed in the same
+transaction, ledgered as auto-default under the asking identity with the
+checkpoint on the row, and no Decide card is minted. The panel's Auto radio is
+selectable again and says the one thing it does. Red fixtures: auto takes it;
+interactive opens it; a non-offered default opens it; the fourth in a run
+opens it; the same auto project still asks at main-merge and deploy. Gate:
+lint 0, typecheck 0, **5378 tests** (614 files), **76 e2e**, validators +
+leaks + file-size + ui-copy clean. **Board: 526 done · 0 todo · 1 blocked
+(W12-44, by design until a plugin exists).**

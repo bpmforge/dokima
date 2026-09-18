@@ -2,12 +2,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  appendEvent,
-  createIdentity,
-  openEventLog,
-  type EventLog,
-} from '@dokima/events';
+import { appendEvent, createIdentity, openEventLog, type EventLog } from '@dokima/events';
 import { appendAutoDefaultRow, LEDGER_EVENT_TYPE } from './autonomy-ledger.js';
 import {
   AutonomyLedgerInvalidError,
@@ -45,9 +40,10 @@ describe('resolvePauseAction — the single mode-dial enforcement point (SC-10)'
     expect(resolvePauseAction('interactive', 'deploy')).toBe('ask_human');
   });
 
-  it('auto mode takes the default at an auto-eligible site', () => {
+  it('auto mode takes the default at a SAFE-LISTED site only (D-033): clarification yes, escalation and budget still ask', () => {
     expect(resolvePauseAction('auto', 'clarification')).toBe('take_default');
-    expect(resolvePauseAction('auto', 'escalation')).toBe('take_default');
+    expect(resolvePauseAction('auto', 'escalation')).toBe('ask_human');
+    expect(resolvePauseAction('auto', 'budget')).toBe('ask_human');
   });
 
   it('auto mode still asks a human at every NEVER-AUTO site — the dial cannot override C-5', () => {

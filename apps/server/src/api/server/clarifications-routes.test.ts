@@ -192,4 +192,37 @@ describe('clarification routes (FR-N1, US-701, UC-03 — W23-28)', () => {
     });
     expect(noProject.statusCode).toBe(404);
   });
+  it('W13-32 / D-033: with the project dial on auto, asking takes the offered default, ledgers it, and mints NO card', async () => {
+    const { app, id, dbPath } = await boot();
+    const dial = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${id}/autonomy`,
+      headers: headers(),
+      payload: { mode: 'auto' },
+    });
+    expect(dial.statusCode).toBe(200);
+    const asked = await ask(app, id);
+    expect(asked.statusCode).toBe(201);
+    expect(asked.json()).toMatchObject({
+      status: 'dismissed',
+      answer: 'scrypt',
+      auto_defaulted: true,
+    });
+    const queue = (
+      await app.inject({
+        method: 'GET',
+        url: `/api/v1/approvals/queue?project=${id}`,
+        headers: headers(),
+      })
+    ).json() as { items: { ref_type: string }[] };
+    expect(queue.items.filter((i) => i.ref_type === 'clarification')).toHaveLength(0);
+    const log = openEventLog(dbPath);
+    expect(
+      listEvents(log).filter((e) => e.eventType === 'autonomy.ledger_row_appended'),
+    ).toHaveLength(1);
+    log.close();
+    // A default that is not an offered option still asks, dial or no dial.
+    const guarded = await ask(app, id, { defaultAction: 'bcrypt' });
+    expect(guarded.json()).toMatchObject({ status: 'open' });
+  });
 });

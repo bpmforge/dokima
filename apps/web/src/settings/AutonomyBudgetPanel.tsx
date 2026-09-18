@@ -109,8 +109,10 @@ export function AutonomyBudgetPanel({ projectId }: AutonomyBudgetPanelProps) {
           Interactive — every gated pause asks
         </label>
         {/*
-          W13-26: this said "Auto — documented defaults taken and ledgered",
-          and none of it happened. No run path reads the mode: a gated pause
+          W13-32 / D-033: Auto now does ONE thing, and the label says exactly
+          that. W13-26 had this reading "documented defaults taken and
+          ledgered" while none of it happened; the radio was disabled until a
+          run path read the mode. No run path reads the mode: a gated pause
           opens a clarification that blocks until a person resolves or
           dismisses it, in either mode. A stored setting that changes nothing
           is worse than an absent one, because the user believes they chose.
@@ -124,10 +126,10 @@ export function AutonomyBudgetPanel({ projectId }: AutonomyBudgetPanelProps) {
             type="radio"
             name="autonomy-mode"
             checked={autonomy.mode === 'auto'}
-            disabled={autonomy.mode !== 'auto'}
             onChange={() => void handleModeChange('auto')}
           />
-          Auto — not in effect yet: every gated pause still asks
+          Auto — a clarification takes its offered default and is ledgered (up to 3 per
+          run); everything else still asks
         </label>
         {/*
           W23-14 (AB-14 step 5): updated only now that the behaviour exists.

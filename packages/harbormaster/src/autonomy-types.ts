@@ -52,6 +52,25 @@ export const NEVER_AUTO_PAUSE_SITES: readonly PauseSiteKind[] = Object.freeze([
  * whitespace, wrong case, or a value nobody defined — TypeScript's
  * compile-time `PauseSiteKind` type offers no runtime protection there.
  */
+/**
+ * D-033 (W13-32): the pause sites where `auto` may take the documented
+ * default unattended. ONE site. The per-pause-site review
+ * (docs/work/AUTONOMY_DEFAULTS_REVIEW.md) found that `escalation` under auto
+ * would spend money past the approval D-018 exists to require, and `budget`
+ * under auto would make the breaker advisory — so both keep asking. Compiled,
+ * like NEVER-AUTO (SC-10): not config, not DB, no API mutates it.
+ */
+export const AUTO_DEFAULT_SITES: readonly PauseSiteKind[] = Object.freeze([
+  'clarification',
+]);
+
+/** D-033: after this many auto-taken clarifications in one run, the next one asks. */
+export const AUTO_DEFAULTS_PER_RUN_CAP = 3;
+
+export function isAutoDefaultSite(pauseSite: PauseSiteKind): boolean {
+  return (AUTO_DEFAULT_SITES as readonly string[]).includes(pauseSite);
+}
+
 export const ALL_PAUSE_SITE_KINDS: readonly PauseSiteKind[] = Object.freeze([
   ...RISK_CLASSES,
   'interview',

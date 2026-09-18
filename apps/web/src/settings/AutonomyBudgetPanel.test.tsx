@@ -54,11 +54,17 @@ describe('the autonomy dial says what it actually does (W13-26)', () => {
       stub('interactive');
       render(<AutonomyBudgetPanel projectId="p1" />);
 
+      // W13-32 / D-033: Auto now does exactly one thing, and is selectable
+      // again because a run path reads the mode. The label names the one
+      // thing and its cap, and still does not claim "documented defaults
+      // taken" in general — only a clarification's offered default.
       const auto = (await screen.findByLabelText(/^Auto — /)) as HTMLInputElement;
-      expect(auto.disabled).toBe(true);
+      expect(auto.disabled).toBe(false);
       const label = auto.closest('label')?.textContent ?? '';
-      expect(label).toContain('not in effect yet');
-      expect(label).not.toContain('defaults taken');
+      expect(label).toContain('clarification takes its offered default');
+      expect(label).toContain('up to 3 per run');
+      expect(label).toContain('everything else still asks');
+      expect(label).not.toContain('not in effect yet');
     },
   );
 
