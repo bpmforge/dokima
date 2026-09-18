@@ -16518,7 +16518,7 @@
       "id": "W23-30",
       "role": "coding-agent",
       "phase": 23,
-      "status": "in_progress",
+      "status": "done",
       "stories": [
         "US-701"
       ],
@@ -16533,7 +16533,16 @@
         "packages/harbormaster/src/loop-land-ticket.ts",
         "packages/harbormaster/src/loop-land-ticket.test.ts",
         "packages/harbormaster/src/loop-land-report.ts",
-        "packages/harbormaster/src/loop-land-report.test.ts"
+        "packages/harbormaster/src/loop-land-report.test.ts",
+        "packages/harbormaster/src/loop-gates-verify-unrunnable.ts",
+        "packages/harbormaster/src/loop-gates-verify-unrunnable.test.ts",
+        "packages/harbormaster/src/loop-gates-acceptance-words.ts",
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land.test.ts",
+        "packages/harbormaster/src/loop-land-board-causes.ts",
+        "apps/server/src/cli/run-summary.ts",
+        "apps/server/src/cli/run-summary.test.ts",
+        "apps/server/src/cli/run-build.ts"
       ],
       "acceptance": [
         "When the close gate refuses with 'verify ran NOTHING' and the command that ran nothing (package.json scripts, or the ticket verify field) is outside the ticket write_scope, the park comment names the file that must change, and the cause is ALSO recorded once at board level (a notification or a ticket draft), not only on the parked ticket",
@@ -16545,7 +16554,12 @@
         "THE LOOP DID EVERYTHING RIGHT PER TICKET AND STILL SPENT THE RUN: two full ladders, four agent sessions (one ran 2008s to the watchdog ceiling on turn 24 of 40), to rediscover one board-level fact. The park comment even says 'write the tests it names, or correct the command' \u2014 advice no ticket on that board is allowed to take. That is the Law 1 shape: a finding that belongs to the board, recorded on the wrong object.",
         "ALSO SEEN, NOT THIS TICKET: the harness appends 'THE WORK IS ALREADY DONE THOUGH \u2014 every acceptance criterion passes in the worktree right now' to both park comments, and it was true both times. Whether a passing-AC, no-manifest session deserves a cheaper retry than a full ladder rung is a separate question, noted here so it is not lost.",
         "ALSO SEEN, WORKING AS DESIGNED: with one local model the review pass refused to route code-reviewer to the maker's model (C-4) and skipped machine review, leaving tickets for a human read; and the run row went running -> done through completeRun (W23-25), the first run.completed event ever appended in production.",
-        "CLAIMED 2026-09-18. Pre-claim scope check: orchestrator lane, no other open ticket touches these files (W23-28 is orchestrator too but apps/server routes only)."
+        "CLAIMED 2026-09-18. Pre-claim scope check: orchestrator lane, no other open ticket touches these files (W23-28 is orchestrator too but apps/server routes only).",
+        "DONE 2026-09-18 (landed in dd18c72c; this board row closed one commit later \u2014 the closing script's note carried backticks that a double-quoted shell string executed, so plan.json was skipped while STATUS.md and the merge went through). SCOPE WIDENED (Law 1): the claim loop lives in loop-land.ts (the run-level skip and the once-only record), the finish line in apps/server run-summary.ts / run-build.ts (criterion 2 names it), and two new chapters because both parent files were at the 400-line cap. All done-owned or new.",
+        "HOW: loop-gates-verify-unrunnable.ts answers WHERE the verify command lives (a package script -> package.json) and whether the ticket may change it (matchesAnyGlob against write_scope); when not, the close-gate refusal carries a marked board-level sentence. loop-land-ticket.ts parks on that marker after ONE attempt (parkedReason verify_unrunnable, the sentence as parkedDetail). loop-land-board-causes.ts records the cause once \u2014 a board.verify_unrunnable event in the log and a BoardCause on the run result \u2014 and leaves any later ticket with the same verify field (null = derived, the same command for the whole board) unclaimed in Ready. run-summary prints one BOARD line per cause naming the ticket that found it and the siblings spared.",
+        "RED FIXTURE (criterion 3), against the REAL close gate: a fixture project with a bare node --test script and a *.spec.ts file, two tickets with verify null and write_scope packages/example/**; result: one ticket processed, one attempt, parkedReason verify_unrunnable naming package.json, boardCauses one entry skipping W9-02, exactly one board.verify_unrunnable event, W9-02 still Ready with no comment.",
+        "TWO FORMAT DEBTS PAID ON THE WAY, in their own no-behaviour commit (61f558be): loop-gates-acceptance.ts was committed unformatted and prettier takes it past the cap, so its two word lists moved to loop-gates-acceptance-words.ts; and refuseTicketBase (W21-37, a ticket that cannot START) moved into the new causes chapter, which is what it is.",
+        "GATE: lint 0, typecheck 0, 613 files / 5366 passed / 4 skipped, 76 e2e passed, six validators clean, temp-leaks clean, validate-file-size clean."
       ]
     }
   ]
