@@ -16451,7 +16451,7 @@
       "id": "W23-28",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [
         "US-701"
       ],
@@ -16480,7 +16480,8 @@
         "FILED BY W23-25, 2026-09-17, under founder direction. W23-25 found eleven exported verbs with no production caller and answered them: completeRun WIRED into run-cmd.ts (every run stayed `running` forever); seven marked against THIS ticket; the berths dial pair marked against W13-32 (blocked, D-032).",
         "WHY THE NOTIFICATIONS SURFACE AND NOT A NEW ONE: apps/server/src/api/notifications already carries a `clarification` kind (types.ts, LEVERAGE_BY_KIND.clarification = 20) and decide-slates.ts already emits founder slates AS clarifications. The harbormaster verbs are a second, unwired implementation of FR-N1; the product has one queue and the fix is to reach the verbs from it.",
         "SCOPE NOTE: packages/harbormaster/src/breakpoints-clarifications.ts is NOT in scope \u2014 W13-32 owns it (askClarification needs a pause-site kind before the dial can be consulted, per that ticket). This ticket wires what exists; the dial hop stays W13-32's. If wiring needs the verb signature to change, that is a W13-32 note, not a widen here.",
-        "SCOPE CORRECTED AT FILING: apps/server/src/api/server/runs-routes.ts ALREADY EXISTS and serves POST/GET /api/v1/projects/:id/build-runs(/:runId, /stop) \u2014 listRuns belongs there as the collection GET, not in a new file. Route modules register in apps/server/src/api/server.ts, which is in scope for that one line each. No open ticket overlaps any of these files (checked 2026-09-17)."
+        "SCOPE CORRECTED AT FILING: apps/server/src/api/server/runs-routes.ts ALREADY EXISTS and serves POST/GET /api/v1/projects/:id/build-runs(/:runId, /stop) \u2014 listRuns belongs there as the collection GET, not in a new file. Route modules register in apps/server/src/api/server.ts, which is in scope for that one line each. No open ticket overlaps any of these files (checked 2026-09-17).",
+        "CLAIMED 2026-09-18. Pre-claim scope check: no open ticket overlaps; breakpoints-clarifications.ts stays with W13-32 as the filing note says."
       ]
     },
     {
