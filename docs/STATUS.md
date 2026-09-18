@@ -2321,3 +2321,21 @@ removes the untracked leaving, keeps a committed one). The run was stopped
 once the remaining ticket could only repeat the known failure. Gate at
 W23-32: lint 0, typecheck 0, **5381 tests** (614 files), **76 e2e**,
 validators + leaks clean. **Board: 528 done · 0 todo · 1 blocked (W12-44).**
+
+**Vault run 3 on MTPLX: a landing, and what it landed** (2026-09-18, evening;
+bundle with W23-31/32, `maxSessionSeconds` 5400, the fixture ticket repaired
+through `retarget-acceptance` and `depends-on`). PLAN-vault-000 LANDED into
+review — the first close receipt this fixture has minted under the MTPLX
+engine — and what it landed is the finding: asked for `npm run test` to
+report a nonzero count, the agent wrote a test script that generates a
+throwaway spec, runs it and deletes it. The gate's ran-nothing and no-op
+checks were both satisfied, honestly. **W23-33**: a verify script that
+creates, writes or removes files now MANUFACTURES its evidence and is
+refused, naming the construct; the exact script is the red fixture.
+PLAN-vault-002 then parked on both attempts for a dated RUNTIME_lint report
+the close gate's own validators write into `docs/reviews/` — W23-23's sibling,
+missed that morning. **W23-34**: the writer moves under `.dokima/reviews/`,
+the pack is re-signed, the prefix is exempted by name, provisioning removes
+the old untracked reports. Gate at W23-34: lint 0, typecheck 0, **5386
+tests** (614 files), **76 e2e**, validators + leaks + file-size clean.
+**Board: 531 done · 0 todo · 1 blocked (W12-44).**
