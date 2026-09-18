@@ -16686,6 +16686,37 @@
         "DONE 2026-09-18. fabricatesEvidence(body) names the construct \u2014 heredoc, cat >, tee, touch, rm, redirect into a file (fd redirects and /dev/null excluded) \u2014 and fabricatedScripts judges only the scripts the verify command invokes (a build script that cleans dist is not judged). runGateChecks pushes a MANUFACTURES-its-evidence reason per such script, whatever the exit code, beside W21-87's no-op reason; packageScripts() is the one manifest read both checks share. Red fixture: the exact Vault script that landed (receipt 5335c2e2) is refused as heredoc; plain runners are not.",
         "GATE: lint 0, typecheck 0, 614 files / 5384 passed / 4 skipped, 76 e2e passed, six validators clean, temp-leaks clean. loop-gates-acceptance.ts at 396 lines."
       ]
+    },
+    {
+      "id": "W23-34",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "in_progress",
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "lane": "content",
+      "module": "content",
+      "points": 3,
+      "title": "the validators ALSO write docs/reviews/RUNTIME_*.md into the audited project \u2014 W23-23's sibling, found refusing every attempt on Vault run 3",
+      "write_scope": [
+        "content/validators/_lib_sdlc_config.sh",
+        "content/manifest.json",
+        "packages/harbormaster/src/worktree-harness-paths.ts",
+        "packages/harbormaster/src/worktree-provision.test.ts",
+        "packages/harbormaster/src/agent-session/session-verdicts.test.ts"
+      ],
+      "acceptance": [
+        "write_runtime_report lands under ${root}/.dokima/reviews/ instead of docs/reviews/, and the content pack is re-signed",
+        "agentAuthoredPaths exempts the .dokima/reviews/ prefix by name (never the whole .dokima/ \u2014 the SC-01 fixture for .dokima/state.db stays red), so the sweep and the review-evidence check do not blame the agent for a report the close gate wrote",
+        "Provisioning removes an UNTRACKED docs/reviews/RUNTIME_*.md the old writer left, like W23-32 does for telemetry; a committed one stays",
+        "Red fixtures: an untracked .dokima/reviews/RUNTIME_lint_2026-09-18.md does not refuse a session; .dokima/state.db still does; a stale docs/reviews/RUNTIME_lint_*.md is gone after provisioning"
+      ],
+      "notes": [
+        "FOUND 2026-09-18 on Vault run 3. PLAN-vault-002 was refused out-of-session on BOTH attempts for docs/reviews/RUNTIME_lint_2026-09-18.md (outside-scope) \u2014 written at 16:00 that day by validate-lint.sh through write_runtime_report in _lib_sdlc_config.sh, i.e. by the close gate itself, AFTER W23-23 had moved the telemetry writer. Five validators call it (build, deps, lint, \u2026). Same class as W23-23 and W23-32: the product writes into the tree it audits, then blames the agent for the difference. Filed and claimed together.",
+        "SCOPE: the five validator callers pass $ROOT and need no change; only the helper's out_dir moves. Lane content for the pack; the harbormaster files are done-owned (W23-23/W23-32) and widened into."
+      ]
     }
   ]
 }
