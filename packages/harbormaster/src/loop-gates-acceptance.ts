@@ -43,29 +43,11 @@ import path from 'node:path';
 import type { VerifyRunResult } from './loop-gates-types.js';
 import { scopeBlockedNotice } from './loop-gates-scope-blocked.js';
 import { reRunVerify, verifyFailureTail } from './loop-gates-verify.js';
-import { unfalsifiableCriteria, unfalsifiableReason } from './loop-gates-unfalsifiable.js';
-
-/**
- * First tokens that mean "this line is a command". Extend deliberately: every
- * addition widens what gets executed against a worktree.
- */
-const RUNNERS = new Set([
-  'npm', 'pnpm', 'yarn', 'bun', 'npx',
-  'node', 'deno', 'tsx', 'vitest', 'jest', 'playwright',
-  'python', 'python3', 'pytest', 'ruff', 'mypy',
-  'go', 'cargo', 'make', 'bash', 'sh',
-]);
-
-/**
- * Function words that mean this line is a sentence. A shell one-liner using
- * `for`/`in` is misread as prose and simply not run — which is today's
- * behaviour, and the safe direction of the two errors.
- */
-const PROSE_WORDS = new Set([
-  'is', 'are', 'was', 'were', 'be', 'been', 'the', 'a', 'an', 'to', 'in',
-  'of', 'and', 'or', 'that', 'this', 'must', 'should', 'does', 'do', 'not',
-  'with', 'from', 'by', 'it', 'its', 'no', 'never', 'always',
-]);
+import {
+  unfalsifiableCriteria,
+  unfalsifiableReason,
+} from './loop-gates-unfalsifiable.js';
+import { PROSE_WORDS, RUNNERS } from './loop-gates-acceptance-words.js';
 
 export interface AcceptanceCriterionLike {
   readonly id?: string;
@@ -299,7 +281,11 @@ export async function runGateChecks(input: {
   readonly reasons: readonly string[];
 }> {
   const reasons: string[] = [];
-  const verify = await reRunVerify(input.worktreePath, input.verifyCommand, input.timeoutMs);
+  const verify = await reRunVerify(
+    input.worktreePath,
+    input.verifyCommand,
+    input.timeoutMs,
+  );
   /**
    * W21-87: the verify re-run gets the SAME vacuity check the acceptance
    * criteria have had since W21-41. It did not have one — `runGateChecks`
