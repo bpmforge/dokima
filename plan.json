@@ -16518,7 +16518,7 @@
       "id": "W23-30",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [
         "US-701"
       ],
@@ -16544,7 +16544,8 @@
         "FOUND 2026-09-18 on the first supervised run against MTPLX (Vault project, 2 tickets, 1h41m, 65 model calls, 1.23M prompt / 234k completion tokens, 118 tool calls, $0). Both tickets parked ladder_exhausted for the SAME cause: package.json `test` is bare `node --test`, whose default discovery matches *.test.* and test/ and not the project's *.spec.ts files, so `npm run test` exits 0 having run zero tests and the close gate correctly refuses 'verify ran NOTHING'. package.json is in no ticket's write_scope, so no agent can fix it, and every ticket on that board will park the same way. The 001a ticket that scaffolded the script landed as done before the ran-nothing check existed.",
         "THE LOOP DID EVERYTHING RIGHT PER TICKET AND STILL SPENT THE RUN: two full ladders, four agent sessions (one ran 2008s to the watchdog ceiling on turn 24 of 40), to rediscover one board-level fact. The park comment even says 'write the tests it names, or correct the command' \u2014 advice no ticket on that board is allowed to take. That is the Law 1 shape: a finding that belongs to the board, recorded on the wrong object.",
         "ALSO SEEN, NOT THIS TICKET: the harness appends 'THE WORK IS ALREADY DONE THOUGH \u2014 every acceptance criterion passes in the worktree right now' to both park comments, and it was true both times. Whether a passing-AC, no-manifest session deserves a cheaper retry than a full ladder rung is a separate question, noted here so it is not lost.",
-        "ALSO SEEN, WORKING AS DESIGNED: with one local model the review pass refused to route code-reviewer to the maker's model (C-4) and skipped machine review, leaving tickets for a human read; and the run row went running -> done through completeRun (W23-25), the first run.completed event ever appended in production."
+        "ALSO SEEN, WORKING AS DESIGNED: with one local model the review pass refused to route code-reviewer to the maker's model (C-4) and skipped machine review, leaving tickets for a human read; and the run row went running -> done through completeRun (W23-25), the first run.completed event ever appended in production.",
+        "CLAIMED 2026-09-18. Pre-claim scope check: orchestrator lane, no other open ticket touches these files (W23-28 is orchestrator too but apps/server routes only)."
       ]
     }
   ]
