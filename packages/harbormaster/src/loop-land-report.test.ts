@@ -217,7 +217,9 @@ describe('a dead endpoint is not a verdict on the ticket (W21-58)', () => {
     }) as unknown as Parameters<typeof everyAttemptHitTheProvider>[0][number];
 
   it('RED FIXTURE: run 40 — two provider failures do not report a ladder cap', () => {
-    expect(everyAttemptHitTheProvider([providerFailure(1), providerFailure(2)])).toBe(true);
+    expect(everyAttemptHitTheProvider([providerFailure(1), providerFailure(2)])).toBe(
+      true,
+    );
     expect(defaultParkReason([providerFailure(1), providerFailure(2)], 'ladder')).toBe(
       'provider_unavailable',
     );
@@ -255,7 +257,14 @@ describe('W21-83 — the park tells the PERSON the work is already done', () => 
    */
   const attempt = (silent: SilentCompletion | undefined) => ({
     attempt: 1,
-    session: { exitCode: 1, output: '', manifest: null, manifestParseTier: null, scopeViolations: [], changedPaths: [] },
+    session: {
+      exitCode: 1,
+      output: '',
+      manifest: null,
+      manifestParseTier: null,
+      scopeViolations: [],
+      changedPaths: [],
+    },
     closeGate: null,
     ...(silent ? { silent } : {}),
   });
@@ -387,15 +396,14 @@ describe('a timeout is not a refusal (W21-64)', () => {
       'provider failure: lm-studio (model x): request timed out after 1200000ms',
     );
     expect(observedTimeoutMs([raised])).toBe(1_200_000);
-    expect(parkComment('provider_timeout', 2, [raised], undefined, 0, null, {
-      largestCompletionTokens: 9000,
-      lengthStops: 0,
-    })).toContain(
-      '1200000ms',
-    );
+    expect(
+      parkComment('provider_timeout', 2, [raised], undefined, 0, null, {
+        largestCompletionTokens: 9000,
+        lengthStops: 0,
+      }),
+    ).toContain('1200000ms');
   });
 });
-
 
 /** A throwaway log for the ledger-reading helpers (W21-67). */
 function reportLedger(): EventLog {
@@ -413,7 +421,13 @@ function spend(
   ticketId = 'T-1',
   runId = 'run-1',
 ): void {
-  appendEvent(log, { eventType: 'spend.recorded', actorId: 'agent', ticketId, runId, payload });
+  appendEvent(log, {
+    eventType: 'spend.recorded',
+    actorId: 'agent',
+    ticketId,
+    runId,
+    payload,
+  });
 }
 
 const reportDirs: string[] = [];
@@ -500,5 +514,20 @@ describe('ledgerEvidenceFor reads both numbers together (W21-67)', () => {
     const evidence = ledgerEvidenceFor(log, 'T-1', 'run-1');
     expect(evidence.largestCompletionTokens).toBe(4475);
     expect(evidence.lengthStops).toBe(0);
+  });
+});
+
+describe('verify_unrunnable park header (W23-30)', () => {
+  it('says ONE attempt, BOARD defect, and that siblings were left unclaimed — never "cap reached"', () => {
+    const body = parkComment(
+      'verify_unrunnable',
+      2,
+      [attempt('verify ran NOTHING')],
+      undefined,
+    );
+    expect(body).toContain('ONE attempt');
+    expect(body).toContain('BOARD defect');
+    expect(body).toContain('left unclaimed');
+    expect(body).not.toContain('cap (2) reached');
   });
 });

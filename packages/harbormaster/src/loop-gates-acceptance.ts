@@ -48,6 +48,7 @@ import {
   unfalsifiableReason,
 } from './loop-gates-unfalsifiable.js';
 import { PROSE_WORDS, RUNNERS } from './loop-gates-acceptance-words.js';
+import { unrunnableVerifyReason } from './loop-gates-verify-unrunnable.js';
 
 export interface AcceptanceCriterionLike {
   readonly id?: string;
@@ -315,6 +316,8 @@ export async function runGateChecks(input: {
         `tests. A check that cannot fail is not a check — write the tests it names, ` +
         `or correct the command.`,
     );
+    const boardLevel = unrunnableVerifyReason(input.verifyCommand, input.writeScope);
+    if (boardLevel) reasons.push(boardLevel);
   }
   // Named, never opaque: the refusal says WHICH script and what its body is,
   // because the fix is to write that script, and a ticket failed without

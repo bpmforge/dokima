@@ -31,6 +31,7 @@ import {
 import { ceilingFor, createFreeRetryGate } from './loop-land-infra.js';
 import { runAttemptOutcomeHook } from './loop-land-outcome.js';
 import { defaultParkReason, ledgerEvidenceFor, parkComment } from './loop-land-report.js';
+import { unrunnableVerifyIn } from './loop-gates-verify-unrunnable.js';
 import { attemptOnce, nextFeedback } from './loop-land-session.js';
 import {
   repeatedZeroInformationCalls,
@@ -148,6 +149,7 @@ export async function landClaimedTicket(
   let landed = false;
   let pushResults: LandPushResults | undefined;
   let parkedReason: LandParkedReason | undefined;
+  let parkedDetail: string | undefined;
   let decideCard: ReturnType<typeof tokenBoundaryDecideCard> | undefined;
 
   // W21-46/55: a failed rung shifts the RUNG, never the attempt budget.
@@ -212,6 +214,17 @@ export async function landClaimedTicket(
       ...(rungStart.sessionLabel ? { sessionLabel: rungStart.sessionLabel } : {}),
     });
     current = requireTicket(options.log, ticket.id);
+
+    // W23-30: the verify ran nothing and lives in a file this ticket may not
+    // change. A second attempt would meet the same refusal from the same file;
+    // the board owns this — park now, say where, and let the run skip siblings.
+    const unrunnable =
+      closeGate && !closeGate.ok ? unrunnableVerifyIn(closeGate.reasons) : null;
+    if (unrunnable) {
+      parkedReason = 'verify_unrunnable';
+      parkedDetail = unrunnable;
+      break;
+    }
 
     // W21-44: before feeding gaps forward, ask whether anything was attempted
     // at all. A second attempt after a session that changed nothing carries
@@ -359,6 +372,7 @@ export async function landClaimedTicket(
     pushResults,
     parked,
     parkedReason,
+    ...(parkedDetail ? { parkedDetail } : {}),
     finalStatus: current.status,
   };
 }

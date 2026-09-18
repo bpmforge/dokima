@@ -88,7 +88,9 @@ function parkedLabel(outcome: {
     // First sentence only: the full text is already commented on the ticket,
     // and a summary line that wraps for a paragraph stops being a summary.
     const firstSentence = /^(.*?[.!?])(\s|$)/.exec(detail)?.[1] ?? detail;
-    return firstSentence.length > 160 ? `${firstSentence.slice(0, 157)}...` : firstSentence;
+    return firstSentence.length > 160
+      ? `${firstSentence.slice(0, 157)}...`
+      : firstSentence;
   }
   return outcome.parkedReason ?? 'reason not recorded';
 }
@@ -112,12 +114,25 @@ export function printRunOutcomes(
   stopReason: string,
   awaitingAcceptance: number,
   heldByEndedRuns: readonly string[] = [],
+  /** W23-30: causes the loop recorded for the BOARD, printed once each. */
+  boardCauses: readonly {
+    readonly detail: string;
+    readonly parkedTicketId: string;
+    readonly skippedTicketIds: readonly string[];
+  }[] = [],
 ): void {
   for (const outcome of outcomes) {
     stdout(
       `${outcome.ticketId}: ${outcome.landed ? 'landed' : `parked (${parkedLabel(outcome)})`}` +
         ` after ${outcome.attempts.length} attempt(s)`,
     );
+  }
+  for (const cause of boardCauses) {
+    const skipped =
+      cause.skippedTicketIds.length === 0
+        ? ''
+        : ` ${cause.skippedTicketIds.length} further ticket(s) left unclaimed on the same command: ${cause.skippedTicketIds.join(', ')}.`;
+    stdout(`BOARD (found on ${cause.parkedTicketId}): ${cause.detail}${skipped}`);
   }
   stdout(
     runSummaryLine(runId, {

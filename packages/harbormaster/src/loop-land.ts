@@ -33,7 +33,7 @@ import { resolveCurrentBranch } from '@dokima/git';
 import { policyForLevel, type BreakerLevel } from '@dokima/gateway';
 import { reclaimAbandoned } from './loop-land-reclaim.js';
 import type { SessionResult, SpawnSession } from '@dokima/loop';
-import { commentTicket, listTickets, releaseTicket, type Ticket } from '@dokima/tickets';
+import { listTickets, type Ticket } from '@dokima/tickets';
 import { resolveTicketBase } from './loop-land-base.js';
 import { type EventLog } from '@dokima/events';
 
@@ -53,6 +53,13 @@ export type { LandR0Consult, LandR0ConsultResult } from './loop-land-rungs.js';
 import { type LandVerbMirror } from './loop-land-verbs.js';
 export type { LandVerbEvent, LandVerbMirror } from './loop-land-verbs.js';
 import { pickNextTicket } from './loop-land-board.js';
+import {
+  recordBoardCause,
+  refuseTicketBase,
+  siblingOfKnownCause,
+  type BoardCause,
+} from './loop-land-board-causes.js';
+export type { BoardCause } from './loop-land-board-causes.js';
 import { processTicket } from './loop-land-ticket.js';
 export { landClaimedTicket } from './loop-land-ticket.js';
 // P6-05: per-feature landing — the park step and the idle-time feature sweep.
@@ -234,6 +241,12 @@ export type LandParkedReason =
    */
   | 'provider_timeout'
   /**
+   * W23-30: the verify command ran nothing and lives in a file outside this
+   * ticket's write_scope. One attempt, then the BOARD owns it — see
+   * `unrunnableVerifyReason`.
+   */
+  | 'verify_unrunnable'
+  /**
    * W21-72: the ticket could not be STARTED — a stale worktree, an unbuildable
    * base, a scope refusal. Every one of these already has a written reason
    * that gets commented on the ticket; before this they were reported as no
@@ -275,38 +288,8 @@ export interface LandLoopResult {
   readonly stopReason: LandLoopStopReason;
   /** P6-05: the idle-time feature sweep's report lines (per-feature mode only). */
   readonly featureLandings?: readonly FeatureLandingReport[];
-}
-
-/**
- * W21-37: a ticket whose base cannot be built is comment-and-released, not
- * attempted. Running it anyway is what produced the live failure — a session
- * spending its whole budget being asked to redo a dependency's work. The
- * comment is the founder's evidence; `isStuckTicket` (W21-26) will surface it
- * once it repeats.
- */
-function refuseTicketBase(
-  options: LandLoopOptions,
-  ticket: Ticket,
-  reason: string,
-): LandLoopTicketOutcome {
-  const opts = { runId: options.runId ?? null };
-  commentTicket(
-    options.log,
-    { ticketId: ticket.id, actorId: options.actorId, body: reason },
-    opts,
-  );
-  releaseTicket(options.log, { ticketId: ticket.id, actorId: options.actorId }, opts);
-  return {
-    ticketId: ticket.id,
-    mode: 'ladder',
-    attempts: [],
-    landed: false,
-    parked: true,
-    // W21-72: `reason` is right here and used to be dropped on the floor.
-    parkedReason: 'cannot_start',
-    parkedDetail: reason,
-    finalStatus: 'ready',
-  };
+  /** W23-30: causes recorded ONCE for the board, not per ticket. */
+  readonly boardCauses?: readonly BoardCause[];
 }
 
 /** Runs the land loop until idle (nothing claimable), stopped (kill-file/pause), or budget-stopped (W2-07 hard_stop). */
@@ -331,15 +314,18 @@ export async function runLandLoop(options: LandLoopOptions): Promise<LandLoopRes
   const skip = new Set<string>();
   const processed: LandLoopTicketOutcome[] = [];
   const landing = options.landing ?? 'per-ticket';
+  const boardCauses: BoardCause[] = [];
+  const withCauses = <T extends LandLoopResult>(r: T): T =>
+    boardCauses.length > 0 ? { ...r, boardCauses } : r;
 
   for (;;) {
     if (options.stopSwitch && (await options.stopSwitch())) {
-      return { processed, stopReason: 'stopped' };
+      return withCauses({ processed, stopReason: 'stopped' });
     }
 
     const level = options.breakerLevel ? await options.breakerLevel() : 'ok';
     if (!policyForLevel(level).canClaimNewTicket) {
-      return { processed, stopReason: 'budget' };
+      return withCauses({ processed, stopReason: 'budget' });
     }
 
     reclaimAbandoned(options);
@@ -354,13 +340,19 @@ export async function runLandLoop(options: LandLoopOptions): Promise<LandLoopRes
        * parks are durable and the next idle run lands them).
        */
       if (landing === 'per-feature') {
-        return {
+        return withCauses({
           processed,
           stopReason: 'idle',
           featureLandings: await landReadyFeatures(options, await baseRefFor()),
-        };
+        });
       }
-      return { processed, stopReason: 'idle' };
+      return withCauses({ processed, stopReason: 'idle' });
+    }
+    // W23-30: a sibling that verifies with a command the board already knows
+    // cannot run is left in Ready, unclaimed — see loop-land-board-causes.ts.
+    if (siblingOfKnownCause(boardCauses, next)) {
+      skip.add(next.id);
+      continue;
     }
 
     // W21-37: the base is per TICKET, not per run — a ticket forks from its
@@ -378,6 +370,7 @@ export async function runLandLoop(options: LandLoopOptions): Promise<LandLoopRes
       continue;
     }
     const outcome = await processTicket(options, next, base.ref);
+    recordBoardCause(options, next, outcome, boardCauses);
     if (landing === 'per-feature' && outcome.landed) {
       // The PARK (durable, append-only) — the branch merged nowhere yet.
       await parkLandedTicketBranch(options, next);
