@@ -127,6 +127,8 @@ describe('findLaneScopeViolations / validateLaneWriteScopes (FR-T3)', () => {
         ticketB: 'T-B',
         laneA: 'core',
         laneB: 'core',
+        statusA: 'in_progress',
+        statusB: 'claimed',
       },
     ]);
     expect(() => validateLaneWriteScopes([a, b])).toThrow(LaneScopeError);
@@ -168,13 +170,14 @@ describe('findLaneScopeViolations / validateLaneWriteScopes (FR-T3)', () => {
     expect(findLaneScopeViolations([a, b])).toEqual([]);
   });
 
-  it('rejects cross-lane write-scope overlap regardless of status (schema error at plan load)', () => {
-    const a = ticket({
+  it('rejects cross-lane write-scope overlap among tickets that can still write; a DONE one has released its territory (W23-31, D-015)', () => {
+    const released = ticket({
       id: 'T-A',
       lane: 'core',
       writeScope: ['packages/tickets/**'],
       status: 'done',
     });
+    const a = { ...released, status: 'ready' as const };
     const b = ticket({
       id: 'T-B',
       lane: 'infra',
@@ -189,8 +192,12 @@ describe('findLaneScopeViolations / validateLaneWriteScopes (FR-T3)', () => {
         ticketB: 'T-B',
         laneA: 'core',
         laneB: 'infra',
+        statusA: 'ready',
+        statusB: 'ready',
       },
     ]);
+    // The same pair once T-A is done: territory released, nothing to refuse.
+    expect(findLaneScopeViolations([released, b])).toEqual([]);
     expect(() => validateLaneWriteScopes([a, b])).toThrow(LaneScopeError);
   });
 
@@ -198,5 +205,44 @@ describe('findLaneScopeViolations / validateLaneWriteScopes (FR-T3)', () => {
     const a = ticket({ id: 'T-A', lane: 'core', writeScope: ['packages/tickets/**'] });
     const b = ticket({ id: 'T-B', lane: 'infra', writeScope: ['apps/**'] });
     expect(findLaneScopeViolations([a, b])).toEqual([]);
+  });
+});
+
+describe('a done ticket has released its territory (W23-31, D-015)', () => {
+  it('RED FIXTURE (Vault, 2026-09-18): a new ticket in another lane may own a file a DONE ticket once wrote; the same pair with the old ticket still ready is refused', () => {
+    const scaffold = ticket({
+      id: 'PLAN-vault-001',
+      lane: 'vault-001',
+      writeScope: ['package.json'],
+      status: 'done',
+    });
+    const fix = ticket({
+      id: 'PLAN-vault-000',
+      lane: 'vault-000',
+      writeScope: ['package.json'],
+      status: 'ready',
+    });
+    expect(findLaneScopeViolations([scaffold, fix])).toEqual([]);
+    expect(findLaneScopeViolations([{ ...scaffold, status: 'waived' }, fix])).toEqual([]);
+    const stillReady = findLaneScopeViolations([{ ...scaffold, status: 'ready' }, fix]);
+    expect(stillReady).toHaveLength(1);
+    expect(stillReady[0]).toMatchObject({
+      kind: 'cross-lane-overlap',
+      statusA: 'ready',
+      statusB: 'ready',
+    });
+  });
+
+  it('the refusal names the statuses it counted', () => {
+    const a = ticket({
+      id: 'A',
+      lane: 'x',
+      writeScope: ['src/a.ts'],
+      status: 'in_review',
+    });
+    const b = ticket({ id: 'B', lane: 'y', writeScope: ['src/a.ts'], status: 'ready' });
+    const err = new LaneScopeError(findLaneScopeViolations([a, b]));
+    expect(err.message).toContain('A (x, in_review)');
+    expect(err.message).toContain('B (y, ready)');
   });
 });

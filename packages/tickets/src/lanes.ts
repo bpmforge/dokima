@@ -23,6 +23,20 @@ function isLaneActive(ticket: Ticket): boolean {
   return ACTIVE_LANE_STATUSES.includes(ticket.status);
 }
 
+/**
+ * W23-31 (D-015): a finished ticket has RELEASED its territory. Its
+ * write_scope is history, not a claim, so it takes part in no overlap check —
+ * a new ticket in another lane may own a file a done ticket once wrote.
+ * Live (Vault, 2026-09-18): the board-level fix W23-30 asks for ("correct
+ * the script where it lives") could not be filed in its natural lane because
+ * the scaffold ticket that wrote package.json, done for three weeks, still
+ * counted. validate-plan applies the same release to Dokima's own board (P8).
+ */
+const RELEASED_STATUSES: readonly TicketStatus[] = ['done', 'waived'];
+function hasReleasedTerritory(ticket: Ticket): boolean {
+  return RELEASED_STATUSES.includes(ticket.status);
+}
+
 export type LaneScopeViolationKind = 'same-lane-active-overlap' | 'cross-lane-overlap';
 
 export interface LaneScopeViolation {
@@ -31,12 +45,17 @@ export interface LaneScopeViolation {
   ticketB: string;
   laneA: string;
   laneB: string;
+  /** W23-31: the statuses that were COUNTED, so a refusal explains itself. */
+  statusA: TicketStatus;
+  statusB: TicketStatus;
 }
 
 /**
  * FR-T3: same-lane tickets may only have overlapping write_scope while at
- * most one of them is active; cross-lane overlap is a schema error at any
- * status (a plan-load-time check, independent of who currently owns what).
+ * most one of them is active; cross-lane overlap is a schema error among
+ * tickets that can still write (a plan-load-time check, independent of who
+ * currently owns what). Done and waived tickets are out of both checks
+ * (W23-31, D-015).
  */
 export function findLaneScopeViolations(
   tickets: readonly Ticket[],
@@ -47,6 +66,7 @@ export function findLaneScopeViolations(
       const a = tickets[i];
       const b = tickets[j];
       if (!a || !b) continue;
+      if (hasReleasedTerritory(a) || hasReleasedTerritory(b)) continue;
       if (!writeScopesOverlap(a.writeScope, b.writeScope)) continue;
       if (a.lane === b.lane) {
         if (isLaneActive(a) && isLaneActive(b)) {
@@ -56,6 +76,8 @@ export function findLaneScopeViolations(
             ticketB: b.id,
             laneA: a.lane,
             laneB: b.lane,
+            statusA: a.status,
+            statusB: b.status,
           });
         }
       } else {
@@ -65,6 +87,8 @@ export function findLaneScopeViolations(
           ticketB: b.id,
           laneA: a.lane,
           laneB: b.lane,
+          statusA: a.status,
+          statusB: b.status,
         });
       }
     }
@@ -80,7 +104,7 @@ export class LaneScopeError extends Error {
       `lane/write-scope invariant violated (FR-T3): ${violations
         .map(
           (v) =>
-            `${v.kind} between ${v.ticketA} (${v.laneA}) and ${v.ticketB} (${v.laneB})`,
+            `${v.kind} between ${v.ticketA} (${v.laneA}, ${v.statusA}) and ${v.ticketB} (${v.laneB}, ${v.statusB})`,
         )
         .join('; ')}`,
     );
