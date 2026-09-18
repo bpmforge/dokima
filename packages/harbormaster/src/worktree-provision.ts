@@ -163,14 +163,15 @@ async function ensureIgnored(worktreePath: string, entry: string): Promise<boole
   }
   const lines = current.split('\n').map((l) => l.trim());
   const bare = entry.replace(/\/$/, '');
-  if (lines.some((l) => l === entry || l === bare || l === `/${entry}` || l === `/${bare}`)) {
+  if (
+    lines.some((l) => l === entry || l === bare || l === `/${entry}` || l === `/${bare}`)
+  ) {
     return false;
   }
   const needsNewline = current.length > 0 && !current.endsWith('\n');
   await fs.writeFile(file, `${current}${needsNewline ? '\n' : ''}${entry}\n`, 'utf8');
   return true;
 }
-
 
 /**
  * Artifacts a TOOL produces and a person never writes — ignored for the same
@@ -280,7 +281,14 @@ export async function provisionWorktree(input: ProvisionInput): Promise<Provisio
         ...(committedOnSkip.length > 0 ? { harnessCommitted: committedOnSkip } : {}),
       },
     });
-    return { ran: false, ok: true, exitCode: null, durationMs: 0, output: '', plan: null };
+    return {
+      ran: false,
+      ok: true,
+      exitCode: null,
+      durationMs: 0,
+      output: '',
+      plan: null,
+    };
   }
 
   /**

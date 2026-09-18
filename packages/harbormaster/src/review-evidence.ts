@@ -150,18 +150,19 @@ export async function collectReviewEvidence(
    * HEAD and ignoring the working copy would bind a verdict to code that is
    * not the code that ran (IMPLEMENTATION_PLAN §6).
    *
-   * W23-16: except for the paths the HARNESS owns. `content/validators/_lib.sh`
-   * appends a telemetry row to `docs/work/telemetry.jsonl` on every validator
-   * run, so the CLOSE GATE dirties the worktree it just gated — and every
-   * review that followed reported incomplete evidence, capped its verdict at
-   * UNVERIFIABLE, and made machine acceptance unreachable in production. Found
-   * by driving a real run end to end (AB-16); the previous two checks that hit
-   * the same product-writes-then-blames-the-agent shape (W21-28, W21-29) share
-   * this exact list, and its own comment says a second list would drift.
+   * W23-16: except for the paths the HARNESS owns or writes. `content/validators/
+   * _lib.sh` appends a telemetry row on every validator run, so the CLOSE GATE
+   * dirtied the worktree it had just gated — and every review that followed
+   * reported incomplete evidence, capped its verdict at UNVERIFIABLE, and made
+   * machine acceptance unreachable in production. Found by driving a real run
+   * end to end (AB-16); the previous two checks that hit the same
+   * product-writes-then-blames-the-agent shape (W21-28, W21-29) share this
+   * exact filter, and its own comment says a second list would drift.
    *
-   * The better fix is for that telemetry to land in `.dokima/`, which is
-   * excluded everywhere — but `content/` is a SIGNED pack and moving it needs
-   * a re-sign with a key held outside this repo. Filed as W23-23.
+   * W23-23 moved that row from docs/work/ to `.dokima/telemetry.jsonl` (the
+   * pack was re-signed), and `agentAuthoredPaths` exempts that one file BY
+   * NAME — never the directory, because the SC-01 sweep must keep refusing any
+   * other hard-excluded path that reaches disk.
    */
   try {
     const status =

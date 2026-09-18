@@ -146,7 +146,12 @@ describe('provisionWorktree (W21-12)', () => {
     const log = await logIn(dir);
     await fs.writeFile(path.join(dir, 'package.json'), '{"name":"x"}');
     await fs.mkdir(path.join(dir, 'node_modules'));
-    await provisionWorktree({ worktreePath: dir, log, actorId: 'operator', ticketId: 'T-1' });
+    await provisionWorktree({
+      worktreePath: dir,
+      log,
+      actorId: 'operator',
+      ticketId: 'T-1',
+    });
     const row = log.db
       .prepare("select payload from events where event_type = 'worktree.provisioned'")
       .get() as { payload: string };
@@ -188,13 +193,24 @@ describe('provisionWorktree (W21-12)', () => {
       exitCode: 1,
       durationMs: 10,
       output: 'ENOENT',
-      plan: { command: 'npm', args: ['install'], because: 'package.json with no lockfile' },
+      plan: {
+        command: 'npm',
+        args: ['install'],
+        because: 'package.json with no lockfile',
+      },
     });
     expect(reason).toContain('dependencies were never installed');
     expect(reason).toContain('not a failure of the work');
-    expect(provisionFailureReason({
-      ran: false, ok: true, exitCode: null, durationMs: 0, output: '', plan: null,
-    })).toBeNull();
+    expect(
+      provisionFailureReason({
+        ran: false,
+        ok: true,
+        exitCode: null,
+        durationMs: 0,
+        output: '',
+        plan: null,
+      }),
+    ).toBeNull();
   });
 });
 
@@ -224,7 +240,11 @@ describe('installing must not look like a scope violation (W21-23)', () => {
     await fs.writeFile(path.join(dir, 'package.json'), '{"name":"x"}');
     await fs.writeFile(path.join(dir, '.gitignore'), 'node_modules/\n');
     await provisionWorktree({
-      worktreePath: dir, log, actorId: 'operator', ticketId: 'T-1', timeoutMs: 60_000,
+      worktreePath: dir,
+      log,
+      actorId: 'operator',
+      ticketId: 'T-1',
+      timeoutMs: 60_000,
     });
     const ignore = await fs.readFile(path.join(dir, '.gitignore'), 'utf8');
     expect(ignore.match(/node_modules\//g)).toHaveLength(1);
@@ -247,18 +267,28 @@ describe('the agent is not refused for changes the harness made (W21-28)', () =>
     await run(['commit', '-q', '-m', 'seed']);
   };
 
-  it('RED FIXTURE: the live trio — .gitignore, the lockfile and validator telemetry — is committed by the harness, so the session diff is only the agent\'s', async () => {
+  it("RED FIXTURE: the live trio — .gitignore, the lockfile and validator telemetry — is committed by the harness, so the session diff is only the agent's", async () => {
     const dir = await tempDir('harness-commit');
     const log = await logIn(dir);
     await gitInit(dir);
     await fs.writeFile(path.join(dir, 'package.json'), '{"name":"x"}');
-    await fs.mkdir(path.join(dir, 'docs', 'work'), { recursive: true });
-    await fs.writeFile(path.join(dir, 'docs/work/telemetry.jsonl'), '{"source":"validator"}\n');
+    // W23-23: validator telemetry lands under .dokima/ and is exempted from
+    // attribution by name — it must never be COMMITTED by the harness, and
+    // the agent's file must be left exactly where it is.
+    await fs.mkdir(path.join(dir, '.dokima'), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, '.dokima/telemetry.jsonl'),
+      '{"source":"validator"}\n',
+    );
     // Something the AGENT wrote: it must be left exactly where it is.
     await fs.writeFile(path.join(dir, 'agent-work.ts'), 'export const x = 1;\n');
 
     await provisionWorktree({
-      worktreePath: dir, log, actorId: 'operator', ticketId: 'T-1', timeoutMs: 90_000,
+      worktreePath: dir,
+      log,
+      actorId: 'operator',
+      ticketId: 'T-1',
+      timeoutMs: 90_000,
     });
 
     const { execFile } = await import('node:child_process');
@@ -268,7 +298,15 @@ describe('the agent is not refused for changes the harness made (W21-28)', () =>
     // The harness's leavings are gone from the diff…
     expect(status).not.toContain('.gitignore');
     expect(status).not.toContain('package-lock.json');
-    expect(status).not.toContain('telemetry.jsonl');
+    // Untracked and uncommitted — present in status, never in a harness commit.
+    expect(status).toContain('.dokima/');
+    const { execFile: ef } = await import('node:child_process');
+    const committed = await new Promise<string>((resolve) =>
+      ef('git', ['log', '--name-only', '--pretty=', '-1'], { cwd: dir }, (_e, out) =>
+        resolve(out),
+      ),
+    );
+    expect(committed).not.toContain('telemetry.jsonl');
     // …and the agent's file is untouched, still waiting to be judged.
     expect(status).toContain('agent-work.ts');
     log.close();
@@ -286,7 +324,7 @@ describe('the agent still cannot install anything (SC-18, D-023)', () => {
   });
 });
 
-describe('W21-86 — a tool\'s own artifacts never trip the scope sweep', () => {
+describe("W21-86 — a tool's own artifacts never trip the scope sweep", () => {
   /**
    * Tally's PLAN-tally-01 finished its work and had the session DISCARDED:
    * "tsconfig.tsbuildinfo (outside-scope). Session output discarded; no
@@ -299,7 +337,12 @@ describe('W21-86 — a tool\'s own artifacts never trip the scope sweep', () => 
     await fs.writeFile(path.join(dir, 'package.json'), '{}');
     const log = await logIn(dir);
 
-    await provisionWorktree({ worktreePath: dir, log, actorId: 'operator', ticketId: 'T-1' });
+    await provisionWorktree({
+      worktreePath: dir,
+      log,
+      actorId: 'operator',
+      ticketId: 'T-1',
+    });
 
     const ignore = await fs.readFile(path.join(dir, '.gitignore'), 'utf8');
     expect(ignore).toContain('node_modules/');
@@ -312,7 +355,12 @@ describe('W21-86 — a tool\'s own artifacts never trip the scope sweep', () => 
     await fs.writeFile(path.join(dir, '.gitignore'), 'secrets.env\n');
     const log = await logIn(dir);
 
-    await provisionWorktree({ worktreePath: dir, log, actorId: 'operator', ticketId: 'T-1' });
+    await provisionWorktree({
+      worktreePath: dir,
+      log,
+      actorId: 'operator',
+      ticketId: 'T-1',
+    });
 
     const ignore = await fs.readFile(path.join(dir, '.gitignore'), 'utf8');
     expect(ignore).toContain('secrets.env');

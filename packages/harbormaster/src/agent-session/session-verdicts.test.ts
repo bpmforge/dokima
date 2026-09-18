@@ -36,14 +36,24 @@ async function repo(): Promise<string> {
 }
 
 describe('refuseIfSessionExceededScope (W21-29)', () => {
-  it('RED FIXTURE: validator telemetry does not refuse a session — the harness wrote it, not the agent', async () => {
+  it('RED FIXTURE: validator telemetry does not refuse a session — the harness wrote it, not the agent (under .dokima/ since W23-23)', async () => {
+    const dir = await repo();
+    await fs.mkdir(path.join(dir, '.dokima'), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, '.dokima/telemetry.jsonl'),
+      '{"source":"validator","validator":"secrets-scan","gaps":0,"exit":0}\n',
+    );
+    expect(await refuseIfSessionExceededScope(dir, ['src/**'])).toBeNull();
+  });
+
+  it('W23-23: docs/work/telemetry.jsonl is NOT exempt any more — the harness no longer writes it, so an agent that does is out of scope', async () => {
     const dir = await repo();
     await fs.mkdir(path.join(dir, 'docs', 'work'), { recursive: true });
     await fs.writeFile(
       path.join(dir, 'docs/work/telemetry.jsonl'),
-      '{"source":"validator","validator":"secrets-scan","gaps":0,"exit":0}\n',
+      '{"source":"agent"}\n',
     );
-    expect(await refuseIfSessionExceededScope(dir, ['src/**'])).toBeNull();
+    expect(await refuseIfSessionExceededScope(dir, ['src/**'])).not.toBeNull();
   });
 
   it('the harness’s install leavings are not the agent’s either', async () => {

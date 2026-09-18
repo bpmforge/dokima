@@ -973,9 +973,11 @@ describe('the close gate judges the commit set the AGENT made (W21-31)', () => {
     // The exact pair that refused the first Completion Manifest the product
     // ever produced. Both are committed by the harness before the session
     // starts (W21-28), so neither can be a scope violation by the agent.
-    for (const path of ['.gitignore', 'package-lock.json', 'docs/work/telemetry.jsonl']) {
+    for (const path of ['.gitignore', 'package-lock.json']) {
       expect(HARNESS_OWNED_PATHS).toContain(path);
     }
+    // W23-23: telemetry left the list when it left the audited tree.
+    expect(HARNESS_OWNED_PATHS).not.toContain('docs/work/telemetry.jsonl');
   });
 
   it('the list is shared, not copied — three checks ask the same question', () => {

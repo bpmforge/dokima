@@ -8,7 +8,7 @@
     },
     {
       "path": "_lib.sh",
-      "hash": "sha256:4363c206556c212473a2f9317a22aea569bba022c51587850e8551336557c13f"
+      "hash": "sha256:6056317c4545926a5e76aec3ceb3be53cadae744369859ada47b57e4db7653b5"
     },
     {
       "path": "run-coverage-loop.sh",
@@ -48,7 +48,7 @@
     },
     {
       "path": "validate-book-structure.sh",
-      "hash": "sha256:fa925c9075c93d92ce38220c87e6c2c3f93b4457502b27f6f7c0f4c5eddb5a82"
+      "hash": "sha256:0f0a0b12ffe8ca8868de84a4f48c9adae241b48dbef6359af7811d59e7bd49bb"
     },
     {
       "path": "validate-build.sh",
@@ -335,7 +335,7 @@
       "hash": "sha256:b63836091346a24f6cc45a5196af89cd9292731a6fd3f35fc87e248b41e9616f"
     }
   ],
-  "signature": "8da6c4255ad6c1ec101ccda5446f0c16697c20073275eb37aa85b94561115c82322e8cc0936046dd3aabb9e6f93060ae8d614c70a704198cbf1b5047e347fb05",
+  "signature": "30c0515ee74db4acd7831930705db889a85131ac997ff99996ccc587bcb91976a1713ac1f51ad5ee1ba252b8b336fc67502dce6e6bd6925e3204cdf1583e5a06",
   "publisher": "dokima",
-  "signedAt": "2026-08-19T01:19:53.732Z"
+  "signedAt": "2026-09-18T17:41:10.037Z"
 }
