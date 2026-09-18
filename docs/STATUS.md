@@ -2345,12 +2345,15 @@ proved W23-33 live: the fabricated test script was refused at the gate on both
 rungs, naming the heredoc; nothing landed that should not have. The rejected
 landing was sent back with a ledgered `reject`, the 002 tickets were
 repointed onto the script fix with `depends-on`, and the ticket was `brief`ed
-with the honest fix. Run 5's briefed session then COMMITTED that fix —
-`node --test "src/**/*.spec.ts"`, 27 real tests — and its acceptance passed in
-the worktree; and no rung returned a Completion Manifest: the MTPLX model
-deliberated in 24k–27k-token turns until the 90-minute leash fired, and the
-coder rung exhausted its tool budget. 181k completion tokens on a one-line
-change, parked. The gate would have accepted that worktree at 17:05. Filed as
+with the honest fix. Run 5's briefed session then committed a fix right in kind —
+`node --test "src/**/*.spec.ts"` — on a worktree that forks from
+PLAN-vault-001b, which holds no spec files, so the criterion could not pass
+there (the operator's chaining error, corrected the same night); no rung
+returned a Completion Manifest either way: the MTPLX model deliberated in
+24k–27k-token turns until the 90-minute leash fired, and the coder rung
+exhausted its tool budget. 181k completion tokens on a one-line change,
+parked. Run 2 is the clean evidence for what follows — the harness itself
+recorded every criterion passing with no manifest. Filed as
 **W23-35**: when the work is demonstrably done and no manifest came back, the
 harness should mint the manifest from git and run the real close gate — safe
 under Law 4 because the gate never trusted the manifest in the first place.
