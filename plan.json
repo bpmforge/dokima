@@ -16623,6 +16623,33 @@
         "DONE 2026-09-18. findLaneScopeViolations skips any pair where either ticket is done or waived (RELEASED_STATUSES) \u2014 before the overlap test, so released territory is out of BOTH checks. LaneScopeViolation carries statusA/statusB and LaneScopeError prints them (\"T-A (core, ready)\"). Red fixture: a done scaffold ticket owning package.json and a new ticket in another lane owning it \u2014 no violation; the same pair with the scaffold ready \u2014 refused with both statuses named. The W21-30 property test's reference derivation gained the same release rule. lanes.test's 'regardless of status' case was rewritten to the D-015 rule on purpose.",
         "GATE: lint 0, typecheck 0, 614 files / 5380 passed / 4 skipped, 76 e2e passed, six validators clean, temp-leaks clean."
       ]
+    },
+    {
+      "id": "W23-32",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "in_progress",
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "lane": "orchestrator",
+      "module": "harbormaster",
+      "points": 1,
+      "title": "worktrees provisioned before W23-23 still carry an untracked docs/work/telemetry.jsonl the harness wrote \u2014 now blamed on the agent",
+      "write_scope": [
+        "packages/harbormaster/src/worktree-harness-paths.ts",
+        "packages/harbormaster/src/worktree-provision.ts",
+        "packages/harbormaster/src/worktree-provision.test.ts"
+      ],
+      "acceptance": [
+        "Provisioning removes an UNTRACKED docs/work/telemetry.jsonl (the pre-W23-23 harness leaving) from the worktree before the session starts, and prunes the empty docs/work directory it leaves; a tracked one is history and is left alone",
+        "Red fixture: a worktree with the untracked legacy file provisions to a status that no longer lists it; a worktree where the file is committed keeps it"
+      ],
+      "notes": [
+        "FOUND 2026-09-18 on Vault run 2 (MTPLX, rebuilt bundle with W23-23): PLAN-vault-002 attempt 2 was refused out-of-session for docs/work/telemetry.jsonl (outside-scope). Every one of the seven Vault worktrees holds that untracked file, written by content/validators/_lib.sh before W23-23 moved telemetry under .dokima/. W23-23 stopped exempting the old path \u2014 correctly, the harness no longer writes there \u2014 and thereby started blaming the agent for the harness's own history on every worktree that predates it.",
+        "CLAIMED on filing, 2026-09-18: one-point fix in the provisioner, which already owns 'the worktree a session receives has no uncommitted harness changes in it' (W21-28)."
+      ]
     }
   ]
 }
