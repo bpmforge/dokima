@@ -16473,7 +16473,7 @@
       "id": "W23-29",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [],
       "depends_on": [],
       "lane": "quality",
@@ -16491,7 +16491,8 @@
       "notes": [
         "SIGHTED 2026-09-17 20:37:17, one hour after W23-19 closed. /var/folders/.../T/dokima-suite-home-Xo0KLd held ONE file, global.db (36864 bytes), and NO .created-by. vitest.setup.ts is the only creator of that prefix in the repo (grepped) and writes the marker in the statement after mkdtempSync, so the marker was written and then deleted \u2014 a test that removed the home's contents, or the home itself, and something re-created it with a global.db afterwards. No test greps as removing process.env.DOKIMA_HOME; the three fs.rm(home) hits are tests' own mkdtemp homes.",
         "CONDITIONS AT THE TIME: two full suites ran concurrently \u2014 this session's gate and a Stop hook's `npm test` in the same checkout \u2014 plus a Playwright e2e run. That is the load condition W23-19 named for the onTaskUpdate-timeout termination. The W23-19 sweep ran in both suites and removed nothing, correctly: it skips a home with no marker, and this one had none. So the mechanism held and the evidence still went missing, which is exactly what this ticket is about.",
-        "THE SIGHTING WAS REMOVED BY HAND after its contents were recorded above \u2014 no vitest or playwright process was alive and its mtime was minutes old \u2014 because it would fail every `pnpm validate` for ten minutes and validate-temp-leaks reports and never removes (W22-18)."
+        "THE SIGHTING WAS REMOVED BY HAND after its contents were recorded above \u2014 no vitest or playwright process was alive and its mtime was minutes old \u2014 because it would fail every `pnpm validate` for ten minutes and validate-temp-leaks reports and never removes (W22-18).",
+        "CLAIMED 2026-09-17. Pre-claim scope check: both files are W23-19-owned and W23-19 is done; nothing open overlaps."
       ]
     }
   ]
