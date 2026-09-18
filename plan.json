@@ -16593,6 +16593,33 @@
         "TWO FORMAT DEBTS PAID ON THE WAY, in their own no-behaviour commit (61f558be): loop-gates-acceptance.ts was committed unformatted and prettier takes it past the cap, so its two word lists moved to loop-gates-acceptance-words.ts; and refuseTicketBase (W21-37, a ticket that cannot START) moved into the new causes chapter, which is what it is.",
         "GATE: lint 0, typecheck 0, 613 files / 5366 passed / 4 skipped, 76 e2e passed, six validators clean, temp-leaks clean, validate-file-size clean."
       ]
+    },
+    {
+      "id": "W23-31",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [
+        "US-301"
+      ],
+      "depends_on": [],
+      "lane": "core",
+      "module": "tickets",
+      "points": 2,
+      "title": "the product's lane law never releases a done ticket's territory \u2014 a new ticket cannot touch a file a finished one once owned (D-015 says it can)",
+      "write_scope": [
+        "packages/tickets/src/lanes.ts",
+        "packages/tickets/src/lanes.test.ts"
+      ],
+      "acceptance": [
+        "findLaneScopeViolations ignores tickets whose status is done (and waived) when computing cross-lane overlap, so a new ticket in another lane may own a file a finished ticket once wrote \u2014 D-015's release rule, which validate-plan already applies to Dokima's own board (P8)",
+        "Red fixture: two lanes, one done ticket owning package.json in lane A, a new ticket in lane B owning package.json \u2014 created without LaneScopeError; the same pair with the first ticket ready IS refused",
+        "The refusal message names the status it counted, so the next person does not have to read lanes.ts to learn why an old ticket blocked them"
+      ],
+      "notes": [
+        "FOUND 2026-09-18 creating PLAN-vault-000 on the Vault fixture board: a ticket to fix package.json's test script (the W23-30 finding, filed where W23-30 says it belongs \u2014 on the board) was refused with cross-lane-overlap against PLAN-vault-001 and PLAN-vault-001a, both DONE for three weeks. findLaneScopeViolations iterates every ticket regardless of status. Workaround used: the fixture ticket was created in lane vault-001 instead, which is the owners' lane and therefore allowed.",
+        "WHY IT MATTERS FOR THE PRODUCT, NOT JUST THE FIXTURE: W23-30 tells a person to correct the script where it lives, on a board-level ticket. On any board where the scaffold ticket is done, that ticket cannot be created in its natural lane. The two-rule shape validate-plan uses (P8: cross-lane overlap counts only tickets that can still write) is the one to mirror."
+      ]
     }
   ]
 }
