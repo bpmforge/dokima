@@ -14,6 +14,7 @@ import {
   type ValidateLedgerOptions,
 } from './autonomy-ledger-validate.js';
 import {
+  isAutoDefaultSite,
   isNeverAutoPauseSite,
   type AutonomyMode,
   type PauseSiteKind,
@@ -33,7 +34,10 @@ export function resolvePauseAction(
   pauseSite: PauseSiteKind,
 ): PauseResolution {
   if (mode === 'interactive') return 'ask_human';
-  return isNeverAutoPauseSite(pauseSite) ? 'ask_human' : 'take_default';
+  // C-5 first, always; then D-033's safe-list. A site that is neither
+  // NEVER-AUTO nor safe-listed (escalation, budget) asks under auto too.
+  if (isNeverAutoPauseSite(pauseSite)) return 'ask_human';
+  return isAutoDefaultSite(pauseSite) ? 'take_default' : 'ask_human';
 }
 
 export class AutonomyLedgerInvalidError extends Error {

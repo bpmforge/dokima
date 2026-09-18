@@ -14,6 +14,10 @@
  */
 
 import { appendEvent, type EventLog } from '@dokima/events';
+import { listEvents } from '@dokima/events';
+import { resolvePauseAction } from './autonomy.js';
+import { AUTO_DEFAULTS_PER_RUN_CAP, type AutonomyMode } from './autonomy-types.js';
+import { LEDGER_EVENT_TYPE } from './autonomy-ledger.js';
 import { appendAutoDefaultRow } from './autonomy-ledger.js';
 import type { ClarificationRecord, ClarificationStatus } from './breakpoints-types.js';
 
@@ -118,6 +122,47 @@ export interface AskClarificationInput {
 
 export interface ClarificationVerbOptions {
   now?: () => string;
+  /**
+   * W13-32 / D-033: the project's autonomy dial, INJECTED by the caller —
+   * the mode lives in project settings, which this package cannot read.
+   * Absent means interactive: the card opens and waits, as it always has.
+   */
+  autonomy?: { readonly mode: AutonomyMode; readonly ledgerRowId?: string };
+}
+
+/**
+ * D-033's guards for taking a clarification's default unattended: the default
+ * must be one of the offered options (a free-text default the agent invented
+ * is what the card exists to stop), and fewer than the per-run cap must have
+ * been auto-taken already (ten auto-answered questions is a ticket that
+ * should have been split, and a person should see that shape). Returns why
+ * the card must ask instead, or null when the default may be taken.
+ */
+export function whyAutoDefaultMustAsk(
+  log: EventLog,
+  input: Pick<AskClarificationInput, 'runId' | 'options' | 'defaultAction'>,
+): string | null {
+  const options = Array.isArray(input.options) ? input.options : null;
+  if (!options || !options.some((o) => String(o) === input.defaultAction)) {
+    return 'the default is not one of the offered options';
+  }
+  const taken = listEvents(log).filter((e) => {
+    if (e.eventType !== LEDGER_EVENT_TYPE) return false;
+    const p = e.payload as {
+      pauseSite?: unknown;
+      runId?: unknown;
+      decision?: unknown;
+    } | null;
+    return (
+      p?.pauseSite === 'clarification' &&
+      p?.runId === input.runId &&
+      p?.decision === 'auto-default'
+    );
+  }).length;
+  if (taken >= AUTO_DEFAULTS_PER_RUN_CAP) {
+    return `${taken} clarification defaults already taken unattended in this run (cap ${AUTO_DEFAULTS_PER_RUN_CAP})`;
+  }
+  return null;
 }
 
 /** Raises a question card (FR-N1): checkpoints only `input.ticketId`, everything else keeps going. */
@@ -168,6 +213,54 @@ export function askClarification(
       },
       { now: () => createdAt },
     );
+    /**
+     * W13-32 / D-033: in `auto`, at this SAFE-LISTED site, with the guards
+     * satisfied, the card is answered by its own documented default in the
+     * same transaction — dismissed, ledgered as auto-default under the asking
+     * identity (`decidedBy` null: no human decided), with what would have been
+     * asked and the checkpoint on the row. C-5 rides inside
+     * `resolvePauseAction`: a NEVER-AUTO site can never reach here.
+     */
+    const mode = opts.autonomy?.mode;
+    const guard = mode ? whyAutoDefaultMustAsk(log, input) : 'interactive';
+    if (
+      mode &&
+      resolvePauseAction(mode, 'clarification') === 'take_default' &&
+      guard === null
+    ) {
+      log.db
+        .prepare(
+          `UPDATE clarifications SET status = 'dismissed', answer = ?, resolved_at = ? WHERE id = ?`,
+        )
+        .run(input.defaultAction, createdAt, input.id);
+      appendEvent(
+        log,
+        {
+          eventType: 'clarification.auto_defaulted',
+          actorId: input.askedBy,
+          ticketId,
+          runId: input.runId,
+          payload: {
+            id: input.id,
+            defaultTaken: input.defaultAction,
+            checkpointRef: input.checkpointRef,
+          },
+        },
+        { now: () => createdAt },
+      );
+      appendAutoDefaultRow(
+        log,
+        {
+          id: opts.autonomy?.ledgerRowId ?? `${input.id}-auto-default`,
+          runId: input.runId,
+          pauseSite: 'clarification',
+          defaultTaken: input.defaultAction,
+          wouldHaveAsked: `${input.question} (checkpoint ${input.checkpointRef})`,
+          actorId: input.askedBy,
+        },
+        { now: () => createdAt },
+      );
+    }
     const record = getClarification(log, input.id);
     if (!record) throw new Error(`clarification ${input.id} did not persist`);
     return record;

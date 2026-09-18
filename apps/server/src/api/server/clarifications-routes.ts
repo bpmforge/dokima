@@ -28,6 +28,7 @@ import {
 } from '@dokima/harbormaster';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { ensureActorIdentity } from '../../cli/identity.js';
+import { getProjectSettings } from './settings-scope.js';
 import {
   decideNotification,
   dismissNotification,
@@ -82,7 +83,7 @@ export function registerClarificationRoutes(
     request: FastifyRequest,
     reply: FastifyReply,
     projectId: string,
-  ): Promise<EventLog | undefined> {
+  ): Promise<(EventLog & { projectPath: string }) | undefined> {
     const record = await resolveProjectRecord(registryPath, projectId);
     if (!record) {
       await reply
@@ -91,7 +92,9 @@ export function registerClarificationRoutes(
         .send(notFoundProblem(request, `no project registered with id ${projectId}`));
       return undefined;
     }
-    return openEventLog(stateDbPath(record.path));
+    return Object.assign(openEventLog(stateDbPath(record.path)), {
+      projectPath: record.path,
+    });
   }
 
   app.get(
@@ -134,17 +137,30 @@ export function registerClarificationRoutes(
         ensureOperatorIdentity(log);
         const askedBy = nonEmpty(body.askedBy) ? body.askedBy : OPERATOR_ACTOR_ID;
         if (askedBy !== OPERATOR_ACTOR_ID) ensureActorIdentity(log, askedBy);
-        const record = askClarification(log, {
-          id: `clarification-${randomUUID()}`,
-          runId: body.runId as string,
-          ticketId: nonEmpty(body.ticketId) ? body.ticketId : null,
-          askedBy,
-          question: body.question as string,
-          context: body.context,
-          options: body.options,
-          defaultAction: body.defaultAction as string,
-          checkpointRef: body.checkpointRef as string,
-        });
+        // W13-32 / D-033: the project's autonomy dial, injected here because
+        // harbormaster cannot read settings. In auto, a safe-listed default
+        // is taken in the verb itself; the card is then already resolved.
+        const settings = await getProjectSettings(log.projectPath);
+        const mode = settings.autonomy === 'auto' ? 'auto' : 'interactive';
+        const record = askClarification(
+          log,
+          {
+            id: `clarification-${randomUUID()}`,
+            runId: body.runId as string,
+            ticketId: nonEmpty(body.ticketId) ? body.ticketId : null,
+            askedBy,
+            question: body.question as string,
+            context: body.context,
+            options: body.options,
+            defaultAction: body.defaultAction as string,
+            checkpointRef: body.checkpointRef as string,
+          },
+          { autonomy: { mode } },
+        );
+        if (record.status === 'dismissed') {
+          // Auto took the documented default: ledgered, nothing for the queue.
+          return reply.code(201).send({ ...toWire(record), auto_defaulted: true });
+        }
         // ONE queue (FR-H4): the clarification is a Decide card at leverage 20,
         // exactly the kind decide-slates.ts already mints for founder slates.
         emitNotification(log, {
