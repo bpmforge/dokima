@@ -2191,3 +2191,17 @@ lint 0, typecheck 0, **5359 tests** (612 files), **76 e2e**, validators clean.
 
 **Board at close:** 523 done · 2 todo (W23-28, W23-29) · 3 blocked (W12-44,
 W13-32, W23-23).
+
+**W23-29 — the markerless suite home** (same day). The marker is now
+rewritten after every test and a test that removes it is named; the run-level
+teardown reports a markerless home by path and contents instead of skipping
+it. The one survivor examined held a `global.db` with four EMPTY tables — the
+schema `openGlobalDb` creates on open — so something opens the global
+database against an already-removed home and its `mkdirSync(recursive)`
+resurrects it. A third instrument catches that: after the per-file removal,
+any `mkdirSync` under the home prints its stack. Not reproduced in 13 clean
+runs; the next occurrence names itself three ways. Gate: lint 0, typecheck 0,
+**5359 tests** (×2), **76 e2e**, validators clean.
+
+**Board at close:** 524 done · 1 todo (W23-28) · 3 blocked (W12-44, W13-32,
+W23-23).
