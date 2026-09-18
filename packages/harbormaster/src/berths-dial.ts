@@ -29,6 +29,7 @@ export interface ResolveBerthCountOptions {
 }
 
 /** Effective berth count for a run: highest-precedence scope that defines `berths`, clamped to >=1 (a non-positive or fractional dial value is a config error, not a refusal — floor it to the nearest sane sequential run). */
+// @unreached resolveBerthCount: the autonomy dial is built and deliberately not wired — W13-32, BLOCKED by founder decision D-032 until the per-pause-site defaults review; berths.ts re-exports it and createRun stores the pair by hand until then (W23-25 decision, 2026-09-17).
 export function resolveBerthCount(options: ResolveBerthCountOptions = {}): number {
   const resolved = options.settings
     ? resolveEffectiveValue(BERTHS_SETTINGS_KEY, options.settings)
@@ -50,6 +51,7 @@ export interface ResolvedRunConcurrency {
 }
 
 /** BLUEPRINT §5 "Autorun = breakpoint never × berths N": one toggle (Autorun) plus one slider (berths), composed into the pair `createRun` actually stores. */
+// @unreached resolveAutorunBreakpoint: the Autorun toggle half of the same dial — W13-32, BLOCKED by D-032; nothing consults it until that review happens (W23-25 decision, 2026-09-17).
 export function resolveAutorunBreakpoint(toggle: AutorunToggle): ResolvedRunConcurrency {
   return {
     breakpoint: toggle.autorun ? 'never' : (toggle.breakpoint ?? 'ticket'),

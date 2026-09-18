@@ -22,7 +22,7 @@
   "gates": [
     ["node", ["scripts/validate-plan.mjs"]],
     ["node", ["scripts/validate-traceability.mjs"]],
-    ["node", ["scripts/validate-exports.mjs", "--max", "54", "--max-buried", "46"]],
+    ["node", ["scripts/validate-exports.mjs", "--max", "46", "--max-buried", "44"]],
     [
       "bash",
       "-lc",

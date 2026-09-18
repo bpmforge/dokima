@@ -75,6 +75,7 @@ export function getClarification(
   return row ? rowToRecord(row) : undefined;
 }
 
+// @unreached listOpenClarifications: FR-N1/US-701/UC-03 describe exactly this verb and nothing reaches it — the notifications surface already carries a 'clarification' kind (decide-slates.ts), so W23-28 owes this a route and a caller there, not a second surface (W23-25 decision, 2026-09-17).
 export function listOpenClarifications(
   log: EventLog,
   runId?: string,
@@ -94,6 +95,7 @@ export function listOpenClarifications(
 }
 
 /** True when `ticketId` has an unresolved question against it — the loop's own pause check (UC-03: "only dependent work" pauses). */
+// @unreached isTicketCheckpointed: FR-N1/UC-03 name it and no route or loop consults it yet — W23-28 owes the clarifications surface a route and a caller behind the notifications routes (W23-25 decision, 2026-09-17).
 export function isTicketCheckpointed(log: EventLog, ticketId: string): boolean {
   const row = log.db
     .prepare<[string], { n: number }>(
@@ -121,6 +123,7 @@ export interface ClarificationVerbOptions {
 }
 
 /** Raises a question card (FR-N1): checkpoints only `input.ticketId`, everything else keeps going. */
+// @unreached askClarification: FR-N1/US-701/UC-03 describe exactly this verb and nothing reaches it — the notifications surface already carries a 'clarification' kind (decide-slates.ts), so W23-28 owes this a route and a caller there, not a second surface (W23-25 decision, 2026-09-17).
 export function askClarification(
   log: EventLog,
   input: AskClarificationInput,
@@ -189,6 +192,7 @@ export interface AnswerClarificationInput {
 }
 
 /** A human answers (FR-N1): "answer resumes exactly at the checkpoint" — callers read back `checkpointRef` from the returned record. */
+// @unreached answerClarification: FR-N1/US-701/UC-03 describe exactly this verb and nothing reaches it — the notifications surface already carries a 'clarification' kind (decide-slates.ts), so W23-28 owes this a route and a caller there, not a second surface (W23-25 decision, 2026-09-17).
 export function answerClarification(
   log: EventLog,
   input: AnswerClarificationInput,
@@ -228,6 +232,7 @@ export interface DismissClarificationInput {
 }
 
 /** Dismissal: documented default taken + an approvals-ledger row (FR-N3) — never a silent no-op. */
+// @unreached dismissClarification: FR-N1/US-701/UC-03 describe exactly this verb and nothing reaches it — the notifications surface already carries a 'clarification' kind (decide-slates.ts), so W23-28 owes this a route and a caller there, not a second surface (W23-25 decision, 2026-09-17).
 export function dismissClarification(
   log: EventLog,
   input: DismissClarificationInput,
