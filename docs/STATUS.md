@@ -2304,3 +2304,20 @@ opens it; the same auto project still asks at main-merge and deploy. Gate:
 lint 0, typecheck 0, **5378 tests** (614 files), **76 e2e**, validators +
 leaks + file-size + ui-copy clean. **Board: 526 done · 0 todo · 1 blocked
 (W12-44, by design until a plugin exists).**
+
+**Vault run 2 on MTPLX, and what it taught** (2026-09-18, afternoon; bundle
+with W23-25..30 and D-033). The board-level fix W23-30 asks for was filed ON
+the Vault board (PLAN-vault-000) — and the product refused it twice, both
+times correctly: the lane law counted a done ticket's territory (**W23-31**,
+now released per D-015, statuses named in the refusal), and the preflight
+rejected an acceptance criterion naming paths outside the ticket's
+write_scope, printing the `widen-scope` remedy. PLAN-vault-002 then parked
+after two attempts, neither of them W23-30's case: attempt 1 hit the
+30-minute session ceiling with the work done (a cloud-sized leash; local
+runs now set `maxSessionSeconds` 5400), and attempt 2 was refused for an
+untracked `docs/work/telemetry.jsonl` the harness itself wrote before W23-23
+moved telemetry — every old worktree carries one (**W23-32**: provisioning
+removes the untracked leaving, keeps a committed one). The run was stopped
+once the remaining ticket could only repeat the known failure. Gate at
+W23-32: lint 0, typecheck 0, **5381 tests** (614 files), **76 e2e**,
+validators + leaks clean. **Board: 528 done · 0 todo · 1 blocked (W12-44).**

@@ -9,6 +9,8 @@
  * commit its own leavings, and the out-of-session scope sweep, to avoid
  * blaming the agent for them.
  */
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 import { git } from '@dokima/git';
 
 /**
@@ -125,4 +127,58 @@ export function agentAuthoredPaths(paths: readonly string[]): string[] {
       !(HARNESS_OWNED_PATHS as readonly string[]).includes(p) &&
       !(HARNESS_WRITTEN_PATHS as readonly string[]).includes(p),
   );
+}
+
+/**
+ * W23-32: paths the harness USED to write and no longer claims. Before
+ * W23-23, content/validators/_lib.sh appended its verdict row to
+ * docs/work/telemetry.jsonl in every worktree the close gate ran in; every
+ * worktree provisioned before that day still holds the file, untracked. When
+ * W23-23 stopped exempting the path (correctly — nothing writes there now),
+ * the SC-01 sweep started refusing sessions for it: the harness's own history,
+ * blamed on the agent. Live on Vault run 2, 2026-09-18.
+ *
+ * Removed at provisioning, and ONLY when untracked: a committed copy is part
+ * of someone's history and is not the provisioner's to rewrite.
+ */
+export const LEGACY_HARNESS_LEAVINGS = ['docs/work/telemetry.jsonl'];
+
+/** Deletes untracked legacy leavings; returns the paths removed. Never a gate. */
+export async function removeLegacyHarnessLeavings(
+  worktreePath: string,
+): Promise<string[]> {
+  const removed: string[] = [];
+  for (const rel of LEGACY_HARNESS_LEAVINGS) {
+    try {
+      const untracked = await git(worktreePath, [
+        'ls-files',
+        '--others',
+        '--exclude-standard',
+        '--',
+        rel,
+      ]);
+      if (
+        !untracked.stdout
+          .split('\n')
+          .map((l) => l.trim())
+          .includes(rel)
+      )
+        continue;
+      await fs.unlink(path.join(worktreePath, rel));
+      removed.push(rel);
+      // Prune the directories the leaving made, while they are empty.
+      let dir = path.dirname(rel);
+      while (dir !== '.' && dir !== '') {
+        try {
+          await fs.rmdir(path.join(worktreePath, dir));
+        } catch {
+          break;
+        }
+        dir = path.dirname(dir);
+      }
+    } catch {
+      // Not a git worktree, or nothing to do — the pre-existing behaviour.
+    }
+  }
+  return removed;
 }
