@@ -2338,4 +2338,4 @@ missed that morning. **W23-34**: the writer moves under `.dokima/reviews/`,
 the pack is re-signed, the prefix is exempted by name, provisioning removes
 the old untracked reports. Gate at W23-34: lint 0, typecheck 0, **5386
 tests** (614 files), **76 e2e**, validators + leaks + file-size clean.
-**Board: 531 done · 0 todo · 1 blocked (W12-44).**
+**Board: 530 done · 0 todo · 1 blocked (W12-44).**
