@@ -22,7 +22,7 @@
  * Fixture layout: content/validators/fixtures/<name>/{red,green}/ — each side
  * is a project root handed to the validator as its positional argument, the
  * same whole-tree mode `bash content/validators/<name>.sh <dir>` uses.
- * EXPERTS_TELEMETRY=0 keeps _lib.sh from writing docs/work/telemetry.jsonl
+ * EXPERTS_TELEMETRY=0 keeps _lib.sh from writing .dokima/telemetry.jsonl
  * into the fixture trees, and PROJECT_ROOT is stripped so an inherited value
  * cannot silently repoint every run at the caller's repo.
  *

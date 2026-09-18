@@ -123,7 +123,7 @@ validator_exit() {
   # one, else cwd). Disable with EXPERTS_TELEMETRY=0. Never break a gate.
   if [[ "${EXPERTS_TELEMETRY:-1}" != "0" ]]; then
     {
-      local _tdir="${ROOT:-.}/docs/work"
+      local _tdir="${ROOT:-.}/.dokima"
       mkdir -p "$_tdir" &&
       printf '{"ts":"%s","source":"validator","validator":"%s","gaps":%d,"exit":%d}\n' \
         "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$VALIDATOR_NAME" "$GAP_COUNT" "$exit_code" \

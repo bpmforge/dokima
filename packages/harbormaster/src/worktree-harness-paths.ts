@@ -36,22 +36,34 @@ import { git } from '@dokima/git';
  * agent's change by construction, so the check that judges the agent must not
  * count it. One list, two uses; a second list would drift.
  *
- * `docs/work/telemetry.jsonl` earns its place here for a reason worth knowing:
- * content/validators/_lib.sh appends a verdict row to `${ROOT}/docs/work/` on
- * every validator run, so the close gate dirties the worktree AFTER
- * provisioning has committed. The better fix is for that telemetry to land in
- * `.dokima/` (already hard-excluded) instead of inside the audited project —
- * but content/ is a SIGNED pack (content/manifest.json carries per-file
- * sha256 hashes and a signature), so changing it there needs a re-sign with a
- * key held outside this repo.
+ * `docs/work/telemetry.jsonl` WAS on this list, and its removal is the point
+ * of W23-23: content/validators/_lib.sh used to append a verdict row to
+ * `${ROOT}/docs/work/` on every validator run, so the close gate dirtied the
+ * worktree AFTER provisioning had committed, and three checks each had to be
+ * taught not to blame the agent for it. The telemetry now lands under
+ * `.dokima/` — the product's own directory, hard-excluded from every scope
+ * check (packages/git scope.ts) — and it is NOT on this list, because this list
+ * is what the harness COMMITS. Telemetry must never be committed into the
+ * audited project; it is exempted from attribution by name, below, instead.
+ * What stays here is what provisioning itself writes and commits.
  */
 export const HARNESS_OWNED_PATHS = [
   '.gitignore',
   'package-lock.json',
   'pnpm-lock.yaml',
   'yarn.lock',
-  'docs/work/telemetry.jsonl',
 ];
+
+/**
+ * W23-23: paths the harness WRITES but must never commit. Exactly one today:
+ * the verdict row content/validators/_lib.sh appends on every validator run,
+ * now under `.dokima/` instead of docs/work/. It is exempted from attribution
+ * BY NAME rather than by directory, because the SC-01 sweep must keep refusing
+ * any OTHER hard-excluded path (`.dokima/state.db`, say) that reaches disk —
+ * a whole-directory exemption would teach the guard to look away from the one
+ * place the product keeps its own state.
+ */
+export const HARNESS_WRITTEN_PATHS = ['.dokima/telemetry.jsonl'];
 
 /**
  * Commit whatever the harness changed, so the next session's diff is only the
@@ -84,13 +96,12 @@ async function commitHarnessChangesUnsafe(worktreePath: string): Promise<string[
     'commit',
     '--no-verify',
     '-m',
-    'chore(harness): provision worktree\n\nWritten by Dokima itself, not by the agent — dependency install and\nvalidator telemetry. Committed so the session diff contains only the\nagent\'s work (W21-28).',
+    "chore(harness): provision worktree\n\nWritten by Dokima itself, not by the agent — dependency install and\nvalidator telemetry. Committed so the session diff contains only the\nagent's work (W21-28).",
     '--',
     ...toCommit,
   ]);
   return toCommit;
 }
-
 
 /**
  * The subset of `paths` the AGENT is answerable for (W21-31).
@@ -109,5 +120,9 @@ async function commitHarnessChangesUnsafe(worktreePath: string): Promise<string[
  * `.gitignore` and `package-lock.json`, neither of which the agent wrote.
  */
 export function agentAuthoredPaths(paths: readonly string[]): string[] {
-  return paths.filter((p) => !(HARNESS_OWNED_PATHS as readonly string[]).includes(p));
+  return paths.filter(
+    (p) =>
+      !(HARNESS_OWNED_PATHS as readonly string[]).includes(p) &&
+      !(HARNESS_WRITTEN_PATHS as readonly string[]).includes(p),
+  );
 }

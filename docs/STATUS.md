@@ -2253,3 +2253,14 @@ failures under load 21). Gate alone afterwards: lint 0, typecheck 0,
 
 Vault's project settings now bind to MTPLX (LM Studio entry disabled); the
 prior settings.json is in the session scratchpad if you want it back.
+
+**W23-23 — validator telemetry out of the audited tree** (2026-09-18,
+unblocked: the signing key was on this machine at its documented path all
+along). Both validator writers now append under `.dokima/`; the content pack
+is re-signed. The harness-owned list drops `docs/work/telemetry.jsonl`; a
+second, never-committed list exempts `.dokima/telemetry.jsonl` BY NAME, after
+two wrong turns the SC-01 red fixtures caught: exempting the whole `.dokima/`
+prefix, then gitignoring it, each let a planted `.dokima/state.db` slip past
+the sweep. The out-of-session sweep now calls the one shared filter. Gate:
+lint 0, typecheck 0, **5360 tests** (612 files), **76 e2e**, validators +
+`temp-leaks` clean. Board: 523 done · 2 todo (W23-28, W23-30) · 2 blocked.
