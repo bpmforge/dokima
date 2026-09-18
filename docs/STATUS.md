@@ -2189,7 +2189,7 @@ concurrently with the gate caught `run-cmd.ts` at 420 lines (split) and one
 markerless suite home (**W23-29** filed, with its contents on record). Gate:
 lint 0, typecheck 0, **5359 tests** (612 files), **76 e2e**, validators clean.
 
-**Board at close:** 523 done · 2 todo (W23-28, W23-29) · 3 blocked (W12-44,
+**Board at close:** 521 done · 2 todo (W23-28, W23-29) · 3 blocked (W12-44,
 W13-32, W23-23).
 
 **W23-29 — the markerless suite home** (same day). The marker is now
@@ -2203,5 +2203,25 @@ any `mkdirSync` under the home prints its stack. Not reproduced in 13 clean
 runs; the next occurrence names itself three ways. Gate: lint 0, typecheck 0,
 **5359 tests** (×2), **76 e2e**, validators clean.
 
-**Board at close:** 524 done · 1 todo (W23-28) · 3 blocked (W12-44, W13-32,
+**Board at close:** 522 done · 1 todo (W23-28) · 3 blocked (W12-44, W13-32,
 W23-23).
+
+## 2026-09-18 — MTPLX, live, both paths
+
+Manual smoke against the local daemon (MTPLX 2.11.2, Qwen3.8-27B Q4, port
+8088, `--max-active-requests 4 --decode-batch-max 4`), through the product's
+own code and never a test (Law 9a). The daemon needs no key on localhost, so
+the no-credential preset is right.
+
+| Path                                                                 | Result                                                                                                               |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| gateway preset: health / listModels / warmUp                         | ok, 14 ms / 1 model / ok                                                                                             |
+| gateway preset: one request                                          | 50.4 tok/s                                                                                                           |
+| gateway preset: four concurrent through RequestQueue (concurrency 4) | 78.8 tok/s aggregate, **1.56×**                                                                                      |
+| LM Studio preset, same four requests (concurrency 1)                 | 17.3 tok/s                                                                                                           |
+| product path: `{ id: 'mtplx', kind: 'mtplx' }` in project settings   | loaded (an unknown kind beside it skipped), `doctor` reachable, `providers refresh` discovered the model, warm-up ok |
+
+The 1.56× is above the 1.37× the preset header claims and below the 1.69×
+the first measurement saw; the header's "why not more" still holds. The board
+counts in the two "Board at close" lines above were off by two and are
+corrected here (521 / 522).
