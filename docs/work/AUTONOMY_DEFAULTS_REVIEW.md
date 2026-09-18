@@ -1,6 +1,6 @@
 # Autonomy dial — per-pause-site defaults review (the D-032 precondition)
 
-**Status:** review written 2026-09-18; decision pending (slate P-014).
+**Status:** review written 2026-09-18; decision pending (slate P-007).
 **Unblocks:** W13-32 (wire the autonomy dial). **Founder decision D-032** said
 the dial stays unwired until this review exists. This is that review: what
 each pause site does today, what "take the documented default" would mean
