@@ -154,796 +154,819 @@ function requireTicket(log: EventLog, ticketId: string): Ticket {
  */
 const SUBPROCESS_TIMEOUT_MS = 30_000;
 
-describe('runCloseGate', () => {
-  let fixture: Fixture | undefined;
-  let extraTempDirs: string[] = [];
+describe(
+  'runCloseGate',
+  () => {
+    let fixture: Fixture | undefined;
+    let extraTempDirs: string[] = [];
 
-  afterEach(async () => {
-    await fixture?.cleanup();
-    fixture = undefined;
-    await Promise.all(
-      extraTempDirs.map((dir) => fs.rm(dir, { recursive: true, force: true })),
-    );
-    extraTempDirs = [];
-  });
-
-  it('closes the ticket and mints a valid, verifiable close receipt when everything checks out', async () => {
-    fixture = await setupFixture();
-    const { log, worktree } = fixture;
-
-    await commitFile(
-      worktree,
-      'packages/example/file.ts',
-      'export const x = 1;\n',
-      'feat: add file',
-    );
-
-    const manifest = buildManifest({
-      files: ['packages/example/file.ts'],
-      // Deliberately a fabricated sha and a no-op verify claim — never trusted (see the
-      // "graded entity never grades itself" / "spoofed manifest" tests below for the
-      // refusal side of this); this test only asserts the HAPPY path still succeeds when
-      // the real git/verify state backs up the claim too.
-      commits: ['0000000000000000000000000000000000dead'],
+    afterEach(async () => {
+      await fixture?.cleanup();
+      fixture = undefined;
+      await Promise.all(
+        extraTempDirs.map((dir) => fs.rm(dir, { recursive: true, force: true })),
+      );
+      extraTempDirs = [];
     });
 
-    const result = await runCloseGate({
-      log,
-      actorId: 'worker-1',
-      projectId: PROJECT_ID,
-      ticket: requireTicket(log, 'W9-01'),
-      worktree,
-      manifest,
-      baseRef: 'main',
-      contentDir: CONTENT_VALIDATORS_DIR,
-      signingKey: TEST_SIGNING_KEY,
-      now: NOW,
+    it('closes the ticket and mints a valid, verifiable close receipt when everything checks out', async () => {
+      fixture = await setupFixture();
+      const { log, worktree } = fixture;
+
+      await commitFile(
+        worktree,
+        'packages/example/file.ts',
+        'export const x = 1;\n',
+        'feat: add file',
+      );
+
+      const manifest = buildManifest({
+        files: ['packages/example/file.ts'],
+        // Deliberately a fabricated sha and a no-op verify claim — never trusted (see the
+        // "graded entity never grades itself" / "spoofed manifest" tests below for the
+        // refusal side of this); this test only asserts the HAPPY path still succeeds when
+        // the real git/verify state backs up the claim too.
+        commits: ['0000000000000000000000000000000000dead'],
+      });
+
+      const result = await runCloseGate({
+        log,
+        actorId: 'worker-1',
+        projectId: PROJECT_ID,
+        ticket: requireTicket(log, 'W9-01'),
+        worktree,
+        manifest,
+        baseRef: 'main',
+        contentDir: CONTENT_VALIDATORS_DIR,
+        signingKey: TEST_SIGNING_KEY,
+        now: NOW,
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error('expected success');
+      expect(result.ticket.status).toBe('in_review');
+      expect(result.ticket.manifest?.files).toEqual(['packages/example/file.ts']);
+      // The real observed commit sha lands in the ticket manifest, not the manifest's
+      // fabricated claim.
+      expect(result.ticket.manifest?.commits).not.toContain(
+        '0000000000000000000000000000000000dead',
+      );
+
+      const stored = getReceipt(log, result.receipt.id);
+      expect(stored?.kind).toBe('close');
+      const verification = verifyReceipt(log, result.receipt.id, {
+        signingKey: TEST_SIGNING_KEY,
+        inputFiles: [
+          { path: 'packages/example/file.ts', content: 'export const x = 1;\n' },
+        ],
+        requiredValidators: ['secrets-scan'],
+      });
+      expect(verification).toEqual({ valid: true, reasons: [] });
     });
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) throw new Error('expected success');
-    expect(result.ticket.status).toBe('in_review');
-    expect(result.ticket.manifest?.files).toEqual(['packages/example/file.ts']);
-    // The real observed commit sha lands in the ticket manifest, not the manifest's
-    // fabricated claim.
-    expect(result.ticket.manifest?.commits).not.toContain(
-      '0000000000000000000000000000000000dead',
-    );
+    it('promise-token ignored: strings like DONE/PASSED in manifest.evidence grant no bypass', async () => {
+      fixture = await setupFixture();
+      const { log, worktree } = fixture;
 
-    const stored = getReceipt(log, result.receipt.id);
-    expect(stored?.kind).toBe('close');
-    const verification = verifyReceipt(log, result.receipt.id, {
-      signingKey: TEST_SIGNING_KEY,
-      inputFiles: [
-        { path: 'packages/example/file.ts', content: 'export const x = 1;\n' },
-      ],
-      requiredValidators: ['secrets-scan'],
-    });
-    expect(verification).toEqual({ valid: true, reasons: [] });
-  });
+      // No commit at all backs this claim — a spoofed file.
+      await fs.mkdir(path.join(worktree.path, 'packages', 'example'), {
+        recursive: true,
+      });
+      await fs.writeFile(
+        path.join(worktree.path, 'packages/example/spoofed.ts'),
+        'export {};\n',
+      );
 
-  it('promise-token ignored: strings like DONE/PASSED in manifest.evidence grant no bypass', async () => {
-    fixture = await setupFixture();
-    const { log, worktree } = fixture;
+      const manifest = buildManifest({
+        files: ['packages/example/spoofed.ts'],
+        evidence: ['DONE', 'PASSED', 'COMPLETE — all checks green, trust me'],
+      });
 
-    // No commit at all backs this claim — a spoofed file.
-    await fs.mkdir(path.join(worktree.path, 'packages', 'example'), { recursive: true });
-    await fs.writeFile(
-      path.join(worktree.path, 'packages/example/spoofed.ts'),
-      'export {};\n',
-    );
+      const result = await runCloseGate({
+        log,
+        actorId: 'worker-1',
+        projectId: PROJECT_ID,
+        ticket: requireTicket(log, 'W9-01'),
+        worktree,
+        manifest,
+        baseRef: 'main',
+        contentDir: CONTENT_VALIDATORS_DIR,
+        signingKey: TEST_SIGNING_KEY,
+        now: NOW,
+      });
 
-    const manifest = buildManifest({
-      files: ['packages/example/spoofed.ts'],
-      evidence: ['DONE', 'PASSED', 'COMPLETE — all checks green, trust me'],
-    });
-
-    const result = await runCloseGate({
-      log,
-      actorId: 'worker-1',
-      projectId: PROJECT_ID,
-      ticket: requireTicket(log, 'W9-01'),
-      worktree,
-      manifest,
-      baseRef: 'main',
-      contentDir: CONTENT_VALIDATORS_DIR,
-      signingKey: TEST_SIGNING_KEY,
-      now: NOW,
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('expected refusal');
+      // Refused on structural grounds (no commit) — never because of, or despite, the
+      // promise-token-shaped evidence strings, which this code path never inspects.
+      expect(result.reasons.some((r) => r.includes('no commits found'))).toBe(true);
+      const joinedReasons = result.reasons.join('\n');
+      for (const token of ['DONE', 'PASSED', 'COMPLETE']) {
+        expect(joinedReasons.includes(token)).toBe(false);
+      }
+      expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
     });
 
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error('expected refusal');
-    // Refused on structural grounds (no commit) — never because of, or despite, the
-    // promise-token-shaped evidence strings, which this code path never inspects.
-    expect(result.reasons.some((r) => r.includes('no commits found'))).toBe(true);
-    const joinedReasons = result.reasons.join('\n');
-    for (const token of ['DONE', 'PASSED', 'COMPLETE']) {
-      expect(joinedReasons.includes(token)).toBe(false);
-    }
-    expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
-  });
+    it('a claimed file absent from the worktree entirely is refused (stat check, acceptance 1)', async () => {
+      fixture = await setupFixture();
+      const { log, worktree } = fixture;
 
-  it('a claimed file absent from the worktree entirely is refused (stat check, acceptance 1)', async () => {
-    fixture = await setupFixture();
-    const { log, worktree } = fixture;
+      await commitFile(
+        worktree,
+        'packages/example/file.ts',
+        'export const x = 1;\n',
+        'feat: add file',
+      );
+      const manifest = buildManifest({
+        files: ['packages/example/file.ts', 'packages/example/never-existed.ts'],
+      });
 
-    await commitFile(
-      worktree,
-      'packages/example/file.ts',
-      'export const x = 1;\n',
-      'feat: add file',
-    );
-    const manifest = buildManifest({
-      files: ['packages/example/file.ts', 'packages/example/never-existed.ts'],
+      const result = await runCloseGate({
+        log,
+        actorId: 'worker-1',
+        projectId: PROJECT_ID,
+        ticket: requireTicket(log, 'W9-01'),
+        worktree,
+        manifest,
+        baseRef: 'main',
+        contentDir: CONTENT_VALIDATORS_DIR,
+        signingKey: TEST_SIGNING_KEY,
+        now: NOW,
+      });
+
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('expected refusal');
+      expect(
+        result.reasons.some(
+          (r) => r.includes('not found on disk') && r.includes('never-existed.ts'),
+        ),
+      ).toBe(true);
     });
 
-    const result = await runCloseGate({
-      log,
-      actorId: 'worker-1',
-      projectId: PROJECT_ID,
-      ticket: requireTicket(log, 'W9-01'),
-      worktree,
-      manifest,
-      baseRef: 'main',
-      contentDir: CONTENT_VALIDATORS_DIR,
-      signingKey: TEST_SIGNING_KEY,
-      now: NOW,
+    it('RED FIXTURE: a claimed file that resolves outside the worktree via a symlink is refused, never read, never hashed into a receipt (acceptance 1, W1-07 symlink-escape class)', async () => {
+      fixture = await setupFixture();
+      const { log, worktree } = fixture;
+
+      await commitFile(
+        worktree,
+        'packages/example/file.ts',
+        'export const x = 1;\n',
+        'feat: add file',
+      );
+
+      const outsideDir = await fs.mkdtemp(
+        path.join(os.tmpdir(), 'dokima-gates-outside-'),
+      );
+      extraTempDirs.push(outsideDir);
+      const outsideSecret = path.join(outsideDir, 'secret.txt');
+      await fs.writeFile(outsideSecret, 'TOP-SECRET-NEVER-READ\n');
+
+      const linkPath = path.join(worktree.path, 'packages/example/leak.ts');
+      await fs.symlink(outsideSecret, linkPath);
+      await git(worktree.path, ['add', '--', 'packages/example/leak.ts']);
+      await git(worktree.path, ['commit', '-m', 'feat: add leak symlink']);
+
+      const manifest = buildManifest({
+        files: ['packages/example/file.ts', 'packages/example/leak.ts'],
+      });
+
+      const result = await runCloseGate({
+        log,
+        actorId: 'worker-1',
+        projectId: PROJECT_ID,
+        ticket: requireTicket(log, 'W9-01'),
+        worktree,
+        manifest,
+        baseRef: 'main',
+        contentDir: CONTENT_VALIDATORS_DIR,
+        signingKey: TEST_SIGNING_KEY,
+        now: NOW,
+      });
+
+      expect(result.ok).toBe(false);
+      if (result.ok)
+        throw new Error('expected refusal (this fixture must FAIL verification)');
+      expect(
+        result.reasons.some((r) => r.includes('symlink-escape') && r.includes('leak.ts')),
+      ).toBe(true);
+      // The escaping file's content was never read into a reason string, a
+      // manifest echo, or (by construction — the reasons check short-circuits
+      // before the inputFiles/mintReceipt step) a receipt.
+      const joinedReasons = result.reasons.join('\n');
+      expect(joinedReasons.includes('TOP-SECRET-NEVER-READ')).toBe(false);
+      expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
     });
 
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error('expected refusal');
-    expect(
-      result.reasons.some(
-        (r) => r.includes('not found on disk') && r.includes('never-existed.ts'),
-      ),
-    ).toBe(true);
-  });
+    it("RED FIXTURE (TOCTOU): a claimed file swapped for an escaping symlink by the ticket's own verify command, after the initial check, is still refused at receipt-read time and never hashed into a receipt (acceptance 1/3, W1-07 symlink-escape class)", async () => {
+      const outsideDir = await fs.mkdtemp(
+        path.join(os.tmpdir(), 'dokima-gates-outside-'),
+      );
+      extraTempDirs.push(outsideDir);
+      const outsideSecret = path.join(outsideDir, 'secret.txt');
+      await fs.writeFile(outsideSecret, 'TOP-SECRET-NEVER-READ\n');
 
-  it('RED FIXTURE: a claimed file that resolves outside the worktree via a symlink is refused, never read, never hashed into a receipt (acceptance 1, W1-07 symlink-escape class)', async () => {
-    fixture = await setupFixture();
-    const { log, worktree } = fixture;
+      // The TICKET's OWN verify command — real code committed by the (untrusted,
+      // already-exited) agent session — swaps the claimed file for a symlink
+      // pointing outside the worktree AFTER classifyManifestFiles's initial
+      // check has already run and passed on the original, honest file.
+      fixture = await setupFixture({
+        ticket: {
+          verify: `rm -f packages/example/file.ts && ln -s ${outsideSecret} packages/example/file.ts`,
+        },
+      });
+      const { log, worktree } = fixture;
 
-    await commitFile(
-      worktree,
-      'packages/example/file.ts',
-      'export const x = 1;\n',
-      'feat: add file',
-    );
+      await commitFile(
+        worktree,
+        'packages/example/file.ts',
+        'export const x = 1;\n',
+        'feat: add file',
+      );
 
-    const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-gates-outside-'));
-    extraTempDirs.push(outsideDir);
-    const outsideSecret = path.join(outsideDir, 'secret.txt');
-    await fs.writeFile(outsideSecret, 'TOP-SECRET-NEVER-READ\n');
+      const manifest = buildManifest({ files: ['packages/example/file.ts'] });
 
-    const linkPath = path.join(worktree.path, 'packages/example/leak.ts');
-    await fs.symlink(outsideSecret, linkPath);
-    await git(worktree.path, ['add', '--', 'packages/example/leak.ts']);
-    await git(worktree.path, ['commit', '-m', 'feat: add leak symlink']);
+      const result = await runCloseGate({
+        log,
+        actorId: 'worker-1',
+        projectId: PROJECT_ID,
+        ticket: requireTicket(log, 'W9-01'),
+        worktree,
+        manifest,
+        baseRef: 'main',
+        contentDir: CONTENT_VALIDATORS_DIR,
+        signingKey: TEST_SIGNING_KEY,
+        now: NOW,
+      });
 
-    const manifest = buildManifest({
-      files: ['packages/example/file.ts', 'packages/example/leak.ts'],
-    });
-
-    const result = await runCloseGate({
-      log,
-      actorId: 'worker-1',
-      projectId: PROJECT_ID,
-      ticket: requireTicket(log, 'W9-01'),
-      worktree,
-      manifest,
-      baseRef: 'main',
-      contentDir: CONTENT_VALIDATORS_DIR,
-      signingKey: TEST_SIGNING_KEY,
-      now: NOW,
-    });
-
-    expect(result.ok).toBe(false);
-    if (result.ok)
-      throw new Error('expected refusal (this fixture must FAIL verification)');
-    expect(
-      result.reasons.some((r) => r.includes('symlink-escape') && r.includes('leak.ts')),
-    ).toBe(true);
-    // The escaping file's content was never read into a reason string, a
-    // manifest echo, or (by construction — the reasons check short-circuits
-    // before the inputFiles/mintReceipt step) a receipt.
-    const joinedReasons = result.reasons.join('\n');
-    expect(joinedReasons.includes('TOP-SECRET-NEVER-READ')).toBe(false);
-    expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
-  });
-
-  it("RED FIXTURE (TOCTOU): a claimed file swapped for an escaping symlink by the ticket's own verify command, after the initial check, is still refused at receipt-read time and never hashed into a receipt (acceptance 1/3, W1-07 symlink-escape class)", async () => {
-    const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-gates-outside-'));
-    extraTempDirs.push(outsideDir);
-    const outsideSecret = path.join(outsideDir, 'secret.txt');
-    await fs.writeFile(outsideSecret, 'TOP-SECRET-NEVER-READ\n');
-
-    // The TICKET's OWN verify command — real code committed by the (untrusted,
-    // already-exited) agent session — swaps the claimed file for a symlink
-    // pointing outside the worktree AFTER classifyManifestFiles's initial
-    // check has already run and passed on the original, honest file.
-    fixture = await setupFixture({
-      ticket: {
-        verify: `rm -f packages/example/file.ts && ln -s ${outsideSecret} packages/example/file.ts`,
-      },
-    });
-    const { log, worktree } = fixture;
-
-    await commitFile(
-      worktree,
-      'packages/example/file.ts',
-      'export const x = 1;\n',
-      'feat: add file',
-    );
-
-    const manifest = buildManifest({ files: ['packages/example/file.ts'] });
-
-    const result = await runCloseGate({
-      log,
-      actorId: 'worker-1',
-      projectId: PROJECT_ID,
-      ticket: requireTicket(log, 'W9-01'),
-      worktree,
-      manifest,
-      baseRef: 'main',
-      contentDir: CONTENT_VALIDATORS_DIR,
-      signingKey: TEST_SIGNING_KEY,
-      now: NOW,
-    });
-
-    expect(result.ok).toBe(false);
-    if (result.ok)
-      throw new Error('expected refusal (TOCTOU symlink-escape must FAIL verification)');
-    expect(
-      result.reasons.some((r) => r.includes('symlink-escape') && r.includes('file.ts')),
-    ).toBe(true);
-    // Content behind the post-check symlink swap was never read into a
-    // reason string, a manifest echo, or a receipt.
-    const joinedReasons = result.reasons.join('\n');
-    expect(joinedReasons.includes('TOP-SECRET-NEVER-READ')).toBe(false);
-    expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
-  });
-
-  it('spoofed manifest fails: a claimed file that exists on disk but was never committed is refused (R-F4)', async () => {
-    fixture = await setupFixture();
-    const { log, worktree } = fixture;
-
-    // A real commit lands, but NOT for the file the manifest claims.
-    await commitFile(
-      worktree,
-      'packages/example/real.ts',
-      'export const real = true;\n',
-      'feat: real file',
-    );
-    await fs.writeFile(
-      path.join(worktree.path, 'packages/example/uncommitted.ts'),
-      'export {};\n',
-    );
-
-    const manifest = buildManifest({ files: ['packages/example/uncommitted.ts'] });
-
-    const result = await runCloseGate({
-      log,
-      actorId: 'worker-1',
-      projectId: PROJECT_ID,
-      ticket: requireTicket(log, 'W9-01'),
-      worktree,
-      manifest,
-      baseRef: 'main',
-      contentDir: CONTENT_VALIDATORS_DIR,
-      signingKey: TEST_SIGNING_KEY,
-      now: NOW,
-    });
-
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error('expected refusal');
-    expect(result.reasons.some((r) => r.includes('not touched by any commit'))).toBe(
-      true,
-    );
-  });
-
-  it('RED FIXTURE (W11-13, SC-17): a real diff containing a path outside ticket.writeScope is refused even when manifest.files is a perfect (honest) subset of that diff', async () => {
-    fixture = await setupFixture();
-    const { log, worktree } = fixture;
-
-    // In scope, and the ONLY file the manifest claims — an honest manifest
-    // that under-reports nothing relative to what it declares.
-    await commitFile(
-      worktree,
-      'packages/example/file.ts',
-      'export const x = 1;\n',
-      'feat: add file',
-    );
-    // Out of scope (ticket.writeScope is packages/example/**), landed by the
-    // same session on the same branch, but never declared in the manifest.
-    // Before this ticket's fix, nothing checked the real diff/commit set
-    // against ticket.writeScope, so this escaped undetected.
-    await commitFile(
-      worktree,
-      'packages/other/extra.ts',
-      'export const escaped = true;\n',
-      'feat: escape write_scope',
-    );
-
-    const manifest = buildManifest({ files: ['packages/example/file.ts'] });
-
-    const result = await runCloseGate({
-      log,
-      actorId: 'worker-1',
-      projectId: PROJECT_ID,
-      ticket: requireTicket(log, 'W9-01'),
-      worktree,
-      manifest,
-      baseRef: 'main',
-      contentDir: CONTENT_VALIDATORS_DIR,
-      signingKey: TEST_SIGNING_KEY,
-      now: NOW,
-    });
-
-    expect(result.ok).toBe(false);
-    if (result.ok)
-      throw new Error('expected refusal (out-of-scope real diff must FAIL verification)');
-    expect(
-      result.reasons.some(
-        (r) =>
-          r.includes('outside ticket.writeScope') &&
-          r.includes('packages/other/extra.ts') &&
-          r.includes('outside-scope'),
-      ),
-    ).toBe(true);
-    // Never blamed on the manifest itself — the existing asymmetric (subset)
-    // checks must NOT fire here, since manifest.files under-reports nothing.
-    const joinedReasons = result.reasons.join('\n');
-    expect(joinedReasons.includes('not observed in the real diff')).toBe(false);
-    expect(joinedReasons.includes('not touched by any commit')).toBe(false);
-    expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
-  });
-
-  it('RED FIXTURE (W11-13, HARD_EXCLUSIONS shape): a real diff touching .github/workflows/** is refused even though the manifest never claims it', async () => {
-    fixture = await setupFixture();
-    const { log, worktree } = fixture;
-
-    await commitFile(
-      worktree,
-      'packages/example/file.ts',
-      'export const x = 1;\n',
-      'feat: add file',
-    );
-    // SC-01 hard exclusion: no write_scope may ever grant this, regardless
-    // of whether the manifest declares it.
-    await commitFile(
-      worktree,
-      '.github/workflows/ci.yml',
-      'name: ci\non: push\n',
-      'feat: sneak in a workflow change',
-    );
-
-    const manifest = buildManifest({ files: ['packages/example/file.ts'] });
-
-    const result = await runCloseGate({
-      log,
-      actorId: 'worker-1',
-      projectId: PROJECT_ID,
-      ticket: requireTicket(log, 'W9-01'),
-      worktree,
-      manifest,
-      baseRef: 'main',
-      contentDir: CONTENT_VALIDATORS_DIR,
-      signingKey: TEST_SIGNING_KEY,
-      now: NOW,
-    });
-
-    expect(result.ok).toBe(false);
-    if (result.ok)
-      throw new Error('expected refusal (HARD_EXCLUSIONS path must FAIL verification)');
-    expect(
-      result.reasons.some(
-        (r) =>
-          r.includes('outside ticket.writeScope') &&
-          r.includes('.github/workflows/ci.yml') &&
-          r.includes('hard-excluded'),
-      ),
-    ).toBe(true);
-    expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
-  });
-
-  it('the symmetric write-scope check is checked against real COMMITS, not the raw untracked working-tree diff: a stray untracked out-of-scope file that was never committed does not block close', async () => {
-    fixture = await setupFixture();
-    const { log, worktree } = fixture;
-
-    await commitFile(
-      worktree,
-      'packages/example/file.ts',
-      'export const x = 1;\n',
-      'feat: add file',
-    );
-    // Untracked, out of ticket.writeScope, and NEVER committed — e.g. the
-    // kind of side-effect artifact the close gate's own verify command or
-    // required validator pack can leave behind in the worktree (real
-    // example: content/validators/_lib.sh's telemetry hook). Since it
-    // never lands in the ticket branch's real commit history, no merge
-    // ever delivers it — checking it against write_scope would fail the
-    // gate closed permanently on the gate's own side effects, which is why
-    // the check below is scoped to committed files only.
-    await fs.mkdir(path.join(worktree.path, 'packages', 'other'), { recursive: true });
-    await fs.writeFile(
-      path.join(worktree.path, 'packages/other/stray-artifact.txt'),
-      'never committed, never merged\n',
-    );
-
-    const manifest = buildManifest({ files: ['packages/example/file.ts'] });
-
-    const result = await runCloseGate({
-      log,
-      actorId: 'worker-1',
-      projectId: PROJECT_ID,
-      ticket: requireTicket(log, 'W9-01'),
-      worktree,
-      manifest,
-      baseRef: 'main',
-      contentDir: CONTENT_VALIDATORS_DIR,
-      signingKey: TEST_SIGNING_KEY,
-      now: NOW,
-    });
-
-    expect(result.ok).toBe(true);
-    if (!result.ok)
-      throw new Error(`expected success, got: ${result.reasons.join('; ')}`);
-  });
-
-  it("graded entity never grades itself: the ticket's real verify is re-run, ignoring the manifest's claimed command/exit", async () => {
-    fixture = await setupFixture({ ticket: { verify: 'exit 1' } });
-    const { log, worktree } = fixture;
-
-    await commitFile(
-      worktree,
-      'packages/example/file.ts',
-      'export const x = 1;\n',
-      'feat: add file',
-    );
-
-    const manifest = buildManifest({
-      files: ['packages/example/file.ts'],
-      // The session claims its own no-op command passed — never trusted.
-      verify: { command: 'true', exit: 0 },
-    });
-
-    const result = await runCloseGate({
-      log,
-      actorId: 'worker-1',
-      projectId: PROJECT_ID,
-      ticket: requireTicket(log, 'W9-01'),
-      worktree,
-      manifest,
-      baseRef: 'main',
-      contentDir: CONTENT_VALIDATORS_DIR,
-      signingKey: TEST_SIGNING_KEY,
-      now: NOW,
-    });
-
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error('expected refusal');
-    expect(result.reasons.some((r) => r.includes('verify re-run failed'))).toBe(true);
-    expect(result.reasons.some((r) => r.includes('exit 1'))).toBe(true);
-  });
-
-  it('R-G2 (inert until W7-01): a memory-eligible role with no memory_written[] is refused only when opted in', async () => {
-    fixture = await setupFixture();
-    const { log, worktree } = fixture;
-
-    await commitFile(
-      worktree,
-      'packages/example/file.ts',
-      'export const x = 1;\n',
-      'feat: add file',
-    );
-    const manifest = buildManifest({ files: ['packages/example/file.ts'] });
-
-    const refused = await runCloseGate({
-      log,
-      actorId: 'worker-1',
-      projectId: PROJECT_ID,
-      ticket: requireTicket(log, 'W9-01'),
-      worktree,
-      manifest,
-      baseRef: 'main',
-      contentDir: CONTENT_VALIDATORS_DIR,
-      signingKey: TEST_SIGNING_KEY,
-      now: NOW,
-      role: 'memory-agent',
-      memoryEligibleRoles: ['memory-agent'],
-    });
-    expect(refused.ok).toBe(false);
-    if (refused.ok) throw new Error('expected refusal');
-    expect(refused.reasons.some((r) => r.includes('memory_written'))).toBe(true);
-
-    // Same manifest, no role opt-in: inert today (W7-01 hasn't landed), so it succeeds.
-    const succeeded = await runCloseGate({
-      log,
-      actorId: 'worker-1',
-      projectId: PROJECT_ID,
-      ticket: requireTicket(log, 'W9-01'),
-      worktree,
-      manifest,
-      baseRef: 'main',
-      contentDir: CONTENT_VALIDATORS_DIR,
-      signingKey: TEST_SIGNING_KEY,
-      now: NOW,
-    });
-    expect(succeeded.ok).toBe(true);
-  });
-
-  it('secrets-scan (SC-06): a NEW planted secret inside the diff blocks close via the real gate path', async () => {
-    fixture = await setupFixture();
-    const { log, worktree } = fixture;
-
-    await commitFile(
-      worktree,
-      'packages/example/config.ts',
-      `export const apiKey = "${PLANTED_SECRET}";\n`,
-      'feat: add config (oops)',
-    );
-    const manifest = buildManifest({ files: ['packages/example/config.ts'] });
-
-    const result = await runCloseGate({
-      log,
-      actorId: 'worker-1',
-      projectId: PROJECT_ID,
-      ticket: requireTicket(log, 'W9-01'),
-      worktree,
-      manifest,
-      baseRef: 'main',
-      contentDir: CONTENT_VALIDATORS_DIR,
-      signingKey: TEST_SIGNING_KEY,
-      now: NOW,
-    });
-
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error('expected refusal');
-    expect(result.reasons.some((r) => r.includes('secrets-scan'))).toBe(true);
-    expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
-  });
-
-  it('D-014/L-28 shadow-calibration: a pre-existing secret in a file this session never touched does not block close', async () => {
-    fixture = await setupFixture({
-      seedMain: async (repoRoot) => {
-        await fs.mkdir(path.join(repoRoot, 'packages', 'legacy'), { recursive: true });
-        await fs.writeFile(
-          path.join(repoRoot, 'packages/legacy/pre-existing.md'),
-          `Pre-existing fixture doc, never touched by this ticket: ${PLANTED_SECRET}\n`,
+      expect(result.ok).toBe(false);
+      if (result.ok)
+        throw new Error(
+          'expected refusal (TOCTOU symlink-escape must FAIL verification)',
         );
-        await git(repoRoot, ['add', '--', 'packages/legacy/pre-existing.md']);
-        await git(repoRoot, ['commit', '-m', 'chore: pre-existing fixture content']);
-      },
-    });
-    const { log, worktree } = fixture;
-
-    await commitFile(
-      worktree,
-      'packages/example/file.ts',
-      'export const x = 1;\n',
-      'feat: add unrelated file',
-    );
-    const manifest = buildManifest({ files: ['packages/example/file.ts'] });
-
-    const result = await runCloseGate({
-      log,
-      actorId: 'worker-1',
-      projectId: PROJECT_ID,
-      ticket: requireTicket(log, 'W9-01'),
-      worktree,
-      manifest,
-      baseRef: 'main',
-      contentDir: CONTENT_VALIDATORS_DIR,
-      signingKey: TEST_SIGNING_KEY,
-      now: NOW,
+      expect(
+        result.reasons.some((r) => r.includes('symlink-escape') && r.includes('file.ts')),
+      ).toBe(true);
+      // Content behind the post-check symlink swap was never read into a
+      // reason string, a manifest echo, or a receipt.
+      const joinedReasons = result.reasons.join('\n');
+      expect(joinedReasons.includes('TOP-SECRET-NEVER-READ')).toBe(false);
+      expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
     });
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) throw new Error('expected success');
-    const payload = result.receipt.payload as {
-      secretsScan: { raw: number; effective: number };
-    };
-    // Raw is never hidden (D-014) even though it didn't gate.
-    expect(payload.secretsScan.raw).toBeGreaterThan(0);
-    expect(payload.secretsScan.effective).toBe(0);
-  });
+    it('spoofed manifest fails: a claimed file that exists on disk but was never committed is refused (R-F4)', async () => {
+      fixture = await setupFixture();
+      const { log, worktree } = fixture;
 
-  it('SECURITY (fail-closed, CRITICAL): a secrets-scan that exits 2 (forced timeout) blocks close with no receipt, exactly like a real planted-secret hit', async () => {
-    fixture = await setupFixture();
-    const { log, worktree } = fixture;
+      // A real commit lands, but NOT for the file the manifest claims.
+      await commitFile(
+        worktree,
+        'packages/example/real.ts',
+        'export const real = true;\n',
+        'feat: real file',
+      );
+      await fs.writeFile(
+        path.join(worktree.path, 'packages/example/uncommitted.ts'),
+        'export {};\n',
+      );
 
-    // A validator pack fixture whose "secrets-scan" entry hangs well past the
-    // timeout — runValidator's 0/1/2 contract normalizes this to exitCode 2
-    // (timeout), NOT a clean 0. Before this ticket's fix, loop-gates.ts's
-    // effectiveValidatorResults map called classifySecretsGaps() unconditionally,
-    // which would parse the synthetic "exceeded ...ms and was killed" gap detail
-    // (not file:line shaped), find zero matches in changedPaths, and reclassify
-    // the whole result as a false-clean exitCode 0 — sailing a hung/crashed
-    // scanner straight through to a minted close receipt. This proves that no
-    // longer happens.
-    const fixtureContentDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'dokima-gates-fake-validators-'),
-    );
-    extraTempDirs.push(fixtureContentDir);
-    await fs.writeFile(
-      path.join(fixtureContentDir, 'secrets-scan.sh'),
-      '#!/bin/bash\nsleep 5\necho \'{"validator":"secrets-scan","gaps":0,"exit":0}\'\n',
-    );
-    // This fixture's whole point is isolating the secrets-scan timeout path —
-    // a stub keeps the OTHER required validator (validate-remote-parity) out
-    // of the way instead of failing pack selection against this custom dir.
-    await fs.writeFile(
-      path.join(fixtureContentDir, 'validate-remote-parity.sh'),
-      '#!/bin/bash\necho \'{"validator":"validate-remote-parity","gaps":0,"exit":0}\'\n',
-    );
+      const manifest = buildManifest({ files: ['packages/example/uncommitted.ts'] });
 
-    await commitFile(
-      worktree,
-      'packages/example/file.ts',
-      'export const x = 1;\n',
-      'feat: add file',
-    );
-    const manifest = buildManifest({ files: ['packages/example/file.ts'] });
+      const result = await runCloseGate({
+        log,
+        actorId: 'worker-1',
+        projectId: PROJECT_ID,
+        ticket: requireTicket(log, 'W9-01'),
+        worktree,
+        manifest,
+        baseRef: 'main',
+        contentDir: CONTENT_VALIDATORS_DIR,
+        signingKey: TEST_SIGNING_KEY,
+        now: NOW,
+      });
 
-    const result = await runCloseGate({
-      log,
-      actorId: 'worker-1',
-      projectId: PROJECT_ID,
-      ticket: requireTicket(log, 'W9-01'),
-      worktree,
-      manifest,
-      baseRef: 'main',
-      contentDir: fixtureContentDir,
-      signingKey: TEST_SIGNING_KEY,
-      now: NOW,
-      validatorTimeoutMs: 100,
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('expected refusal');
+      expect(result.reasons.some((r) => r.includes('not touched by any commit'))).toBe(
+        true,
+      );
     });
 
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error('expected refusal');
-    expect(
-      result.reasons.some((r) => r.includes('secrets-scan') && r.includes('exit 2')),
-    ).toBe(true);
-    // No receipt minted, ticket state never advanced past in_progress — same
-    // "no close receipt => failure comment, never forward progress" contract
-    // as every other refusal path.
-    expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
-  });
+    it('RED FIXTURE (W11-13, SC-17): a real diff containing a path outside ticket.writeScope is refused even when manifest.files is a perfect (honest) subset of that diff', async () => {
+      fixture = await setupFixture();
+      const { log, worktree } = fixture;
 
-  it('validate-remote-parity (wired, amplifier hole 11): a diverged remote-tracking ref blocks close via the real gate path, not merely a warning', async () => {
-    fixture = await setupFixture();
-    const { log, worktree } = fixture;
+      // In scope, and the ONLY file the manifest claims — an honest manifest
+      // that under-reports nothing relative to what it declares.
+      await commitFile(
+        worktree,
+        'packages/example/file.ts',
+        'export const x = 1;\n',
+        'feat: add file',
+      );
+      // Out of scope (ticket.writeScope is packages/example/**), landed by the
+      // same session on the same branch, but never declared in the manifest.
+      // Before this ticket's fix, nothing checked the real diff/commit set
+      // against ticket.writeScope, so this escaped undetected.
+      await commitFile(
+        worktree,
+        'packages/other/extra.ts',
+        'export const escaped = true;\n',
+        'feat: escape write_scope',
+      );
 
-    const bareRemote = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-gates-remote-'));
-    extraTempDirs.push(bareRemote);
-    await git(bareRemote, ['init', '--bare', '-b', 'main']);
-    await git(worktree.path, ['remote', 'add', 'origin', bareRemote]);
-    // Establishes a cached tracking ref at the branch's CURRENT tip (the
-    // fork point, before this ticket's own commit lands).
-    await git(worktree.path, ['push', 'origin', worktree.branch]);
+      const manifest = buildManifest({ files: ['packages/example/file.ts'] });
 
-    // Advances local HEAD past what's pushed — the tracking ref is now
-    // stale, real divergence (never just an absent ref).
-    await commitFile(
-      worktree,
-      'packages/example/file.ts',
-      'export const x = 1;\n',
-      'feat: add file',
-    );
-    const manifest = buildManifest({ files: ['packages/example/file.ts'] });
+      const result = await runCloseGate({
+        log,
+        actorId: 'worker-1',
+        projectId: PROJECT_ID,
+        ticket: requireTicket(log, 'W9-01'),
+        worktree,
+        manifest,
+        baseRef: 'main',
+        contentDir: CONTENT_VALIDATORS_DIR,
+        signingKey: TEST_SIGNING_KEY,
+        now: NOW,
+      });
 
-    const result = await runCloseGate({
-      log,
-      actorId: 'worker-1',
-      projectId: PROJECT_ID,
-      ticket: requireTicket(log, 'W9-01'),
-      worktree,
-      manifest,
-      baseRef: 'main',
-      contentDir: CONTENT_VALIDATORS_DIR,
-      signingKey: TEST_SIGNING_KEY,
-      now: NOW,
+      expect(result.ok).toBe(false);
+      if (result.ok)
+        throw new Error(
+          'expected refusal (out-of-scope real diff must FAIL verification)',
+        );
+      expect(
+        result.reasons.some(
+          (r) =>
+            r.includes('outside ticket.writeScope') &&
+            r.includes('packages/other/extra.ts') &&
+            r.includes('outside-scope'),
+        ),
+      ).toBe(true);
+      // Never blamed on the manifest itself — the existing asymmetric (subset)
+      // checks must NOT fire here, since manifest.files under-reports nothing.
+      const joinedReasons = result.reasons.join('\n');
+      expect(joinedReasons.includes('not observed in the real diff')).toBe(false);
+      expect(joinedReasons.includes('not touched by any commit')).toBe(false);
+      expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
     });
 
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error('expected refusal (diverged remote must block close)');
-    expect(result.reasons.some((r) => r.includes('validate-remote-parity'))).toBe(true);
-    expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
-  });
+    it('RED FIXTURE (W11-13, HARD_EXCLUSIONS shape): a real diff touching .github/workflows/** is refused even though the manifest never claims it', async () => {
+      fixture = await setupFixture();
+      const { log, worktree } = fixture;
 
-  it('validate-remote-parity (LOCAL-FIRST, Law 9/C-1): a remote configured but never pushed (no cached tracking ref) does NOT block close', async () => {
-    fixture = await setupFixture();
-    const { log, worktree } = fixture;
+      await commitFile(
+        worktree,
+        'packages/example/file.ts',
+        'export const x = 1;\n',
+        'feat: add file',
+      );
+      // SC-01 hard exclusion: no write_scope may ever grant this, regardless
+      // of whether the manifest declares it.
+      await commitFile(
+        worktree,
+        '.github/workflows/ci.yml',
+        'name: ci\non: push\n',
+        'feat: sneak in a workflow change',
+      );
 
-    const bareRemote = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-gates-remote-'));
-    extraTempDirs.push(bareRemote);
-    await git(bareRemote, ['init', '--bare', '-b', 'main']);
-    // Configured but deliberately never pushed — the normal offline / fresh
-    // branch case (this project's own dual-remote setup, verified empirically
-    // in earlier conductor notes: 2 remotes, 0 tracking refs).
-    await git(worktree.path, ['remote', 'add', 'origin', bareRemote]);
+      const manifest = buildManifest({ files: ['packages/example/file.ts'] });
 
-    await commitFile(
-      worktree,
-      'packages/example/file.ts',
-      'export const x = 1;\n',
-      'feat: add file',
-    );
-    const manifest = buildManifest({ files: ['packages/example/file.ts'] });
+      const result = await runCloseGate({
+        log,
+        actorId: 'worker-1',
+        projectId: PROJECT_ID,
+        ticket: requireTicket(log, 'W9-01'),
+        worktree,
+        manifest,
+        baseRef: 'main',
+        contentDir: CONTENT_VALIDATORS_DIR,
+        signingKey: TEST_SIGNING_KEY,
+        now: NOW,
+      });
 
-    const result = await runCloseGate({
-      log,
-      actorId: 'worker-1',
-      projectId: PROJECT_ID,
-      ticket: requireTicket(log, 'W9-01'),
-      worktree,
-      manifest,
-      baseRef: 'main',
-      contentDir: CONTENT_VALIDATORS_DIR,
-      signingKey: TEST_SIGNING_KEY,
-      now: NOW,
+      expect(result.ok).toBe(false);
+      if (result.ok)
+        throw new Error('expected refusal (HARD_EXCLUSIONS path must FAIL verification)');
+      expect(
+        result.reasons.some(
+          (r) =>
+            r.includes('outside ticket.writeScope') &&
+            r.includes('.github/workflows/ci.yml') &&
+            r.includes('hard-excluded'),
+        ),
+      ).toBe(true);
+      expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
     });
 
-    expect(result.ok).toBe(true);
-    if (!result.ok)
-      throw new Error('expected success (no cached tracking ref must never gap)');
-  });
-}, SUBPROCESS_TIMEOUT_MS);
+    it('the symmetric write-scope check is checked against real COMMITS, not the raw untracked working-tree diff: a stray untracked out-of-scope file that was never committed does not block close', async () => {
+      fixture = await setupFixture();
+      const { log, worktree } = fixture;
 
-describe('parseGapLocation', () => {
-  it('parses the standard "<relfile>:<lineno> — <masked>" shape', () => {
-    expect(
-      parseGapLocation('packages/example/config.ts:12 — sk-p...REDACTED(37 chars)'),
-    ).toEqual({ file: 'packages/example/config.ts', line: 12 });
-  });
+      await commitFile(
+        worktree,
+        'packages/example/file.ts',
+        'export const x = 1;\n',
+        'feat: add file',
+      );
+      // Untracked, out of ticket.writeScope, and NEVER committed — e.g. the
+      // kind of side-effect artifact the close gate's own verify command or
+      // required validator pack can leave behind in the worktree (real
+      // example: content/validators/_lib.sh's telemetry hook). Since it
+      // never lands in the ticket branch's real commit history, no merge
+      // ever delivers it — checking it against write_scope would fail the
+      // gate closed permanently on the gate's own side effects, which is why
+      // the check below is scoped to committed files only.
+      await fs.mkdir(path.join(worktree.path, 'packages', 'other'), { recursive: true });
+      await fs.writeFile(
+        path.join(worktree.path, 'packages/other/stray-artifact.txt'),
+        'never committed, never merged\n',
+      );
 
-  it('guards against a colon inside the file path (splits on the LAST :<digits>, not the first colon)', () => {
-    expect(
-      parseGapLocation('weird:dir/od:d:file.ts:42 — sk-p...REDACTED(37 chars)'),
-    ).toEqual({
-      file: 'weird:dir/od:d:file.ts',
-      line: 42,
+      const manifest = buildManifest({ files: ['packages/example/file.ts'] });
+
+      const result = await runCloseGate({
+        log,
+        actorId: 'worker-1',
+        projectId: PROJECT_ID,
+        ticket: requireTicket(log, 'W9-01'),
+        worktree,
+        manifest,
+        baseRef: 'main',
+        contentDir: CONTENT_VALIDATORS_DIR,
+        signingKey: TEST_SIGNING_KEY,
+        now: NOW,
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok)
+        throw new Error(`expected success, got: ${result.reasons.join('; ')}`);
     });
-  });
 
-  it('returns null for a detail with no recognizable em-dash separator', () => {
-    expect(parseGapLocation('not the expected shape at all')).toEqual({
-      file: 'not the expected shape at all',
-      line: null,
+    it("graded entity never grades itself: the ticket's real verify is re-run, ignoring the manifest's claimed command/exit", async () => {
+      fixture = await setupFixture({ ticket: { verify: 'exit 1' } });
+      const { log, worktree } = fixture;
+
+      await commitFile(
+        worktree,
+        'packages/example/file.ts',
+        'export const x = 1;\n',
+        'feat: add file',
+      );
+
+      const manifest = buildManifest({
+        files: ['packages/example/file.ts'],
+        // The session claims its own no-op command passed — never trusted.
+        verify: { command: 'true', exit: 0 },
+      });
+
+      const result = await runCloseGate({
+        log,
+        actorId: 'worker-1',
+        projectId: PROJECT_ID,
+        ticket: requireTicket(log, 'W9-01'),
+        worktree,
+        manifest,
+        baseRef: 'main',
+        contentDir: CONTENT_VALIDATORS_DIR,
+        signingKey: TEST_SIGNING_KEY,
+        now: NOW,
+      });
+
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('expected refusal');
+      expect(result.reasons.some((r) => r.includes('verify re-run failed'))).toBe(true);
+      expect(result.reasons.some((r) => r.includes('exit 1'))).toBe(true);
     });
-  });
-}, SUBPROCESS_TIMEOUT_MS);
 
-describe('classifySecretsGaps', () => {
-  it('effective gaps are only those whose file is in the changed-paths set', () => {
-    const result = {
-      name: 'secrets-scan',
-      exitCode: 1,
-      gapCount: 2,
-      gaps: [
-        {
-          category: 'openai-style-key',
-          detail: 'packages/touched.ts:1 — sk-a...REDACTED(20 chars)',
+    it('R-G2 (inert until W7-01): a memory-eligible role with no memory_written[] is refused only when opted in', async () => {
+      fixture = await setupFixture();
+      const { log, worktree } = fixture;
+
+      await commitFile(
+        worktree,
+        'packages/example/file.ts',
+        'export const x = 1;\n',
+        'feat: add file',
+      );
+      const manifest = buildManifest({ files: ['packages/example/file.ts'] });
+
+      const refused = await runCloseGate({
+        log,
+        actorId: 'worker-1',
+        projectId: PROJECT_ID,
+        ticket: requireTicket(log, 'W9-01'),
+        worktree,
+        manifest,
+        baseRef: 'main',
+        contentDir: CONTENT_VALIDATORS_DIR,
+        signingKey: TEST_SIGNING_KEY,
+        now: NOW,
+        role: 'memory-agent',
+        memoryEligibleRoles: ['memory-agent'],
+      });
+      expect(refused.ok).toBe(false);
+      if (refused.ok) throw new Error('expected refusal');
+      expect(refused.reasons.some((r) => r.includes('memory_written'))).toBe(true);
+
+      // Same manifest, no role opt-in: inert today (W7-01 hasn't landed), so it succeeds.
+      const succeeded = await runCloseGate({
+        log,
+        actorId: 'worker-1',
+        projectId: PROJECT_ID,
+        ticket: requireTicket(log, 'W9-01'),
+        worktree,
+        manifest,
+        baseRef: 'main',
+        contentDir: CONTENT_VALIDATORS_DIR,
+        signingKey: TEST_SIGNING_KEY,
+        now: NOW,
+      });
+      expect(succeeded.ok).toBe(true);
+    });
+
+    it('secrets-scan (SC-06): a NEW planted secret inside the diff blocks close via the real gate path', async () => {
+      fixture = await setupFixture();
+      const { log, worktree } = fixture;
+
+      await commitFile(
+        worktree,
+        'packages/example/config.ts',
+        `export const apiKey = "${PLANTED_SECRET}";\n`,
+        'feat: add config (oops)',
+      );
+      const manifest = buildManifest({ files: ['packages/example/config.ts'] });
+
+      const result = await runCloseGate({
+        log,
+        actorId: 'worker-1',
+        projectId: PROJECT_ID,
+        ticket: requireTicket(log, 'W9-01'),
+        worktree,
+        manifest,
+        baseRef: 'main',
+        contentDir: CONTENT_VALIDATORS_DIR,
+        signingKey: TEST_SIGNING_KEY,
+        now: NOW,
+      });
+
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('expected refusal');
+      expect(result.reasons.some((r) => r.includes('secrets-scan'))).toBe(true);
+      expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
+    });
+
+    it('D-014/L-28 shadow-calibration: a pre-existing secret in a file this session never touched does not block close', async () => {
+      fixture = await setupFixture({
+        seedMain: async (repoRoot) => {
+          await fs.mkdir(path.join(repoRoot, 'packages', 'legacy'), { recursive: true });
+          await fs.writeFile(
+            path.join(repoRoot, 'packages/legacy/pre-existing.md'),
+            `Pre-existing fixture doc, never touched by this ticket: ${PLANTED_SECRET}\n`,
+          );
+          await git(repoRoot, ['add', '--', 'packages/legacy/pre-existing.md']);
+          await git(repoRoot, ['commit', '-m', 'chore: pre-existing fixture content']);
         },
-        {
-          category: 'openai-style-key',
-          detail: 'packages/untouched.ts:1 — sk-b...REDACTED(20 chars)',
-        },
-      ],
-      stdout: '',
-      stderr: '',
-      durationMs: 1,
-      timedOut: false,
-    };
-    const summary = classifySecretsGaps(result, new Set(['packages/touched.ts']));
-    expect(summary).toEqual({
-      raw: 2,
-      effective: 1,
-      suppressed: 1,
-      effectiveGaps: [result.gaps[0]],
+      });
+      const { log, worktree } = fixture;
+
+      await commitFile(
+        worktree,
+        'packages/example/file.ts',
+        'export const x = 1;\n',
+        'feat: add unrelated file',
+      );
+      const manifest = buildManifest({ files: ['packages/example/file.ts'] });
+
+      const result = await runCloseGate({
+        log,
+        actorId: 'worker-1',
+        projectId: PROJECT_ID,
+        ticket: requireTicket(log, 'W9-01'),
+        worktree,
+        manifest,
+        baseRef: 'main',
+        contentDir: CONTENT_VALIDATORS_DIR,
+        signingKey: TEST_SIGNING_KEY,
+        now: NOW,
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error('expected success');
+      const payload = result.receipt.payload as {
+        secretsScan: { raw: number; effective: number };
+      };
+      // Raw is never hidden (D-014) even though it didn't gate.
+      expect(payload.secretsScan.raw).toBeGreaterThan(0);
+      expect(payload.secretsScan.effective).toBe(0);
     });
-  });
-}, SUBPROCESS_TIMEOUT_MS);
+
+    it('SECURITY (fail-closed, CRITICAL): a secrets-scan that exits 2 (forced timeout) blocks close with no receipt, exactly like a real planted-secret hit', async () => {
+      fixture = await setupFixture();
+      const { log, worktree } = fixture;
+
+      // A validator pack fixture whose "secrets-scan" entry hangs well past the
+      // timeout — runValidator's 0/1/2 contract normalizes this to exitCode 2
+      // (timeout), NOT a clean 0. Before this ticket's fix, loop-gates.ts's
+      // effectiveValidatorResults map called classifySecretsGaps() unconditionally,
+      // which would parse the synthetic "exceeded ...ms and was killed" gap detail
+      // (not file:line shaped), find zero matches in changedPaths, and reclassify
+      // the whole result as a false-clean exitCode 0 — sailing a hung/crashed
+      // scanner straight through to a minted close receipt. This proves that no
+      // longer happens.
+      const fixtureContentDir = await fs.mkdtemp(
+        path.join(os.tmpdir(), 'dokima-gates-fake-validators-'),
+      );
+      extraTempDirs.push(fixtureContentDir);
+      await fs.writeFile(
+        path.join(fixtureContentDir, 'secrets-scan.sh'),
+        '#!/bin/bash\nsleep 5\necho \'{"validator":"secrets-scan","gaps":0,"exit":0}\'\n',
+      );
+      // This fixture's whole point is isolating the secrets-scan timeout path —
+      // a stub keeps the OTHER required validator (validate-remote-parity) out
+      // of the way instead of failing pack selection against this custom dir.
+      await fs.writeFile(
+        path.join(fixtureContentDir, 'validate-remote-parity.sh'),
+        '#!/bin/bash\necho \'{"validator":"validate-remote-parity","gaps":0,"exit":0}\'\n',
+      );
+
+      await commitFile(
+        worktree,
+        'packages/example/file.ts',
+        'export const x = 1;\n',
+        'feat: add file',
+      );
+      const manifest = buildManifest({ files: ['packages/example/file.ts'] });
+
+      const result = await runCloseGate({
+        log,
+        actorId: 'worker-1',
+        projectId: PROJECT_ID,
+        ticket: requireTicket(log, 'W9-01'),
+        worktree,
+        manifest,
+        baseRef: 'main',
+        contentDir: fixtureContentDir,
+        signingKey: TEST_SIGNING_KEY,
+        now: NOW,
+        validatorTimeoutMs: 100,
+      });
+
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error('expected refusal');
+      expect(
+        result.reasons.some((r) => r.includes('secrets-scan') && r.includes('exit 2')),
+      ).toBe(true);
+      // No receipt minted, ticket state never advanced past in_progress — same
+      // "no close receipt => failure comment, never forward progress" contract
+      // as every other refusal path.
+      expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
+    });
+
+    it('validate-remote-parity (wired, amplifier hole 11): a diverged remote-tracking ref blocks close via the real gate path, not merely a warning', async () => {
+      fixture = await setupFixture();
+      const { log, worktree } = fixture;
+
+      const bareRemote = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-gates-remote-'));
+      extraTempDirs.push(bareRemote);
+      await git(bareRemote, ['init', '--bare', '-b', 'main']);
+      await git(worktree.path, ['remote', 'add', 'origin', bareRemote]);
+      // Establishes a cached tracking ref at the branch's CURRENT tip (the
+      // fork point, before this ticket's own commit lands).
+      await git(worktree.path, ['push', 'origin', worktree.branch]);
+
+      // Advances local HEAD past what's pushed — the tracking ref is now
+      // stale, real divergence (never just an absent ref).
+      await commitFile(
+        worktree,
+        'packages/example/file.ts',
+        'export const x = 1;\n',
+        'feat: add file',
+      );
+      const manifest = buildManifest({ files: ['packages/example/file.ts'] });
+
+      const result = await runCloseGate({
+        log,
+        actorId: 'worker-1',
+        projectId: PROJECT_ID,
+        ticket: requireTicket(log, 'W9-01'),
+        worktree,
+        manifest,
+        baseRef: 'main',
+        contentDir: CONTENT_VALIDATORS_DIR,
+        signingKey: TEST_SIGNING_KEY,
+        now: NOW,
+      });
+
+      expect(result.ok).toBe(false);
+      if (result.ok)
+        throw new Error('expected refusal (diverged remote must block close)');
+      expect(result.reasons.some((r) => r.includes('validate-remote-parity'))).toBe(true);
+      expect(requireTicket(log, 'W9-01').status).toBe('in_progress');
+    });
+
+    it('validate-remote-parity (LOCAL-FIRST, Law 9/C-1): a remote configured but never pushed (no cached tracking ref) does NOT block close', async () => {
+      fixture = await setupFixture();
+      const { log, worktree } = fixture;
+
+      const bareRemote = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-gates-remote-'));
+      extraTempDirs.push(bareRemote);
+      await git(bareRemote, ['init', '--bare', '-b', 'main']);
+      // Configured but deliberately never pushed — the normal offline / fresh
+      // branch case (this project's own dual-remote setup, verified empirically
+      // in earlier conductor notes: 2 remotes, 0 tracking refs).
+      await git(worktree.path, ['remote', 'add', 'origin', bareRemote]);
+
+      await commitFile(
+        worktree,
+        'packages/example/file.ts',
+        'export const x = 1;\n',
+        'feat: add file',
+      );
+      const manifest = buildManifest({ files: ['packages/example/file.ts'] });
+
+      const result = await runCloseGate({
+        log,
+        actorId: 'worker-1',
+        projectId: PROJECT_ID,
+        ticket: requireTicket(log, 'W9-01'),
+        worktree,
+        manifest,
+        baseRef: 'main',
+        contentDir: CONTENT_VALIDATORS_DIR,
+        signingKey: TEST_SIGNING_KEY,
+        now: NOW,
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok)
+        throw new Error('expected success (no cached tracking ref must never gap)');
+    });
+  },
+  SUBPROCESS_TIMEOUT_MS,
+);
+
+describe(
+  'parseGapLocation',
+  () => {
+    it('parses the standard "<relfile>:<lineno> — <masked>" shape', () => {
+      expect(
+        parseGapLocation('packages/example/config.ts:12 — sk-p...REDACTED(37 chars)'),
+      ).toEqual({ file: 'packages/example/config.ts', line: 12 });
+    });
+
+    it('guards against a colon inside the file path (splits on the LAST :<digits>, not the first colon)', () => {
+      expect(
+        parseGapLocation('weird:dir/od:d:file.ts:42 — sk-p...REDACTED(37 chars)'),
+      ).toEqual({
+        file: 'weird:dir/od:d:file.ts',
+        line: 42,
+      });
+    });
+
+    it('returns null for a detail with no recognizable em-dash separator', () => {
+      expect(parseGapLocation('not the expected shape at all')).toEqual({
+        file: 'not the expected shape at all',
+        line: null,
+      });
+    });
+  },
+  SUBPROCESS_TIMEOUT_MS,
+);
+
+describe(
+  'classifySecretsGaps',
+  () => {
+    it('effective gaps are only those whose file is in the changed-paths set', () => {
+      const result = {
+        name: 'secrets-scan',
+        exitCode: 1,
+        gapCount: 2,
+        gaps: [
+          {
+            category: 'openai-style-key',
+            detail: 'packages/touched.ts:1 — sk-a...REDACTED(20 chars)',
+          },
+          {
+            category: 'openai-style-key',
+            detail: 'packages/untouched.ts:1 — sk-b...REDACTED(20 chars)',
+          },
+        ],
+        stdout: '',
+        stderr: '',
+        durationMs: 1,
+        timedOut: false,
+      };
+      const summary = classifySecretsGaps(result, new Set(['packages/touched.ts']));
+      expect(summary).toEqual({
+        raw: 2,
+        effective: 1,
+        suppressed: 1,
+        effectiveGaps: [result.gaps[0]],
+      });
+    });
+  },
+  SUBPROCESS_TIMEOUT_MS,
+);
 
 describe('the close gate judges the commit set the AGENT made (W21-31)', () => {
   it('RED FIXTURE: the live refusal — .gitignore and package-lock.json in the commit set — is not the agent’s work', () => {
