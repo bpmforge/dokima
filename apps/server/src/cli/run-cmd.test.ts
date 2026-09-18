@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createIdentity, listEvents, mintReceipt, type EventLog } from '@dokima/events';
 import { claimTicket, createTicket, getTicket, startTicket } from '@dokima/tickets';
+import { createRun, getRun } from '@dokima/harbormaster';
 import { createWorktree, git } from '@dokima/git';
 import { openWritableLog, resolveDbPath } from './db.js';
 import { registerProject } from '../api/projects/registry-verbs.js';
@@ -58,34 +59,81 @@ describe('dokima run (FR-C7 — CLI drives the same @dokima/harbormaster verbs a
     const runId = start.stdout[0]?.split(' ')[0];
     expect(runId).toBeTruthy();
 
+    // W23-25: A RUN WHOSE WORK IS OVER IS OVER. Before this, the start branch
+    // printed "finished" and left the row `running` forever — nothing called
+    // completeRun, so the `run.completed` event run-events.ts (FR-PLAN1)
+    // waits for never existed. The CLI now says so on its last line, the row
+    // says `done`, and the event is in the log.
+    expect(start.stdout.at(-1)).toBe(`${runId} complete -> done`);
+    {
+      const log = openWritableLog(resolveDbPath(cwd));
+      expect(getRun(log, runId!)?.status).toBe('done');
+      expect(
+        listEvents(log)
+          .filter((e) => e.eventType === 'run.completed')
+          .map((e) => e.runId),
+      ).toEqual([runId]);
+      log.close();
+    }
+
+    // pause/resume/stop act on a run that is still going. The CLI's own start
+    // blocks until the work is done, so a LIVE run for these verbs is minted
+    // the way a second shell would find one: created and not yet finished.
+    const liveRunId = 'run-live-1';
+    {
+      const log = openWritableLog(resolveDbPath(cwd));
+      createRun(
+        log,
+        {
+          id: liveRunId,
+          projectId: 'proj-1',
+          mode: 'feature',
+          phase: 4,
+          breakpoint: 'wave',
+          berths: 2,
+          actorId: 'operator-1',
+        },
+        { now: NOW },
+      );
+      log.close();
+    }
+
     const pause = collectIO();
     expect(
-      await runCli(['run', 'pause', runId!, '--actor', 'operator-1'], {
+      await runCli(['run', 'pause', liveRunId, '--actor', 'operator-1'], {
         cwd,
         now: NOW,
         ...pause.io,
       }),
     ).toBe(0);
-    expect(pause.stdout[0]).toBe(`${runId} pause -> paused`);
+    expect(pause.stdout[0]).toBe(`${liveRunId} pause -> paused`);
 
     const resume = collectIO();
     expect(
       await runCli(
-        ['run', 'resume', runId!, '--actor', 'operator-1', '--signing-key', 'test-key'],
+        [
+          'run',
+          'resume',
+          liveRunId,
+          '--actor',
+          'operator-1',
+          '--signing-key',
+          'test-key',
+        ],
         { cwd, now: NOW, ...resume.io },
       ),
     ).toBe(0);
-    expect(resume.stdout[0]).toBe(`${runId} resume -> ok (closed=0 skipped=0)`);
+    expect(resume.stdout[0]).toBe(`${liveRunId} resume -> ok (closed=0 skipped=0)`);
 
     const stop = collectIO();
     expect(
-      await runCli(['run', 'stop', runId!, '--actor', 'operator-1'], {
+      await runCli(['run', 'stop', liveRunId, '--actor', 'operator-1'], {
         cwd,
         now: NOW,
         ...stop.io,
       }),
     ).toBe(0);
-    expect(stop.stdout[0]).toBe(`${runId} stop -> stopped`);
+    expect(stop.stdout[0]).toBe(`${liveRunId} stop -> stopped`);
   });
 
   it(
@@ -264,27 +312,36 @@ describe('dokima run (FR-C7 — CLI drives the same @dokima/harbormaster verbs a
     // Tamper after the receipt minted.
     await fs.writeFile(filePath, 'export const a = 999; // tampered\n');
 
-    const start = collectIO();
-    await runCli(
-      [
-        'run',
-        'start',
-        '--project',
-        'proj-1',
-        '--mode',
-        'feature',
-        '--breakpoint',
-        'never',
-        '--actor',
-        'operator-1',
-      ],
-      { cwd, now: NOW, ...start.io },
-    );
-    const runId = start.stdout[0]?.split(' ')[0];
+    // W23-25: `run start` now COMPLETES the run when its work is over, so a
+    // resume — which suspends the run on drift — needs one that is still
+    // going, the way a second shell would find it. Minted directly.
+    const runId = 'run-drift-1';
+    {
+      const runLog: EventLog = openWritableLog(resolveDbPath(cwd));
+      // The CLI's start branch ensures the operator identity; minting the run
+      // directly means doing that ourselves (runs.actor_id is a foreign key).
+      createIdentity(
+        runLog,
+        { id: 'operator-1', name: 'Operator One', kind: 'human' },
+        { now: NOW },
+      );
+      createRun(
+        runLog,
+        {
+          id: runId,
+          projectId: 'proj-1',
+          mode: 'feature',
+          breakpoint: 'never',
+          actorId: 'operator-1',
+        },
+        { now: NOW },
+      );
+      runLog.close();
+    }
 
     const resume = collectIO();
     const code = await runCli(
-      ['run', 'resume', runId!, '--actor', 'operator-1', '--signing-key', 'test-key'],
+      ['run', 'resume', runId, '--actor', 'operator-1', '--signing-key', 'test-key'],
       { cwd, now: NOW, ...resume.io },
     );
     expect(code).toBe(1);

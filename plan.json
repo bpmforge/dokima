@@ -16318,7 +16318,7 @@
       "id": "W23-25",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-701"
       ],
@@ -16333,7 +16333,10 @@
         "packages/harbormaster/src/berths-dial.ts",
         "packages/events/src/receipts/query.ts",
         "scripts/validate-exports.test.mjs",
-        "conductor.config.json"
+        "conductor.config.json",
+        "apps/server/src/cli/run-cmd.ts",
+        "apps/server/src/cli/run-cmd.test.ts",
+        "apps/server/src/cli/run-finish.ts"
       ],
       "acceptance": [
         "Each of the eleven symbols is decided one of three ways \u2014 wired to the caller its requirement implies, kept with an @unreached marker whose reason names the ticket that will wire it, or deleted \u2014 and none of them is answered by moving a ratchet",
@@ -16347,7 +16350,12 @@
         "CHECK THE SERVER ROUTES FIRST. A clarifications surface with no in-repo caller may be waiting on an HTTP route that was never registered, in which case the fix is the route and not the verbs \u2014 the same question W21-95 answered for the onboard analysis.",
         "ACCEPTANCE AMENDED BEFORE ANYONE CLAIMED IT, 2026-09-08, because the filed version forced a false binary. This repo already uses a third answer: runReviewPass carries an @unreached marker reading \"an external caller of the published package may still use it\" \u2014 W23-10 kept an uncalled export because @dokima/harbormaster is one registry release away from being a public API. \"Wire it or delete it\" executed literally would strip eleven exports from a package about to ship v1.0.0.",
         "AND THE REQUIREMENTS CLAIM THE CLARIFICATIONS VERBS, checked rather than assumed: FR-N1 (\"Clarification cards (context, specific question, options, default-if-unanswered) suspend only work dependent on the answer... dismissal takes the documented default + ledger row\"), US-701 and UC-03 all describe exactly askClarification / answerClarification / dismissClarification / listOpenClarifications / isTicketCheckpointed. These are an UNWIRED FEATURE, not residue from an abandoned design \u2014 which makes this a requirements gap and a product decision, not cleanup. FR-H4 orders the morning queue by leverage with clarifications in it, so the missing piece is plausibly the route and the queue, not the verbs.",
-        "FOUNDER SCOPE, DELIBERATELY NOT DONE HERE: everything else closed in this closeout wave (W23-21, W23-22, W23-24, W23-26) was tooling. This is trust-core production surface on a branch whose merge is already a founder decision, and the honest hand-off is a decided question rather than an unrequested wiring."
+        "FOUNDER SCOPE, DELIBERATELY NOT DONE HERE: everything else closed in this closeout wave (W23-21, W23-22, W23-24, W23-26) was tooling. This is trust-core production surface on a branch whose merge is already a founder decision, and the honest hand-off is a decided question rather than an unrequested wiring.",
+        "CLAIMED 2026-09-17 under founder direction (option 1 of three offered: wire the clarifications behind the existing notifications surface via a filed ticket; mark the rest with the ticket that owes them a caller; never the ratchet). SCOPE WIDENED AT CLAIM (Law 1): completeRun turned out not to be a marker case. apps/server/src/cli/run-cmd.ts calls createRun/pauseRun/stopRun/suspendRun/markRunResumed and NEVER completeRun, so every run that finishes its work \u2014 onboard or build \u2014 stays `running` forever, and apps/server/src/scheduler/run-events.ts, which waits for the `run.completed` event only completeRun emits (FR-PLAN1 \"evaluates after runs\"), can never fire. Its caller is the CLI start branch; run-cmd.ts and its test are all done-owned, territory released.",
+        "DONE 2026-09-17. ELEVEN SYMBOLS, THREE ANSWERS, NO RATCHET MOVE THAT WAS NOT A MEASUREMENT: (1) WIRED \u2014 completeRun, called from the CLI start branch via the new apps/server/src/cli/run-finish.ts (a chapter because run-cmd.ts sat at the 400-line cap and the file-size validator said so, repo-wide, at gate) when a run's work ends with exit 0 and the run is still running/paused; every run used to stay running forever and FR-PLAN1's after-run hook could never fire. (2) MARKED AGAINST W23-28 (filed): askClarification, answerClarification, dismissClarification, listOpenClarifications, isTicketCheckpointed, listRuns, getReceiptActor \u2014 the notifications surface already carries a clarification kind, so the ticket owes a route and a caller there, not a second surface. (3) MARKED AGAINST W13-32 (blocked, D-032): resolveBerthCount, resolveAutorunBreakpoint \u2014 the dial that founder decision says not to wire yet.",
+        "CRITERION 3: both ratchets re-measured and LOWERED, 54/46 -> 46/44, in conductor.config.json and in the two places scripts/validate-exports.test.mjs pins them; the suppressed list is asserted symbol by symbol with the ticket each reason must name.",
+        "TESTS THAT PINNED THE DEFECT: run-cmd.test.ts used a finished run as a stand-in for a live one (pause/resume/stop on a run the CLI had already run to idle). Both tests now mint a live run directly, the way a second shell finds one, and the lifecycle test asserts the last line is \"<runId> complete -> done\", the row is done, and one run.completed event names the run.",
+        "GATE: lint 0, typecheck 0, 612 files / 5359 passed / 4 skipped, 76 e2e passed, six validators clean (exports at the new 46/44), temp-leaks clean. A first gate ran concurrently with a Stop-hook suite and surfaced two things: the file-size cap (real, fixed) and a markerless suite home (real, filed as W23-29)."
       ]
     },
     {
@@ -16423,6 +16431,67 @@
         "PLANTED-DEFECT PROOF, as the third criterion asks: w23-27-planted added to the gateway PROVIDER_KINDS alone failed five tests, each naming its file and declaration (\"apps/web/src/settings/providers-api.ts: export type ProviderKind = lacks w23-27-planted\", KIND_LABEL, PROVIDER_KINDS, AUTH_METHODS_BY_KIND, server KNOWN_KINDS); reverted, 10/10 green.",
         "A VACUOUS-PASS GUARD IS PART OF IT: the fixture asserts the gateway list holds at least seven kinds and the local subset at least three before anything else, so a regex that stops matching fails loudly rather than passing an empty list against everything.",
         "GATE: lint 0, typecheck 0, 612 files / 5359 passed / 4 skipped, 76 e2e passed, six validators clean, temp-leaks clean (the first temp-leaks run reported 17 while e2e was live in another process \u2014 the check warns of exactly that; alone afterwards, 0)."
+      ]
+    },
+    {
+      "id": "W23-28",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [
+        "US-701"
+      ],
+      "depends_on": [],
+      "lane": "orchestrator",
+      "module": "cli",
+      "points": 5,
+      "title": "FR-N1 clarifications: a route and a caller behind the notifications surface, and a runs list beside it",
+      "write_scope": [
+        "apps/server/src/api/server/clarifications-routes.ts",
+        "apps/server/src/api/server/clarifications-routes.test.ts",
+        "apps/server/src/api/server/runs-routes.ts",
+        "apps/server/src/api/server/runs-routes.test.ts",
+        "apps/server/src/api/server/notifications-routes/index.ts",
+        "apps/server/src/api/server/notifications-routes/notifications-routes.test.ts",
+        "apps/server/src/api/server.ts"
+      ],
+      "acceptance": [
+        "askClarification / answerClarification / dismissClarification / listOpenClarifications are reached by HTTP routes registered beside the notifications routes, and an open clarification appears in the morning queue as the existing `clarification` kind at leverage 20 (FR-H4) rather than through a second surface",
+        "Dismissal takes the documented default and leaves a ledger row naming who dismissed it (FR-N1); getReceiptActor is either the way that row names its actor or its marker is deleted with the symbol",
+        "listRuns is reached by a GET route that lists a project's runs with their status, so a completed run (W23-25 wired completeRun) is visible to the UI",
+        "isTicketCheckpointed is consulted on the claim path so only work dependent on an open answer pauses (UC-03) \u2014 or, if that path belongs to W13-32, the marker is retargeted there and this criterion records why",
+        "Every @unreached marker that names W23-28 is deleted in the same change that wires its symbol; scripts/validate-exports.test.mjs shrinks accordingly and both ratchets are re-measured and lowered"
+      ],
+      "notes": [
+        "FILED BY W23-25, 2026-09-17, under founder direction. W23-25 found eleven exported verbs with no production caller and answered them: completeRun WIRED into run-cmd.ts (every run stayed `running` forever); seven marked against THIS ticket; the berths dial pair marked against W13-32 (blocked, D-032).",
+        "WHY THE NOTIFICATIONS SURFACE AND NOT A NEW ONE: apps/server/src/api/notifications already carries a `clarification` kind (types.ts, LEVERAGE_BY_KIND.clarification = 20) and decide-slates.ts already emits founder slates AS clarifications. The harbormaster verbs are a second, unwired implementation of FR-N1; the product has one queue and the fix is to reach the verbs from it.",
+        "SCOPE NOTE: packages/harbormaster/src/breakpoints-clarifications.ts is NOT in scope \u2014 W13-32 owns it (askClarification needs a pause-site kind before the dial can be consulted, per that ticket). This ticket wires what exists; the dial hop stays W13-32's. If wiring needs the verb signature to change, that is a W13-32 note, not a widen here.",
+        "SCOPE CORRECTED AT FILING: apps/server/src/api/server/runs-routes.ts ALREADY EXISTS and serves POST/GET /api/v1/projects/:id/build-runs(/:runId, /stop) \u2014 listRuns belongs there as the collection GET, not in a new file. Route modules register in apps/server/src/api/server.ts, which is in scope for that one line each. No open ticket overlaps any of these files (checked 2026-09-17)."
+      ]
+    },
+    {
+      "id": "W23-29",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [],
+      "depends_on": [],
+      "lane": "quality",
+      "module": "quality",
+      "points": 2,
+      "title": "a suite home survived WITHOUT its marker \u2014 the W23-19 sweep cannot judge it, by design",
+      "write_scope": [
+        "apps/server/vitest.setup.ts",
+        "apps/server/vitest.global-teardown.ts"
+      ],
+      "acceptance": [
+        "The marker survives whatever removed it: either .created-by is rewritten in afterEach (so a test that wipes DOKIMA_HOME cannot leave the home anonymous), or the creator is found and named, with instrumentation output rather than a theory",
+        "A home that carries global.db but no marker is reported BY NAME at global teardown (not removed \u2014 a markerless home is the one kind the sweep may not judge), so the next sighting is in the run log rather than found by hand"
+      ],
+      "notes": [
+        "SIGHTED 2026-09-17 20:37:17, one hour after W23-19 closed. /var/folders/.../T/dokima-suite-home-Xo0KLd held ONE file, global.db (36864 bytes), and NO .created-by. vitest.setup.ts is the only creator of that prefix in the repo (grepped) and writes the marker in the statement after mkdtempSync, so the marker was written and then deleted \u2014 a test that removed the home's contents, or the home itself, and something re-created it with a global.db afterwards. No test greps as removing process.env.DOKIMA_HOME; the three fs.rm(home) hits are tests' own mkdtemp homes.",
+        "CONDITIONS AT THE TIME: two full suites ran concurrently \u2014 this session's gate and a Stop hook's `npm test` in the same checkout \u2014 plus a Playwright e2e run. That is the load condition W23-19 named for the onTaskUpdate-timeout termination. The W23-19 sweep ran in both suites and removed nothing, correctly: it skips a home with no marker, and this one had none. So the mechanism held and the evidence still went missing, which is exactly what this ticket is about.",
+        "THE SIGHTING WAS REMOVED BY HAND after its contents were recorded above \u2014 no vitest or playwright process was alive and its mtime was minutes old \u2014 because it would fail every `pnpm validate` for ten minutes and validate-temp-leaks reports and never removes (W22-18)."
       ]
     }
   ]

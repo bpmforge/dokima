@@ -2174,3 +2174,20 @@ Planted proof: dead-pid home removed and named, live-pid and markerless left.
 Three consecutive full runs, zero homes, `temp-leaks` 0 after each. No live
 sighting occurred, so the leak is closed as a class, not caught as an instance.
 Gate: lint 0, typecheck 0, **5359 tests** (612 files, 4 skipped), **76 e2e**.
+
+**W23-25 — the clarifications and runs verbs, decided** (same day, founder
+direction: wire behind the surface that exists, never the ratchet). Eleven
+exported verbs with no caller. One was a defect, not a marker: `completeRun`
+was never called, so every run that finished its work stayed `running` forever
+and the scheduler's after-run hook (FR-PLAN1) could never fire — now called
+from the CLI start branch (`run-finish.ts`). Seven are FR-N1's own verbs and
+the runs list, marked `@unreached` against **W23-28** (filed: a route and a
+caller behind the notifications routes, which already carry a `clarification`
+kind). Two are the berths dial, marked against **W13-32** (blocked, D-032).
+Ratchets re-measured and lowered **54/46 → 46/44**. A Stop-hook suite running
+concurrently with the gate caught `run-cmd.ts` at 420 lines (split) and one
+markerless suite home (**W23-29** filed, with its contents on record). Gate:
+lint 0, typecheck 0, **5359 tests** (612 files), **76 e2e**, validators clean.
+
+**Board at close:** 523 done · 2 todo (W23-28, W23-29) · 3 blocked (W12-44,
+W13-32, W23-23).

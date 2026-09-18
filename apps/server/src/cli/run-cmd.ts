@@ -40,6 +40,7 @@ import {
 } from '@dokima/harbormaster';
 import { runOnboardAnalysis } from '../api/pipeline/index.js';
 import { executeBuildRun } from './run-build.js';
+import { finishRun } from './run-finish.js';
 import type { RunCliIO } from './run-types.js';
 import {
   openWritableLog,
@@ -334,6 +335,7 @@ export async function executeRunCommand(rest: string[], io: RunCliIO): Promise<n
             `${outcome.proposed.length} findings proposed, ` +
             `${outcome.accepted.length} accepted onto the board`,
         );
+        finishRun(log, run.id, command.actorId, io);
         return 0;
       }
 
@@ -342,6 +344,7 @@ export async function executeRunCommand(rest: string[], io: RunCliIO): Promise<n
       // close the connection out from under the loop — "The database
       // connection is not open", thrown from the loop's first getTicket.
       const buildCode = await executeBuildRun(log, command, run.id, projectIo);
+      if (buildCode === 0) finishRun(log, run.id, command.actorId, io);
       return buildCode;
     }
 

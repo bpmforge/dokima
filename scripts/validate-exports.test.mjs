@@ -302,8 +302,11 @@ describe('the three degrees of unreached (W22-02)', () => {
     // conductor.config.json is now measuring a different thing than it was
     // calibrated against.
     const { findings, buried } = scan();
-    expect(findings.length).toBe(54);
-    expect(buried.length).toBe(46);
+    // W23-25 (2026-09-17): 54/46 -> 46/44 — one symbol WIRED (completeRun),
+    // seven marked against W23-28 and two against W13-32, with the ratchet in
+    // conductor.config.json lowered to the same measured numbers.
+    expect(findings.length).toBe(46);
+    expect(buried.length).toBe(44);
   });
 });
 
@@ -397,8 +400,43 @@ describe('the @unreached marker (W22-02)', () => {
     // the callers their markers promised. Every one of those markers is
     // DELETED rather than retargeted, which is the only honest way a marker
     // ends. What is left is the one that never claimed to be waiting.
-    expect([...reasons.keys()].sort()).toEqual(['runReviewPass']);
+    // W23-25 (2026-09-17) decided the eleven no-caller symbols W23-21 exposed
+    // three ways, none of them a ratchet: completeRun was WIRED (run-cmd.ts
+    // never completed a run, so FR-PLAN1's after-run hook could never fire);
+    // the clarifications/runs surface — FR-N1, US-701, UC-03 — is marked
+    // against W23-28, the ticket that owes it a route and a caller behind the
+    // notifications routes; the berths dial is marked against W13-32, blocked
+    // by D-032 until the defaults review. When either lands, its markers are
+    // DELETED and this list shrinks — the same contract as every line above.
+    expect([...reasons.keys()].sort()).toEqual(
+      [
+        'answerClarification',
+        'askClarification',
+        'dismissClarification',
+        'getReceiptActor',
+        'isTicketCheckpointed',
+        'listOpenClarifications',
+        'listRuns',
+        'resolveAutorunBreakpoint',
+        'resolveBerthCount',
+        'runReviewPass',
+      ].sort(),
+    );
     expect(reasons.get('runReviewPass')).toMatch(/compatibility surface/);
+    for (const sym of [
+      'askClarification',
+      'answerClarification',
+      'dismissClarification',
+      'listOpenClarifications',
+      'isTicketCheckpointed',
+      'listRuns',
+      'getReceiptActor',
+    ]) {
+      expect(reasons.get(sym), sym).toMatch(/W23-28/);
+    }
+    for (const sym of ['resolveBerthCount', 'resolveAutorunBreakpoint']) {
+      expect(reasons.get(sym), sym).toMatch(/W13-32/);
+    }
     expect(malformedMarkers).toEqual([]);
   });
 });
@@ -446,8 +484,11 @@ describe('stripComments understands code, not just delimiters (W22-02)', () => {
     // fixture asserts is unchanged: the W22-02 stripper's own two symbols
     // are still not findings.)
     const { findings, buried, unreferenced } = scan();
-    expect(findings.length).toBe(54);
-    expect(buried.length).toBe(46);
+    // W23-25 (2026-09-17): 54/46 -> 46/44 — one symbol WIRED (completeRun),
+    // seven marked against W23-28 and two against W13-32, with the ratchet in
+    // conductor.config.json lowered to the same measured numbers.
+    expect(findings.length).toBe(46);
+    expect(buried.length).toBe(44);
     // FEATURE_STEPS and IMPROVE_STEPS were reported as unreached by the broken
     // stripper. Both are used in their own files; neither is a finding now.
     const named = unreferenced.map((u) => u.symbol);
