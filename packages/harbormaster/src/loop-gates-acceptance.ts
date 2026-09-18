@@ -48,7 +48,10 @@ import {
   unfalsifiableReason,
 } from './loop-gates-unfalsifiable.js';
 import { PROSE_WORDS, RUNNERS } from './loop-gates-acceptance-words.js';
-import { unrunnableVerifyReason } from './loop-gates-verify-unrunnable.js';
+import {
+  fabricatedScripts,
+  unrunnableVerifyReason,
+} from './loop-gates-verify-unrunnable.js';
 
 export interface AcceptanceCriterionLike {
   readonly id?: string;
@@ -154,7 +157,7 @@ export function isNoOpScriptBody(body: string): boolean {
 }
 
 /** The `<runner> run <script>` names a verify command invokes, in order. */
-function scriptsInvokedBy(command: string): string[] {
+export function scriptsInvokedBy(command: string): string[] {
   const names: string[] = [];
   const pattern = /\b(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?([A-Za-z0-9:_-]+)/g;
   let match = pattern.exec(command);
@@ -173,19 +176,26 @@ function scriptsInvokedBy(command: string): string[] {
  * with no manifest, or an unreadable one, yields nothing — absence of evidence
  * is not evidence of a lie.
  */
+/** The worktree's package scripts, or null without a manifest. */
+export async function packageScripts(
+  worktreePath: string,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const manifest = JSON.parse(
+      await fs.readFile(path.join(worktreePath, 'package.json'), 'utf8'),
+    ) as Record<string, unknown>;
+    return (manifest.scripts ?? {}) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 export async function noOpVerifyScripts(
   worktreePath: string,
   command: string,
 ): Promise<{ readonly name: string; readonly body: string }[]> {
-  let manifest: Record<string, unknown> | null = null;
-  try {
-    manifest = JSON.parse(
-      await fs.readFile(path.join(worktreePath, 'package.json'), 'utf8'),
-    ) as Record<string, unknown>;
-  } catch {
-    return [];
-  }
-  const scripts = (manifest.scripts ?? {}) as Record<string, unknown>;
+  const scripts = await packageScripts(worktreePath);
+  if (!scripts) return [];
   const found: { name: string; body: string }[] = [];
   for (const name of scriptsInvokedBy(command)) {
     const body = scripts[name];
@@ -300,6 +310,11 @@ export async function runGateChecks(input: {
   // Not gated on the exit code: this reads the manifest and runs nothing, and
   // a fake test script is worth naming whether or not something else failed.
   const noOpScripts = await noOpVerifyScripts(input.worktreePath, input.verifyCommand);
+  // W23-33: and a script that makes its own evidence, whatever the exit code.
+  const fabricated = fabricatedScripts(
+    (await packageScripts(input.worktreePath)) ?? {},
+    scriptsInvokedBy(input.verifyCommand),
+  );
   if (verify.exitCode !== 0) {
     reasons.push(
       `verify re-run failed: \`${input.verifyCommand}\` exited ${verify.exitCode} ` +
@@ -330,6 +345,16 @@ export async function runGateChecks(input: {
         `\`${script.body}\`, a script that reports success without running anything. ` +
         `The receipt would rest on it. Give \`${script.name}\` a real runner, or drop ` +
         `it from the verify command so the gate stops claiming it was checked.`,
+    );
+  }
+  for (const script of fabricated) {
+    reasons.push(
+      `verify component \`${script.name}\` MANUFACTURES its evidence: package.json runs it as ` +
+        `\`${script.body.length > 160 ? `${script.body.slice(0, 157)}...` : script.body}\`, which ` +
+        `creates or removes files (${script.construct}) — whatever it reports was made by the ` +
+        `script, not found in the project. A verify script may only RUN checks over files that ` +
+        `exist in the tree; write the project's own tests where its runner discovers them, and ` +
+        `make \`${script.name}\` run those.`,
     );
   }
   const acceptance = await runAcceptanceCriteria(
