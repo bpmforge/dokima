@@ -53,6 +53,7 @@ export type { LandR0Consult, LandR0ConsultResult } from './loop-land-rungs.js';
 import { type LandVerbMirror } from './loop-land-verbs.js';
 export type { LandVerbEvent, LandVerbMirror } from './loop-land-verbs.js';
 import { pickNextTicket } from './loop-land-board.js';
+import { isTicketCheckpointed } from './breakpoints-clarifications.js';
 import {
   recordBoardCause,
   refuseTicketBase,
@@ -330,7 +331,9 @@ export async function runLandLoop(options: LandLoopOptions): Promise<LandLoopRes
 
     reclaimAbandoned(options);
 
-    const next = pickNextTicket(listTickets(options.log), skip);
+    const next = pickNextTicket(listTickets(options.log), skip, (ticketId) =>
+      isTicketCheckpointed(options.log, ticketId),
+    );
     if (!next) {
       /**
        * P6-05: the idle moment is when features land — every claimable ticket

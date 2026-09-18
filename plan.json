@@ -16451,7 +16451,7 @@
       "id": "W23-28",
       "role": "coding-agent",
       "phase": 23,
-      "status": "in_progress",
+      "status": "done",
       "stories": [
         "US-701"
       ],
@@ -16467,7 +16467,17 @@
         "apps/server/src/api/server/runs-routes.test.ts",
         "apps/server/src/api/server/notifications-routes/index.ts",
         "apps/server/src/api/server/notifications-routes/notifications-routes.test.ts",
-        "apps/server/src/api/server.ts"
+        "apps/server/src/api/server.ts",
+        "apps/server/src/api/server/approved-build-routes.ts",
+        "apps/server/src/api/server/approved-build-routes.test.ts",
+        "packages/harbormaster/src/loop-land-board.ts",
+        "packages/harbormaster/src/loop-land-board.test.ts",
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/breakpoints-runs.ts",
+        "packages/events/src/receipts/query.ts",
+        "packages/events/src/receipts.ts",
+        "packages/events/src/receipts.test.ts",
+        "scripts/validate-exports.test.mjs"
       ],
       "acceptance": [
         "askClarification / answerClarification / dismissClarification / listOpenClarifications are reached by HTTP routes registered beside the notifications routes, and an open clarification appears in the morning queue as the existing `clarification` kind at leverage 20 (FR-H4) rather than through a second surface",
@@ -16481,7 +16491,14 @@
         "WHY THE NOTIFICATIONS SURFACE AND NOT A NEW ONE: apps/server/src/api/notifications already carries a `clarification` kind (types.ts, LEVERAGE_BY_KIND.clarification = 20) and decide-slates.ts already emits founder slates AS clarifications. The harbormaster verbs are a second, unwired implementation of FR-N1; the product has one queue and the fix is to reach the verbs from it.",
         "SCOPE NOTE: packages/harbormaster/src/breakpoints-clarifications.ts is NOT in scope \u2014 W13-32 owns it (askClarification needs a pause-site kind before the dial can be consulted, per that ticket). This ticket wires what exists; the dial hop stays W13-32's. If wiring needs the verb signature to change, that is a W13-32 note, not a widen here.",
         "SCOPE CORRECTED AT FILING: apps/server/src/api/server/runs-routes.ts ALREADY EXISTS and serves POST/GET /api/v1/projects/:id/build-runs(/:runId, /stop) \u2014 listRuns belongs there as the collection GET, not in a new file. Route modules register in apps/server/src/api/server.ts, which is in scope for that one line each. No open ticket overlaps any of these files (checked 2026-09-17).",
-        "CLAIMED 2026-09-18. Pre-claim scope check: no open ticket overlaps; breakpoints-clarifications.ts stays with W13-32 as the filing note says."
+        "CLAIMED 2026-09-18. Pre-claim scope check: no open ticket overlaps; breakpoints-clarifications.ts stays with W13-32 as the filing note says.",
+        "DONE 2026-09-18. WIRED: askClarification / answerClarification / dismissClarification / listOpenClarifications behind apps/server/src/api/server/clarifications-routes.ts (GET+POST /api/v1/projects/:id/clarifications, POST .../:cid/answer, POST .../:cid/dismiss), registered beside the notifications routes. Asking mints a Decide card of the EXISTING clarification kind at leverage 20 (FR-H4) with refType clarification; answering resolves the card as decided, dismissing dismisses it \u2014 the decide-slates rule, so the queue never demands an answer that exists. Red fixture: the card appears in GET /api/v1/approvals/queue.",
+        "CRITERION 2: dismissal takes the documented default and the verb itself appends the autonomy-ledger row with the actor (appendAutoDefaultRow); the route test asserts the clarification.dismissed event names the operator and the ledger rows do too. getReceiptActor was therefore DELETED with its marker (and findAnchorEvent, its only private helper) \u2014 nothing on this surface reads an actor back off a receipt; the receipts test asserts the anchoring event's actor directly.",
+        "CRITERION 3, WITH A CORRECTION: GET /api/v1/projects/:id/build-runs ALREADY EXISTED in approved-build-routes.ts (a duplicate registration failed every server boot at first try). listRuns is joined INTO it: every API-started run's summary now carries the durable status (running/paused/done), and a run the CLI started \u2014 no build.run.started event \u2014 is listed as this project's run with source cli. Red fixture: a completeRun-finished CLI run lists as done, a live one as running.",
+        "CRITERION 4: isTicketCheckpointed is consulted on the claim path \u2014 pickNextTicket takes a predicate, runLandLoop passes it \u2014 so a ticket with an open clarification is simply not claimable while its sibling is (UC-03: only dependent work pauses). Red fixture in loop-land-board.test.ts: T-1 checkpointed, T-2 picked; answered, T-1 picked again. The marker lines in packages/harbormaster/src/breakpoints-clarifications.ts were removed (comment lines the exports validator reads; no code touched) \u2014 that file stays W13-32's and is deliberately NOT added to this scope; W13-32 still owns the pause-site hop.",
+        "CRITERION 5: seven markers gone with their symbols wired or deleted; scripts/validate-exports.test.mjs now pins runReviewPass + the two berths-dial markers only. Ratchets RE-MEASURED: 46/44, unchanged \u2014 suppressed symbols were never in the counted number, so wiring them cannot lower it. Left at 46/44, honestly.",
+        "SCOPE WIDENED (Law 1) into done-owned files only: approved-build-routes.ts(+test) for the list join, loop-land-board.ts(+test) and loop-land.ts for the consult, breakpoints-runs.ts and the three events files for marker/symbol deletion, validate-exports.test.mjs for the pin.",
+        "GATE: lint 0, typecheck 0, 614 files / 5372 passed / 4 skipped, 76 e2e passed, six validators clean (exports 46/44), temp-leaks clean, file-size clean."
       ]
     },
     {

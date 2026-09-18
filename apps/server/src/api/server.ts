@@ -40,6 +40,7 @@ import {
   registerRunsRoutes,
   registerTicketEditRoutes,
 } from './server/index.js';
+import { registerClarificationRoutes } from './server/clarifications-routes.js';
 import { registerSettingsRoutes } from './server/settings-routes.js';
 import { WsHub } from './ws-hub.js';
 import { createBoardWatcher } from './server/board-watcher.js';
@@ -131,6 +132,7 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
   registerInterviewRoutes(app, { home: opts.fleetHome });
   registerTicketEditRoutes(app, { home: opts.fleetHome });
   registerNotificationRoutes(app, { home: opts.fleetHome });
+  registerClarificationRoutes(app, { home: opts.fleetHome }); // W23-28: FR-N1, beside the queue it feeds.
   registerPlansRoutes(app, { home: opts.fleetHome });
   registerPipelineRoutes(app, { home: opts.fleetHome });
   // W13-55: the design-review loop's judge — evidence in, verified findings out.

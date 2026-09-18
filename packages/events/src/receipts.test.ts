@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { appendEvent } from './append.js';
+import { appendEvent, listEvents } from './append.js';
 import { createIdentity } from './identities.js';
 import { openEventLog } from './db.js';
 import {
@@ -8,7 +8,6 @@ import {
   computeReceiptMac,
   DEFAULT_AGENT_NAME_BLOCKLIST,
   getReceipt,
-  getReceiptActor,
   mintReceipt,
   SigningKeyRequiredError,
   verifyReceipt,
@@ -75,7 +74,11 @@ describe('receipts', () => {
     expect(receipt.createdAt).toBe(NOW());
     expect(getReceipt(log, 'receipt-1')).toEqual(receipt);
     // actor is not a receipts column — it rides on the anchoring event (C3).
-    expect(getReceiptActor(log, 'receipt-1')).toBe('human-1');
+    // W23-28 deleted getReceiptActor (its only would-be caller never needed
+    // it); the anchoring event still names the actor, asserted directly.
+    expect(
+      listEvents(log).find((e) => e.eventType === 'gate.receipt_minted')?.actorId,
+    ).toBe('human-1');
   });
 
   it('C3: the minting secret is required — a missing/empty key is rejected, never silently defaulted', async () => {
