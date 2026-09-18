@@ -126,6 +126,7 @@ function makeTicket(
 }
 
 const ACTIVE: readonly TicketStatus[] = ['claimed', 'in_progress', 'in_review'];
+const RELEASED: readonly TicketStatus[] = ['done', 'waived'];
 const laneArb = fc.constantFrom('core', 'infra', 'ui');
 const statusArb = fc.constantFrom<TicketStatus>(
   'ready',
@@ -157,6 +158,8 @@ describe('findLaneScopeViolations matches a from-scratch reference check (fast-c
               const a = tickets[i];
               const b = tickets[j];
               if (!a || !b) continue;
+              // W23-31 (D-015): a done/waived ticket has released its territory.
+              if (RELEASED.includes(a.status) || RELEASED.includes(b.status)) continue;
               if (!writeScopesOverlap(a.writeScope, b.writeScope)) continue;
               if (a.lane === b.lane) {
                 if (ACTIVE.includes(a.status) && ACTIVE.includes(b.status)) {

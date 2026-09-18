@@ -16598,7 +16598,7 @@
       "id": "W23-31",
       "role": "coding-agent",
       "phase": 23,
-      "status": "in_progress",
+      "status": "done",
       "stories": [
         "US-301"
       ],
@@ -16619,7 +16619,9 @@
       "notes": [
         "FOUND 2026-09-18 creating PLAN-vault-000 on the Vault fixture board: a ticket to fix package.json's test script (the W23-30 finding, filed where W23-30 says it belongs \u2014 on the board) was refused with cross-lane-overlap against PLAN-vault-001 and PLAN-vault-001a, both DONE for three weeks. findLaneScopeViolations iterates every ticket regardless of status. Workaround used: the fixture ticket was created in lane vault-001 instead, which is the owners' lane and therefore allowed.",
         "WHY IT MATTERS FOR THE PRODUCT, NOT JUST THE FIXTURE: W23-30 tells a person to correct the script where it lives, on a board-level ticket. On any board where the scaffold ticket is done, that ticket cannot be created in its natural lane. The two-rule shape validate-plan uses (P8: cross-lane overlap counts only tickets that can still write) is the one to mirror.",
-        "CLAIMED 2026-09-18 while Vault run 2 is live on MTPLX; the full gate is deferred until that run exits so nothing contends for the CPU (dokima-stop-hook-runs-suite-concurrently)."
+        "CLAIMED 2026-09-18 while Vault run 2 is live on MTPLX; the full gate is deferred until that run exits so nothing contends for the CPU (dokima-stop-hook-runs-suite-concurrently).",
+        "DONE 2026-09-18. findLaneScopeViolations skips any pair where either ticket is done or waived (RELEASED_STATUSES) \u2014 before the overlap test, so released territory is out of BOTH checks. LaneScopeViolation carries statusA/statusB and LaneScopeError prints them (\"T-A (core, ready)\"). Red fixture: a done scaffold ticket owning package.json and a new ticket in another lane owning it \u2014 no violation; the same pair with the scaffold ready \u2014 refused with both statuses named. The W21-30 property test's reference derivation gained the same release rule. lanes.test's 'regardless of status' case was rewritten to the D-015 rule on purpose.",
+        "GATE: lint 0, typecheck 0, 614 files / 5380 passed / 4 skipped, 76 e2e passed, six validators clean, temp-leaks clean."
       ]
     }
   ]
