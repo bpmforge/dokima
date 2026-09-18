@@ -16719,6 +16719,38 @@
         "DONE 2026-09-18. write_runtime_report lands under ${root}/.dokima/reviews/ (pack re-signed; the five validator callers pass $ROOT and needed no change). HARNESS_WRITTEN_PREFIXES = ['.dokima/reviews/'] is exempted by prefix in agentAuthoredPaths \u2014 narrower than .dokima/, so the SC-01 fixture for .dokima/state.db stays red, asserted again beside the new fixture. removeLegacyHarnessLeavings now matches dated patterns as well as exact paths and removes the old untracked reports; an unrelated docs file beside them is kept.",
         "GATE: lint 0, typecheck 0, 614 files / 5386 passed / 4 skipped, 76 e2e passed, six validators clean, temp-leaks clean, file-size clean. One detour: validate-traceability reads a docs/\u2026md path inside a ticket note as a document reference, so the notes name the report in words."
       ]
+    },
+    {
+      "id": "W23-35",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [
+        "US-501"
+      ],
+      "depends_on": [],
+      "lane": "orchestrator",
+      "module": "harbormaster",
+      "points": 5,
+      "title": "when the work is demonstrably done and no manifest came back, the harness should mint the manifest from git and run the close gate \u2014 the gate never trusted the manifest anyway",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-session-acceptance.ts",
+        "packages/harbormaster/src/loop-land-session-acceptance.test.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/loop-land.test.ts"
+      ],
+      "acceptance": [
+        "When a session ends without a Completion Manifest (leash, tool budget, or a plain stop) and silentCompletion finds every executable acceptance criterion passing in the worktree, the harness DERIVES a manifest from git \u2014 files and commits since the ticket's base, verify = the ticket's verify command re-run \u2014 and submits it to the real close gate, which verifies it exactly as it verifies an agent's (Law 4: the manifest is a claim, the gate checks git)",
+        "A derived manifest is marked as such on the close receipt and in the ticket history (derivedBy: harness), so a reader can tell a session that reported from one that was reported for; it is never used when any executable criterion fails or ran nothing",
+        "Red fixture: the 2026-09-18 shape \u2014 a session that commits the fix, passes its acceptance, and returns no manifest \u2014 lands into in_review on the FIRST attempt instead of spending a second rung to be told 'return the manifest rather than redo the work'; a session whose acceptance fails still parks with the evidence",
+        "The ladder's 'THE WORK IS ALREADY DONE THOUGH' line is retired where the derived path applies \u2014 it becomes what the harness does, not what it says"
+      ],
+      "notes": [
+        "FOUND 2026-09-18, Vault run 5 (and run 2 before it, same shape). PLAN-vault-000's briefed session committed the honest fix \u2014 node --test \"src/**/*.spec.ts\", 27 real tests run \u2014 and its acceptance passed in the worktree; then the MTPLX model deliberated in 24k\u201327k-token turns until the 5400 s leash fired on turn 28 of 40 with no manifest, and the coder-next rung exhausted its tool budget without returning one either. 181k completion tokens on a one-line change, parked ladder_exhausted, with silentCompletion having already established that every criterion passed. Run 2 (PLAN-vault-002, attempt 1) was the same: 'THE WORK IS ALREADY DONE THOUGH \u2014 every acceptance criterion passes in the worktree right now.'",
+        "WHY THIS IS SAFE UNDER LAW 4: the Completion Manifest is the AGENT'S CLAIM; runCloseGate never trusts it \u2014 it re-runs verify, re-runs every executable criterion, and checks the manifest's files and commits against the real git diff and commit set (W11-13 both directions). A manifest the harness derives from git is a claim the gate can verify at least as well. What must NOT change: the receipt still records who made the commits (the agent identity), the gate still refuses out-of-scope commits, manufactured-evidence scripts (W23-33), unrunnable verifies (W23-30) and everything else. Nothing lands on the harness's word \u2014 it lands on the gate's.",
+        "WHY IT MATTERS FOR LOCAL MODELS SPECIFICALLY: a fast cloud model reports; a 27B on Apple Silicon does the work and then reasons past every leash. The trust boundary is intact either way, and the product currently converts that model's working sessions into parks. Today it cost two full runs on a fixture project to land nothing that the gate would not have accepted at 17:05.",
+        "RELATED, NOT THIS TICKET: the MTPLX preset could pass a per-turn max_tokens (requestExtras) so a deliberating model is bounded per turn rather than only per session; and the R2 rung's 'return the manifest rather than redo the work' instruction was followed by neither rung today."
+      ]
     }
   ]
 }
