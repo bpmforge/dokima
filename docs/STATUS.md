@@ -2225,3 +2225,31 @@ The 1.56× is above the 1.37× the preset header claims and below the 1.69×
 the first measurement saw; the header's "why not more" still holds. The board
 counts in the two "Board at close" lines above were off by two and are
 corrected here (521 / 522).
+
+## 2026-09-18 — first supervised run against MTPLX (Vault, 2 tickets)
+
+`dokima run start` on the Vault fixture, one berth, every matrix row bound to
+`mtplx/qwen3.8-27b-uncensored-mtplx-q4-1`, rebuilt bundle from `f5fed307`.
+Ran 1h41m: 65 model calls, 1.23M prompt / 234k completion tokens at 33–61
+tok/s per turn (longest single turn 22,781 tokens, 573 s), 118 tool calls, no
+provider errors or timeouts. Both tickets **parked with evidence**, 0 landed.
+
+**What held.** The close gate refused every attempt for a real reason and
+named it; a session whose diff strayed outside write_scope was discarded
+out-of-session; the watchdog ended a 2008 s session at the 1800 s ceiling;
+the review pass refused to route the reviewer to the maker's model (C-4);
+and the run row went `running → done` through `completeRun` — the first
+`run.completed` event ever appended in production (W23-25, yesterday).
+
+**What was found.** Both parks share ONE cause the loop cannot fix: Vault's
+`test` script is bare `node --test`, whose default discovery ignores the
+project's `*.spec.ts` files, so verify exits 0 having run nothing. The file
+is in no ticket's write_scope. Filed as **W23-30**: say it once at board
+level instead of spending a ladder per ticket. The Stop hook was also fixed
+the same morning: it put the failing output in a JSON field Claude never
+sees, and it launched a second suite on top of the live run (three blind
+failures under load 21). Gate alone afterwards: lint 0, typecheck 0,
+**5359 tests** (612 files), **76 e2e**, validators + temp-leaks clean.
+
+Vault's project settings now bind to MTPLX (LM Studio entry disabled); the
+prior settings.json is in the session scratchpad if you want it back.
