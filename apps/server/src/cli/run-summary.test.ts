@@ -45,10 +45,20 @@ describe('runSummaryLine (W21-34)', () => {
 
   it('singular and plural are both grammatical — a count of 1 is the commonest case', () => {
     expect(
-      runSummaryLine('r', { landed: 1, parked: 0, awaitingAcceptance: 1, stopReason: 'idle' }),
+      runSummaryLine('r', {
+        landed: 1,
+        parked: 0,
+        awaitingAcceptance: 1,
+        stopReason: 'idle',
+      }),
     ).toContain('1 ticket is finished');
     expect(
-      runSummaryLine('r', { landed: 3, parked: 0, awaitingAcceptance: 3, stopReason: 'idle' }),
+      runSummaryLine('r', {
+        landed: 3,
+        parked: 0,
+        awaitingAcceptance: 3,
+        stopReason: 'idle',
+      }),
     ).toContain('3 tickets are finished');
   });
 });
@@ -72,7 +82,14 @@ describe('printRunOutcomes (W21-34)', () => {
     printRunOutcomes(
       (l) => lines.push(l),
       'run-x',
-      [{ ticketId: 'T-1', landed: false, parkedReason: 'ladder_exhausted', attempts: [{}, {}] }],
+      [
+        {
+          ticketId: 'T-1',
+          landed: false,
+          parkedReason: 'ladder_exhausted',
+          attempts: [{}, {}],
+        },
+      ],
       'idle',
       0,
     );
@@ -114,7 +131,8 @@ describe('a park reports the reason the product already had (W21-72)', () => {
         ticketId: 'T-1',
         landed: false,
         parkedReason: 'cannot_start',
-        parkedDetail: 'The worktree is stale. Neither reusing nor recreating it is the product’s call.',
+        parkedDetail:
+          'The worktree is stale. Neither reusing nor recreating it is the product’s call.',
         attempts: [],
       },
     ]);
@@ -125,7 +143,12 @@ describe('a park reports the reason the product already had (W21-72)', () => {
   it('falls back to the enum when a park has no written detail', () => {
     // The ladder's own outcomes are enum-only and must be unchanged.
     const [line] = lines([
-      { ticketId: 'T-1', landed: false, parkedReason: 'ladder_exhausted', attempts: [{}, {}] },
+      {
+        ticketId: 'T-1',
+        landed: false,
+        parkedReason: 'ladder_exhausted',
+        attempts: [{}, {}],
+      },
     ]);
     expect(line).toBe('T-1: parked (ladder_exhausted) after 2 attempt(s)');
   });
@@ -143,5 +166,42 @@ describe('a park reports the reason the product already had (W21-72)', () => {
   it('a landed ticket is untouched', () => {
     const [line] = lines([{ ticketId: 'T-1', landed: true, attempts: [{}] }]);
     expect(line).toBe('T-1: landed after 1 attempt(s)');
+  });
+});
+
+describe('board-level causes on the finish line (W23-30)', () => {
+  it('prints the cause ONCE, naming the ticket that found it and the siblings it spared', () => {
+    const lines: string[] = [];
+    printRunOutcomes(
+      (l) => lines.push(l),
+      'run-1',
+      [
+        {
+          ticketId: 'PLAN-vault-002',
+          landed: false,
+          parkedReason: 'verify_unrunnable',
+          parkedDetail:
+            'UNRUNNABLE VERIFY (board-level): the command comes from package.json.',
+          attempts: [{}],
+        },
+      ],
+      'idle',
+      0,
+      [],
+      [
+        {
+          detail: 'UNRUNNABLE VERIFY (board-level): the command comes from package.json.',
+          parkedTicketId: 'PLAN-vault-002',
+          skippedTicketIds: ['PLAN-vault-002c'],
+        },
+      ],
+    );
+    const board = lines.find((l) => l.startsWith('BOARD'));
+    expect(board).toContain('found on PLAN-vault-002');
+    expect(board).toContain('package.json');
+    expect(board).toContain('1 further ticket(s) left unclaimed');
+    expect(board).toContain('PLAN-vault-002c');
+    expect(lines.filter((l) => l.startsWith('BOARD'))).toHaveLength(1);
+    expect(lines.at(-1)).toContain('0 landed, 1 parked');
   });
 });

@@ -1641,3 +1641,71 @@ describe('an unreachable rung falls back rather than parking with no session (W2
     },
   );
 });
+
+describe('a verify command that runs nothing is a BOARD defect, said once (W23-30)', () => {
+  let fixture: Fixture;
+  afterEach(async () => {
+    await fixture?.cleanup();
+  });
+
+  it(
+    'RED FIXTURE: the Vault shape — bare `node --test` beside *.spec.ts files, package.json outside every write_scope — parks ONE ticket after ONE attempt, names the file, records the cause once, and leaves the sibling unclaimed',
+    async () => {
+      fixture = await setupFixture();
+      const { log, repoRoot } = fixture;
+      // The project the loop will derive its verify command from: a test
+      // script that discovers nothing, and specs it will never find.
+      await fs.writeFile(
+        path.join(repoRoot, 'package.json'),
+        JSON.stringify({
+          name: 'vault-shape',
+          private: true,
+          scripts: { test: 'node --test' },
+        }),
+      );
+      await fs.mkdir(path.join(repoRoot, 'src'), { recursive: true });
+      await fs.writeFile(path.join(repoRoot, 'src/x.spec.ts'), '// never discovered\n');
+      await git(repoRoot, ['add', '--', 'package.json', 'src/x.spec.ts']);
+      await git(repoRoot, ['commit', '-m', 'chore: the fixture project']);
+      // Two tickets, both deriving verify from the worktree (verify: null),
+      // neither allowed to touch package.json.
+      seedTicket(log, 'W9-01', { verify: null });
+      seedTicket(log, 'W9-02', { verify: null });
+
+      const result = await runLandLoop({
+        ...baseOptions(fixture, landingSpawn),
+        maxLadderAttempts: 2,
+      });
+
+      // One ticket attempted, ONCE — not a full ladder.
+      expect(result.processed.map((o) => o.ticketId)).toEqual(['W9-01']);
+      const first = result.processed[0]!;
+      expect(first.parked).toBe(true);
+      expect(first.parkedReason).toBe('verify_unrunnable');
+      expect(first.attempts).toHaveLength(1);
+      expect(first.parkedDetail).toContain('package.json');
+      expect(first.parkedDetail).toContain("outside this ticket's write_scope");
+
+      // The cause is recorded ONCE for the board, and names the sibling it spared.
+      expect(result.boardCauses).toHaveLength(1);
+      expect(result.boardCauses![0]!.parkedTicketId).toBe('W9-01');
+      expect(result.boardCauses![0]!.skippedTicketIds).toEqual(['W9-02']);
+      const events = log.db
+        .prepare('SELECT COUNT(*) AS n FROM events WHERE event_type = ?')
+        .get('board.verify_unrunnable') as { n: number };
+      expect(events.n).toBe(1);
+
+      // The sibling was never claimed: still Ready, no ladder spent on it.
+      const sibling = getTicket(log, 'W9-02');
+      expect(sibling?.status).toBe('ready');
+      expect(sibling?.history.filter((h) => h.verb === 'comment')).toHaveLength(0);
+
+      // And the park comment on the first says where the fix lives.
+      const parked = getTicket(log, 'W9-01');
+      const comment = parked?.history.filter((h) => h.verb === 'comment').pop();
+      expect(comment?.body).toContain('BOARD defect');
+      expect(comment?.body).toContain('package.json');
+    },
+    LAND_LOOP_TIMEOUT_MS,
+  );
+});

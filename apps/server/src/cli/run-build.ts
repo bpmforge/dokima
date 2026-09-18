@@ -362,6 +362,7 @@ export async function executeBuildRun(
     result.stopReason,
     [...listTickets(log).values()].filter((t) => t.status === 'in_review').length,
     orphanedClaims(log, runId).map((o) => o.ticket.id), // W21-40: still held.
+    result.boardCauses ?? [], // W23-30: once for the board, not per ticket.
   );
   // P6-05: one honest line per feature — a park is never printed as a landing.
   for (const f of result.featureLandings ?? []) {

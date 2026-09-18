@@ -12,15 +12,9 @@
  * which is why every retry rendered a byte-identical prompt.
  */
 import { listEvents, type EventLog } from '@dokima/events';
-import {
-  contradictoryGateNotice,
-  contradictoryGates,
-} from './loop-land-satisfiable.js';
+import { contradictoryGateNotice, contradictoryGates } from './loop-land-satisfiable.js';
 import { redactString } from '@dokima/shared';
-import {
-  renderDecideCard,
-  tokenBoundaryDecideCard,
-} from './loop-land-policy.js';
+import { renderDecideCard, tokenBoundaryDecideCard } from './loop-land-policy.js';
 import type { LandAttempt, LandParkedReason } from './loop-land.js';
 
 /** Matches `verifyFailureTail` (W13-30) rather than inventing a second budget. */
@@ -113,7 +107,8 @@ export function everyAttemptHitTheProvider(attempts: readonly LandAttempt[]): bo
   return (
     attempts.length > 0 &&
     attempts.every(
-      (a) => a.session.exitCode === null && a.session.output.startsWith('provider failure:'),
+      (a) =>
+        a.session.exitCode === null && a.session.output.startsWith('provider failure:'),
     )
   );
 }
@@ -208,7 +203,10 @@ export function ledgerEvidenceFor(
     if (event.eventType !== 'spend.recorded') continue;
     if (event.ticketId !== ticketId) continue;
     if (runId !== null && event.runId !== runId) continue;
-    const payload = event.payload as { completionTokens?: unknown; finishReason?: unknown };
+    const payload = event.payload as {
+      completionTokens?: unknown;
+      finishReason?: unknown;
+    };
     const tokens = payload.completionTokens;
     if (typeof tokens === 'number' && Number.isFinite(tokens)) {
       if (largestCompletionTokens === null || tokens > largestCompletionTokens) {
@@ -278,6 +276,8 @@ function parkHeader(
     }
     case 'provider_unavailable':
       return 'Parked with evidence — EVERY attempt failed before the model could work: the provider endpoint refused each request (W21-58). Nothing here is a judgement about this ticket or the model chosen for it. Check the endpoint is up and has a model loaded, then re-run; the ticket is back in Ready and its worktree still holds whatever earlier runs committed.';
+    case 'verify_unrunnable':
+      return 'Parked after ONE attempt — the verify command ran nothing, and it lives in a file this ticket may not change (W23-30). This is a BOARD defect, recorded once for the run; sibling tickets that verify with the same command were left unclaimed. Fix the script where it lives, then re-run; the ticket is back in Ready.';
     case 'cannot_start':
       // W21-72. Deliberately short: unlike every other reason here, this park
       // carries its own written explanation (`parkedDetail`), and repeating a
