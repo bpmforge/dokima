@@ -135,6 +135,36 @@ const landingSpawn: SpawnSession = async (input) => {
   return { stdout: JSON.stringify(manifest), stderr: '', exitCode: 0 };
 };
 
+/**
+ * W23-35 RED FIXTURE, the 2026-09-18 shape. Commits the fix and returns NO
+ * Completion Manifest — a leash that fired, a tool budget that ran out, or a
+ * model that deliberated past the instruction to report. The work is real and
+ * on the branch; the claim never came back.
+ */
+function silentWorkingSpawn(checkExit = 0): SpawnSession {
+  // A fresh line per attempt: a second rung re-running this must produce a
+  // real commit, not `nothing to commit` — the ladder is the thing under test.
+  let nth = 0;
+  return async (input) => {
+    nth += 1;
+    const relative = 'packages/example/check.mjs';
+    const filePath = path.join(input.cwd, relative);
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, `// attempt ${nth}\nprocess.exit(${checkExit});\n`);
+    await git(input.cwd, ['add', '--', relative]);
+    await git(input.cwd, ['commit', '-m', `feat: add check (attempt ${nth})`]);
+    return { stdout: 'I have finished the work.', stderr: '', exitCode: 0 };
+  };
+}
+
+/**
+ * The criterion the W23-35 fixtures run. It names ONE path, inside the
+ * ticket's write_scope, and the file does not exist at base — so W21-50's base
+ * probe is satisfied (it fails before the work) and W21-80's satisfiability
+ * check can read the path it references without ambiguity.
+ */
+const CHECK_CRITERION = 'node packages/example/check.mjs';
+
 /** Never produces a completion manifest — the close gate is never even attempted. */
 const neverResolvingSpawn: SpawnSession = async () => ({
   stdout: 'no manifest here',
@@ -1708,4 +1738,109 @@ describe('a verify command that runs nothing is a BOARD defect, said once (W23-3
     },
     LAND_LOOP_TIMEOUT_MS,
   );
+});
+
+describe('W23-35 — the harness reports for a session that could not', () => {
+  vi.setConfig({ testTimeout: LAND_LOOP_TIMEOUT_MS });
+  let fixture: Fixture | undefined;
+
+  afterEach(async () => {
+    await fixture?.cleanup();
+    fixture = undefined;
+  });
+
+  /**
+   * W23-35 RED FIXTURE — the shape that cost two Vault runs on 2026-09-18.
+   *
+   * A session commits the fix, every executable acceptance criterion passes in
+   * the worktree, and no Completion Manifest comes back (the leash fired on
+   * turn 28 of 40; the coder rung exhausted its tool budget). Before this
+   * ticket the ladder spent a SECOND rung telling that session "your criteria
+   * already pass, just return the manifest" — an instruction neither rung
+   * followed — and the ticket parked `ladder_exhausted` with the work done.
+   *
+   * The assertion is FIRST-ATTEMPT: one attempt, a real close gate, in_review.
+   */
+  it('W23-35: a session that did the work and never reported it lands on the FIRST attempt', async () => {
+    fixture = await setupFixture();
+    const { log } = fixture;
+    seedTicket(log, 'W9-01', {
+      // FAILS at base (no such file), passes once the work is committed —
+      // W21-50's base probe refuses anything weaker, and rightly: a criterion
+      // already true before the work proves nothing about it.
+      acceptance: [{ id: 'AC-1', text: CHECK_CRITERION, done: false }],
+    });
+
+    const result = await runLandLoop({
+      ...baseOptions(fixture, silentWorkingSpawn()),
+      maxLadderAttempts: 2,
+    });
+
+    const outcome = result.processed[0]!;
+    expect(outcome.ticketId).toBe('W9-01');
+    expect(outcome.attempts).toHaveLength(1);
+    expect(outcome.landed).toBe(true);
+    expect(outcome.parked).toBe(false);
+    expect(outcome.finalStatus).toBe('in_review');
+
+    // The gate RAN, and it is the ordinary one — the receipt is real and signed.
+    expect(outcome.attempts[0]!.closeGate?.ok).toBe(true);
+    const ticket = getTicket(log, 'W9-01') as Ticket;
+    expect(ticket.status).toBe('in_review');
+    expect(ticket.manifest?.closeReceipt).toBeDefined();
+
+    // The agent's own record still says it returned nothing (acceptance 2).
+    expect(outcome.attempts[0]!.session.manifest).toBeNull();
+
+    // And a reader can tell this was reported FOR, not BY: the ticket history
+    // says so, and the close receipt's evidence carries the marker.
+    const notice = ticket.history
+      .filter((h) => h.verb === 'comment')
+      .map((h) => h.body ?? '')
+      .find((body) => body.includes('derivedBy: harness'));
+    expect(notice).toBeDefined();
+    expect(notice).toContain('DERIVED BY THE HARNESS');
+    expect(notice).toContain('packages/example/check.mjs');
+
+    // The signed close receipt itself carries the marker, via the evidence[]
+    // the gate copies into its payload verbatim — no new receipt field.
+    const receiptRow = log.db
+      .prepare("SELECT payload FROM receipts WHERE kind = 'close' AND ticket_id = ?")
+      .get('W9-01') as { payload: string } | undefined;
+    expect(receiptRow?.payload).toContain('derivedBy: harness');
+    expect(receiptRow?.payload).toContain(CHECK_CRITERION);
+  });
+
+  /**
+   * The other half, and the one that keeps the derivation honest: silence over
+   * work that does NOT pass derives nothing at all. The ladder behaves exactly
+   * as it did before W23-35 — attempts spent, parked with evidence — because
+   * `silentCompletion` refused, so there was never a claim to make.
+   */
+  it('W23-35: a silent session whose acceptance fails still parks with the evidence', async () => {
+    fixture = await setupFixture();
+    const { log } = fixture;
+    seedTicket(log, 'W9-01', {
+      acceptance: [{ id: 'AC-1', text: CHECK_CRITERION, done: false }],
+    });
+
+    const result = await runLandLoop({
+      ...baseOptions(fixture, silentWorkingSpawn(1)),
+      maxLadderAttempts: 2,
+    });
+
+    const outcome = result.processed[0]!;
+    expect(outcome.landed).toBe(false);
+    expect(outcome.parked).toBe(true);
+    expect(outcome.parkedReason).toBe('ladder_exhausted');
+    expect(outcome.attempts.every((a) => a.closeGate === null)).toBe(true);
+
+    const ticket = getTicket(log, 'W9-01') as Ticket;
+    expect(ticket.status).toBe('ready');
+    const bodies = ticket.history
+      .filter((h) => h.verb === 'comment')
+      .map((h) => h.body ?? '');
+    expect(bodies.some((b) => b.includes('derivedBy: harness'))).toBe(false);
+    expect(bodies.some((b) => b.includes('no completion manifest returned'))).toBe(true);
+  });
 });

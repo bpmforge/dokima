@@ -266,10 +266,18 @@ export async function landClaimedTicket(
 
     if (closeGate?.ok) {
       landed = true;
+      // W23-35: `session.manifest` is null on a derived land, and the
+      // pre-W23-35 `session.manifest?.commits ?? []` therefore reported ZERO
+      // commits to the learning hook and the mirror for a ticket that had just
+      // landed with real ones. The manifest still comes FIRST where there is
+      // one — W16-04 pins the mirror to the session's own list, empty included
+      // — so only the derived path reads the gate-verified set off the receipt.
+      const landedCommits =
+        session.manifest?.commits ?? receiptCommits(closeGate.receipt) ?? [];
       await runAttemptOutcomeHook(options, () =>
         options.attemptOutcome?.onLanded({
           ticketId: ticket.id,
-          commits: session.manifest?.commits ?? [],
+          commits: landedCommits,
           attempts,
         }),
       );
@@ -277,7 +285,7 @@ export async function landClaimedTicket(
         kind: 'close',
         ticketId: ticket.id,
         ticketTitle: ticket.title,
-        commits: session.manifest?.commits ?? [],
+        commits: landedCommits,
         receiptId: closeGate.receipt.id,
       });
       // Isolated per-remote; a failed remote is recorded, not fatal.
@@ -375,4 +383,12 @@ export async function landClaimedTicket(
     ...(parkedDetail ? { parkedDetail } : {}),
     finalStatus: current.status,
   };
+}
+
+/** The gate-verified commit set on a close receipt, or null when its payload is not the shape this reads (W23-35). */
+function receiptCommits(receipt: { readonly payload: unknown }): string[] | null {
+  const commits = (receipt.payload as { commits?: unknown } | null)?.commits;
+  if (!Array.isArray(commits) || !commits.every((c) => typeof c === 'string'))
+    return null;
+  return commits as string[];
 }
