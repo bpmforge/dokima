@@ -14737,7 +14737,8 @@
         "19 DELIVERABLE TICKETS for a fresh board: 2 for Idea, 4 for Plan, 4 for Define, 9 for Design. Ordered by phase, because PHASES is already in gate order and that is exactly acceptance 3 \u2014 a phase cannot be entered before its own documents exist.",
         "NESTED DOCS KEEP A UNIQUE, READABLE ID: docs/design/UX_SPEC.md becomes PHASE3-design-UX_SPEC and docs/api/openapi.yaml becomes PHASE3-api-openapi. Two phases could otherwise both produce a bare ARCHITECTURE, and there is a fixture asserting every generated id is distinct.",
         "THE VALIDATOR CAUGHT ME ORPHANING MY OWN EXPORT, one ticket after adding it. W21-76 added deliverablesFor(phaseId) for a single-phase lookup; walking PHASES makes phase.deliverables the direct access, so the accessor lost its only caller and appeared in the zero-reference list. Deleted rather than kept \u2014 an export nothing calls is the exact defect W22-02 built that category to find, and keeping it because it was mine would be the wrong reason.",
-        "RED PROVEN by stashing run-pipeline.ts: 4 fixtures fail."
+        "RED PROVEN by stashing run-pipeline.ts: 4 fixtures fail.",
+        "P13 TRIAGE 2026-09-20: reported by validate-plan's P13 and NOT a deferral. The flagged note quotes W21-76's wording ('worth a follow-up once a project actually leaves Idea') while recording that THIS ticket is that follow-up, filed and done. Nothing is owed. The report is P13 matching a quotation of a deferral rather than a deferral \u2014 see W23-39."
       ]
     },
     {
@@ -14906,7 +14907,8 @@
         "A3 HOLDS BY CONSTRUCTION: the teardown loop is serial and unguarded, so a directory that still cannot be removed after the helper's retries fails the run. The one thing that could not be proven by the run passing \u2014 that the shared HOME is excluded \u2014 is proven by the run's own output: dokima-web-e2e-home is still on disk afterwards. A teardown runs last, so an over-broad delete there would NOT have failed anything, which is exactly why it is checked rather than assumed.",
         "386 OLD DIRECTORIES REMAIN and are not a leak: they carry legacy names like dokima-artifacts-e2e-diff-<uuid>, where the label sits AFTER the -e2e- segment. Nothing produces that shape any more. They will age out with the tmpdir; matching them would mean loosening a pattern whose tightness is the reason it is safe to delete by name at all.",
         "THE GATE CAUGHT MY OWN FILING. W22-16, filed mid-ticket, was written with `type` instead of `role` and no `stories`, and validate-plan P6 refused it \u2014 which also reds run-validators.test.mjs, since that test shells out to the real runner. That is `pnpm validate` joining the close gate (2026-08-28) doing precisely what it was added for, against the person who added it.",
-        "Gate: lint clean, typecheck 0, 4770 tests passing across 560 files (1 skipped), 76 e2e passing, all 6 validators clean."
+        "Gate: lint clean, typecheck 0, 4770 tests passing across 560 files (1 skipped), 76 e2e passing, all 6 validators clean.",
+        "CARRIED FORWARD as W23-36 (filed 2026-09-20): the Fleet-view product question W9-14 wrote into global-setup.ts's header and this ticket hit head-on \u2014 a card for a project whose directory has vanished \u2014 is now a ticket rather than a sentence. This note names it so validate-plan's P13 can see the carrier. The global teardown here stays: it is the honest workaround, not the answer."
       ]
     },
     {
@@ -15138,7 +15140,8 @@
         "A3 DONE \u2014 --max-buried 47 -> 46, verified biting at 45 (exit 1). The test file pins the count against the real repo in two places and was updated with it.",
         "THE TRANSITIVITY QUESTION IS ANSWERED, AND THE ANSWER IS NO. This ticket was filed asking whether validate-exports should compute reachability from live entry points instead of counting callers, and said to MEASURE how many symbols that reclassifies before choosing (L-56). Measured: deleting deadLetterAndBlock revealed no replacement, so the chain was exactly one link deep and a transitive pass would have reclassified exactly one symbol. Not worth building. The honest summary \u2014 recorded in \u00a711a rather than left in a ticket \u2014 is that the ratchet cannot see that a caller is itself dead, so it reveals a chain one link per deletion: slower than real reachability, and enough.",
         "THE FIXTURES WENT WITH THE FUNCTION, including a real SQLite temp log that existed only to exercise it. A green suite over a dead path is the trap this pair of tickets exists to remove, not evidence worth preserving.",
-        "Gate: lint clean, typecheck 0, 4783 tests passing across 561 files (1 skipped), 76 e2e passing, all 6 validators clean plus temp-leaks OK."
+        "Gate: lint clean, typecheck 0, 4783 tests passing across 561 files (1 skipped), 76 e2e passing, all 6 validators clean plus temp-leaks OK.",
+        "P13 TRIAGE 2026-09-20: reported by validate-plan's P13 and NOT a deferral. The flagged note is a SCOPE WIDEN record (Law 1's other answer), and the one real open question this ticket carried \u2014 whether validate-exports should be transitive \u2014 was measured and answered NO in its own notes and in docs/ARCHITECTURE.md \u00a711a. Nothing is owed. See W23-39."
       ]
     },
     {
@@ -15382,7 +15385,8 @@
         "THE PRODUCT HAD ALREADY WRITTEN THE ACCEPTANCE FOR THIS AND COULD NOT MEET IT. Every deliverable draft carries 'It reflects what the interview actually established, not a template' while its verify command is `test -s <path>` \u2014 a criterion demanding grounding the maker was never given, checked by a command that can only see whether the file is empty. The close gate minted receipts for boilerplate against it. Fixing the blindness does not fix the check; that asymmetry is still there and is worth its own ticket if anyone wants the gate to mean what the criterion says.",
         "PROVEN RED FIRST: two fixtures over collectCoreBlockSections failed before the change (the core block contained only generic invariants for a project with no CLAUDE.md \u2014 which is every project Dokima generates).",
         "FOUND ALONG THE WAY AND FILED, not folded in: W22-27 \u2014 a build run started with an unregistered actor_id dies silently after two memory.hook_failed events and reports 'running' forever. Reproduced by inversion in the same session (default actor: the run works).",
-        "Gate: lint clean, typecheck 0, 4789 tests passing across 561 files (1 skipped), 76 e2e passing, all 6 validators clean plus temp-leaks OK."
+        "Gate: lint clean, typecheck 0, 4789 tests passing across 561 files (1 skipped), 76 e2e passing, all 6 validators clean plus temp-leaks OK.",
+        "CARRIED FORWARD as W23-37 (filed 2026-09-20): the gate half \u2014 'It reflects what the interview actually established' as a machine criterion behind a `test -s <path>` verify that can only see an empty file \u2014 is now a ticket rather than a closing sentence. This note names it so validate-plan's P13 can see the carrier."
       ]
     },
     {
@@ -16753,6 +16757,131 @@
         "WHY IT MATTERS FOR LOCAL MODELS SPECIFICALLY: a fast cloud model reports; a 27B on Apple Silicon does the work and then reasons past every leash. The trust boundary is intact either way, and the product currently converts that model's working sessions into parks. Today it cost two full runs on a fixture project to land nothing that the gate would not have accepted at 17:05.",
         "RELATED, NOT THIS TICKET: the MTPLX preset could pass a per-turn max_tokens (requestExtras) so a deliberating model is bounded per turn rather than only per session; and the R2 rung's 'return the manifest rather than redo the work' instruction was followed by neither rung today.",
         "CORRECTION 2026-09-18 (same night): the first note originally claimed run 5 landed 27 real tests and passed its acceptance; that was assumed, not measured \u2014 npm test in that worktree reports 0 tests because the base has no specs. Run 2 remains the clean evidence for this ticket: PLAN-vault-002 attempt 1, where the harness itself recorded every acceptance criterion passing in the worktree with no manifest returned."
+      ]
+    },
+    {
+      "id": "W23-36",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [
+        "US-801"
+      ],
+      "depends_on": [],
+      "lane": "ui",
+      "module": "web",
+      "points": 3,
+      "title": "the Fleet view shows a card for a project whose directory has vanished \u2014 decide whether it hides, prunes or marks it, and say so in the UI",
+      "write_scope": [
+        "apps/web/src/fleet/FleetGrid.tsx",
+        "apps/web/src/fleet/FleetGrid.test.tsx",
+        "apps/web/e2e/fleet.spec.ts"
+      ],
+      "acceptance": [
+        "A project registered in the fleet whose directory no longer exists renders in ONE decided way \u2014 hidden, pruned with a ledgered record, or shown as unavailable with the reason \u2014 and the choice is written down beside the code, not left to whichever surface reads the registry first",
+        "Whatever is chosen, the card an unavailable project renders is distinguishable from an available one by an accessible name, not only by styling: the e2e suites that broke on this asserted on a heading and got three matches where they expected one",
+        "Red fixture: a registry entry pointing at a removed directory, asserted through the Fleet view \u2014 green before the change would mean the view never looked",
+        "docs/ARCHITECTURE.md records the decision in one paragraph, the way W21-36 recorded its own in \u00a711"
+      ],
+      "notes": [
+        "DROPPED FINDING, filed 2026-09-20 during a P13 sweep of validate-plan's report-only list. Named TWICE and filed NOWHERE: first by W9-14, in global-setup.ts's own header \u2014 'Whether the Fleet view should itself hide or prune projects whose directory has vanished is a real question, but it is a product question and belongs in its own ticket' \u2014 and again by W22-15, which hit it head-on.",
+        "W22-15 IS THE EVIDENCE AND THE WORKAROUND. It implemented the obvious e2e cleanup (each suite removes its own temp projects in afterAll) and that turned notifications.spec.ts and roster.spec.ts RED: 'getByRole(heading, {name: Fleet}) resolved to 3 elements'. The projects stay in the SHARED fleet registry after their directory is gone, so later specs enumerate a card whose directory has vanished, and an unavailable card renders its name as a heading where an available one does not. A stash-and-rerun control passed 76/76 against the same registry, which ruled out accumulation and pinned it on the removal.",
+        "SO THE TEST SUITE IS CURRENTLY SHAPED AROUND THE UNANSWERED QUESTION. W22-15 moved removal into a global teardown that runs after the last spec, where nothing can observe the gap \u2014 honest, and explicitly not an answer: its own note says 'A2's each suite removes cannot be honoured literally without answering it'. Answering it here is what would let per-suite cleanup be written the obvious way.",
+        "NOT A TEST TICKET. The observable behaviour is a product one: a user whose project directory moved or was deleted sees a Fleet card that cannot be opened, and nothing tells them why."
+      ]
+    },
+    {
+      "id": "W23-37",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [
+        "US-402"
+      ],
+      "depends_on": [],
+      "lane": "pipeline",
+      "module": "pipeline",
+      "points": 5,
+      "title": "every deliverable ticket demands grounding the gate cannot check \u2014 `test -s <path>` is the verify behind 'it reflects what the interview actually established'",
+      "write_scope": [
+        "packages/pipeline/src/deliverable-drafts.ts",
+        "packages/pipeline/src/deliverable-drafts.test.ts"
+      ],
+      "acceptance": [
+        "A deliverable ticket's verify command can FAIL for a file that is non-empty boilerplate about no particular product \u2014 the current `test -s <path>` cannot, so the close gate mints receipts against a criterion that reads 'It reflects what the interview actually established, not a template'",
+        "Either the criterion is made checkable (a command that reads the persisted .dokima/blueprint.md and asserts the deliverable is grounded in it) or it is demoted to a human-check criterion that the receipt NAMES as unverified (W21-41's humanCheckNotice) \u2014 one or the other, never a machine criterion no machine evaluates",
+        "Red fixture: the measured 2026-08-31 artefact \u2014 a docs/VISION.md opening 'This project aims to deliver a clear, maintainable, and well-documented codebase' for a user who described an expense tracker \u2014 is refused, or is recorded on the receipt as un-machine-checked",
+        "The choice is recorded beside the code with its reasoning, because 'demote the criterion' and 'make it checkable' are different products"
+      ],
+      "notes": [
+        "DROPPED FINDING, filed 2026-09-20 during a P13 sweep. W22-26 wrote it down in its own closing note and filed nothing: 'Fixing the blindness does not fix the check; that asymmetry is still there and is worth its own ticket if anyone wants the gate to mean what the criterion says.' Law 1: a follow-up that names no ticket id is a dropped finding, not a deferral.",
+        "W22-26 FIXED THE OTHER HALF, and fixed it well. The maker was blind \u2014 the synthesized blueprint existed in memory for one function and was discarded \u2014 so it now persists to .dokima/blueprint.md and is pinned first in the handoff's core block. Verified by re-running the same journey: VISION.md went from generic boilerplate to the user's own words including their scope split.",
+        "WHAT REMAINS IS THE GATE, and it is the sharper half. deliverableDrafts writes 'It reflects what the interview actually established, not a template' onto EVERY deliverable ticket, and sets verify to `test -s <path>` \u2014 a command whose only possible failure is an empty file. So the board states a criterion the gate cannot evaluate, and a receipt minted against it claims more than it earned. That is the exact shape CLAUDE.md law 3 names: a real check nobody runs decays into a check nobody can trust.",
+        "MEASURE BEFORE CHOOSING (L-56): a grounding check is cheap to state and easy to make vacuous. W23-33 refuses a verify script that manufactures its own evidence and W21-87 refuses one that runs nothing \u2014 a grounding command must survive both, or it is the same defect wearing a new command."
+      ]
+    },
+    {
+      "id": "W23-38",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [
+        "US-402"
+      ],
+      "depends_on": [
+        "W23-35"
+      ],
+      "lane": "orchestrator",
+      "module": "harbormaster",
+      "points": 3,
+      "title": "the derived-manifest path runs the ticket's checks three times \u2014 measure the cost on local hardware before deciding whether to reuse the first run's result",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-session-acceptance.ts",
+        "packages/harbormaster/src/loop-land-session-acceptance.test.ts"
+      ],
+      "acceptance": [
+        "The wall-clock cost is MEASURED on a real ticket before anything is changed (L-56): silentCompletion runs every acceptance criterion, deriveManifest re-runs the ticket's verify, and runCloseGate then re-runs verify AND every criterion again \u2014 three executions of the same commands on the path that exists to serve slow local hardware",
+        "If the cost is material, the first run's observed result is carried forward rather than re-executed \u2014 and the carry-forward is refused wherever it would weaken a check: the gate's own re-run is what W21-50's base probe, W21-87's ran-nothing check and W23-33's fabricated-evidence check all hang off, and none of them may be satisfied by a result the gate did not produce itself",
+        "If the cost is NOT material, the ticket closes with the measurement recorded and nothing changed \u2014 a measured no is the outcome, not a failure",
+        "Whichever way it goes, the reasoning is recorded beside the code, because 'the gate re-runs everything itself' is a Law 4 property and a future reader must not mistake a cached result for a gate result"
+      ],
+      "notes": [
+        "FOUND 2026-09-20 while landing W23-35, filed at the moment it was found rather than in that ticket's closing note (Law 1). The derived path is correctness-neutral \u2014 every execution is real and the gate's is the one that decides \u2014 but it is pure added wall-clock on exactly the path W23-35 exists for: a 27B model on Apple Silicon whose session already burned its leash.",
+        "THE CONSTRAINT THAT MAKES THIS NON-TRIVIAL, and the reason it is a measure-first ticket rather than an optimisation: the close gate's value is that it re-derives ground truth itself. Feeding it silentCompletion's earlier result would make the harness the source of the gate's evidence, which is the trust boundary inverted (C-2, Law 4). Any saving must come from the HARNESS's two runs, never the gate's.",
+        "CHEAPEST HONEST WIN, if one is wanted: deriveManifest's verify re-run exists so the manifest reports an exit the harness actually observed rather than asserting 0. It is the one of the three that could be dropped in favour of stating the command and letting the gate be the sole observer \u2014 but that makes the derived manifest an assertion rather than an observation, which is the distinction its evidence line currently claims. Decide it deliberately."
+      ]
+    },
+    {
+      "id": "W23-39",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [
+        "US-201"
+      ],
+      "depends_on": [],
+      "lane": "quality",
+      "module": "quality",
+      "points": 3,
+      "title": "P13 reports 24 tickets and most of them owe nothing \u2014 a quoted, discharged or widened deferral reads the same to it as a live one",
+      "write_scope": [
+        "scripts/validate-plan.mjs",
+        "scripts/validate-plan.test.mjs"
+      ],
+      "acceptance": [
+        "A note that QUOTES an earlier ticket's deferral while recording that this ticket discharged it is not reported as a live deferral",
+        "A note that RECORDS A SCOPE WIDEN (Law 1's other answer) is not reported: widening is the action taken, not work promised",
+        "A CARRIED FORWARD note whose named carrier has since been DONE is not reported: the deferral was discharged, and the current rule reports it again the moment its carrier closes \u2014 which is precisely backwards",
+        "The real ones still report: a fixture holds the note text of the two confirmed live deferrals found on 2026-09-20 (W22-15 and W22-26, now carried by W23-36 and W23-37) and fails if either stops being reported",
+        "Precision is MEASURED and recorded before and after (L-56). Before: 24 reported. If the change cannot raise precision without losing a real report, the measurement is the outcome and the check stays as it is"
+      ],
+      "notes": [
+        "FOUND 2026-09-20 while working the P13 backlog, and filed rather than written into a closing note (Law 1). P13 is report-only and gates nothing, which is exactly why its precision matters: a report whose list is mostly noise is the shape this repo keeps re-learning \u2014 a check that decays into one nobody reads. CLAUDE.md law 1 points at P13 as the thing that catches dropped findings, so it is load-bearing for the law even though it fails nothing.",
+        "MEASURED, NOT ESTIMATED: 24 tickets reported. Triaged by hand, the list holds at least three kinds that owe nothing. (a) DISCHARGED CARRY-FORWARDS \u2014 W21-77, W21-90 and W22-02 each say \"CARRIED FORWARD as W22-12/13/14\", did the right thing, and are reported anyway because the check only counts a carrier that is still OPEN, so closing the carrier re-reports the deferral. (b) SCOPE-WIDEN RECORDS \u2014 W21-36, W21-95 and W22-20 record Law 1's other answer, an action taken. (c) QUOTATIONS \u2014 W22-11 quotes W21-76's deferral while BEING its discharge.",
+        "THE CARRY-FORWARD CASE IS THE SHARPEST and should be fixed first: the check's own header says \"name the ticket in the note ... which is both a better note and invisible to this check, which is the incentive it should create\". Three tickets followed that instruction exactly and are reported anyway, because their carrier landed. The incentive the check means to create is currently undone by the carrier succeeding.",
+        "AND IT FIRES ON ITS OWN FIX: W23-36 and W23-37, filed today to discharge the two real findings, are reported by P13 because their notes quote the deferrals they exist to discharge. The check cannot distinguish \"I am deferring this\" from \"I am the filing for that deferral\".",
+        "DO NOT MAKE IT A GATE while doing this. P13 is report-only by design and its own header says so; raising precision is not an argument for raising teeth, and a gate on note prose would be a new way to fail for the wrong reason.",
+        "TRIAGE FIRST, THEN THE REST OF THE BACKLOG. Whatever survives a precision fix is the real dropped-findings list, and it should be worked from a list a person can trust rather than one they have learned to scroll past."
       ]
     }
   ]
