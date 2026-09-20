@@ -266,10 +266,28 @@ export async function landClaimedTicket(
 
     if (closeGate?.ok) {
       landed = true;
+      /**
+       * W23-35: READ THE COMMITS OFF THE RECEIPT, NOT THE SESSION.
+       *
+       * `session.manifest` is null on a derived land — the harness wrote the
+       * claim because the session returned none — so the pre-W23-35 expression
+       * `session.manifest?.commits ?? []` reported ZERO commits to the
+       * learning hook and to the forge mirror for a ticket that had just
+       * landed with real ones.
+       *
+       * THE MANIFEST STILL COMES FIRST when there is one. W16-04 pins the
+       * mirror to pass the session's own list through verbatim, empty
+       * included, and that is a deliberate property of the seam — the mirror
+       * reports what the session claimed. Only the DERIVED path, where no
+       * session claim exists at all, falls back to the receipt's commits,
+       * which is the set the gate verified against git.
+       */
+      const landedCommits =
+        session.manifest?.commits ?? receiptCommits(closeGate.receipt) ?? [];
       await runAttemptOutcomeHook(options, () =>
         options.attemptOutcome?.onLanded({
           ticketId: ticket.id,
-          commits: session.manifest?.commits ?? [],
+          commits: landedCommits,
           attempts,
         }),
       );
@@ -277,7 +295,7 @@ export async function landClaimedTicket(
         kind: 'close',
         ticketId: ticket.id,
         ticketTitle: ticket.title,
-        commits: session.manifest?.commits ?? [],
+        commits: landedCommits,
         receiptId: closeGate.receipt.id,
       });
       // Isolated per-remote; a failed remote is recorded, not fatal.
@@ -375,4 +393,14 @@ export async function landClaimedTicket(
     ...(parkedDetail ? { parkedDetail } : {}),
     finalStatus: current.status,
   };
+}
+
+/** The gate-verified commit set on a close receipt, or null when the payload is not the shape this reads. */
+function receiptCommits(receipt: { readonly payload: unknown }): string[] | null {
+  const payload = receipt.payload;
+  if (typeof payload !== 'object' || payload === null) return null;
+  const commits = (payload as { commits?: unknown }).commits;
+  if (!Array.isArray(commits) || !commits.every((c) => typeof c === 'string'))
+    return null;
+  return commits as string[];
 }

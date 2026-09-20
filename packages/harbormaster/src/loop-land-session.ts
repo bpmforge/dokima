@@ -23,11 +23,13 @@ import type { AttemptFeedback } from './loop-handoff.js';
 import { sameGaps } from './loop-land-infra.js';
 import { provisionWorktree } from './worktree-provision.js';
 import {
+  deriveManifest,
   NOTHING_TO_REPORT,
   silentCompletion,
   silentCompletionGap,
   type SilentCompletion,
 } from './loop-land-session-acceptance.js';
+import { commentTicket } from '@dokima/tickets';
 import {
   runSession,
   type Handoff,
@@ -136,7 +138,8 @@ export async function attemptOnce(
     // W21-83: but ask whether it finished anyway. Provision first for the same
     // reason the gate path does — the criteria cannot run against a toolchain
     // that is not installed.
-    if (infraFailure) return { session, closeGate: null, infraFailure, silent: NOTHING_TO_REPORT };
+    if (infraFailure)
+      return { session, closeGate: null, infraFailure, silent: NOTHING_TO_REPORT };
     await provisionWorktree({
       worktreePath: worktree.path,
       log: options.log,
@@ -144,12 +147,73 @@ export async function attemptOnce(
       ticketId: ticket.id,
       ...(options.runId ? { runId: options.runId } : {}),
     });
+    const timeoutMs = options.verifyTimeoutMs ?? DEFAULT_VERIFY_TIMEOUT_MS;
     const silent = await silentCompletion({
       worktreePath: worktree.path,
       criteria: ticket.acceptance ?? [],
-      timeoutMs: options.verifyTimeoutMs ?? DEFAULT_VERIFY_TIMEOUT_MS,
+      timeoutMs,
     });
-    return { session, closeGate: null, infraFailure, silent };
+    /**
+     * W23-35: AND IF IT IS DONE, REPORT IT FOR IT — ON THIS ATTEMPT.
+     *
+     * W21-83 told the next attempt "your criteria already pass; return the
+     * manifest". The Vault runs of 2026-09-18 followed that instruction on
+     * neither rung: a 27B model deliberating in 24k-token turns exhausts its
+     * leash again, and the ticket parks with the work committed, the criteria
+     * passing, and the close gate never run — 181k completion tokens to land
+     * nothing the gate would have accepted.
+     *
+     * So the harness derives the claim from git and submits it to the SAME
+     * close gate, unmodified. The manifest was never what the gate trusted
+     * (Law 4): it re-runs the ticket's own verify, re-runs every criterion,
+     * stats every claimed file, and checks the claim against the real diff and
+     * commit set in both directions. A derived claim is checked identically,
+     * and a derived claim that does not hold up is refused identically.
+     *
+     * `session.manifest` stays NULL. It is the record of what the AGENT
+     * returned, and overwriting it would erase the very distinction the
+     * derivation has to preserve.
+     */
+    const derived = await deriveManifest({
+      worktreePath: worktree.path,
+      ticketId: ticket.id,
+      ticketVerify: ticket.verify,
+      criteria: ticket.acceptance ?? [],
+      baseRef,
+      found: silent,
+      timeoutMs,
+    });
+    if (!derived) return { session, closeGate: null, infraFailure, silent };
+    // The ticket's own history says so before the gate runs, so the derivation
+    // is legible whether the gate then accepts or refuses (acceptance 2).
+    commentTicket(
+      options.log,
+      {
+        ticketId: ticket.id,
+        actorId: options.actorId,
+        body: derivedManifestNotice(derived.files, derived.commits),
+      },
+      { runId: options.runId ?? null, ...(options.now ? { now: options.now } : {}) },
+    );
+    const derivedGate = await runCloseGate({
+      log: options.log,
+      actorId: options.actorId,
+      projectId: options.projectId,
+      runId: options.runId ?? null,
+      ticket,
+      worktree,
+      manifest: derived,
+      baseRef,
+      contentDir: options.contentDir,
+      signingKey: options.signingKey,
+      requiredValidators: options.requiredValidators,
+      verifyTimeoutMs: options.verifyTimeoutMs,
+      validatorTimeoutMs: options.validatorTimeoutMs,
+      role: options.role,
+      memoryEligibleRoles: options.memoryEligibleRoles,
+      now: options.now,
+    });
+    return { session, closeGate: derivedGate, infraFailure, silent };
   }
   /**
    * W21-74: provision AGAIN, now that the session has run.
@@ -205,6 +269,30 @@ export async function attemptOnce(
 }
 
 /**
+ * The ticket-history row a derivation writes before the gate runs (W23-35).
+ *
+ * Deliberately a `ticket.commented` event rather than a new event type or a
+ * new receipt field: the gate already copies `manifest.evidence` into the
+ * close receipt's payload verbatim, so the receipt half of acceptance 2 costs
+ * the gate nothing, and `commentTicket` is the row the gate itself writes for
+ * every refusal. Two existing channels, no new trust mode.
+ */
+export function derivedManifestNotice(
+  files: readonly string[],
+  commits: readonly string[],
+): string {
+  return [
+    'Completion Manifest DERIVED BY THE HARNESS (derivedBy: harness, W23-35).',
+    'This session returned no manifest; every executable acceptance criterion',
+    'passed in the worktree, so the manifest below was derived from git and',
+    'submitted to the ordinary close gate, which verifies it exactly as it',
+    "verifies an agent's — the manifest was never the thing the gate trusted.",
+    `- commits: ${commits.length}`,
+    `- files: ${files.join(', ')}`,
+  ].join('\n');
+}
+
+/**
  * The gaps a failed attempt produced, in the order a maker should read them.
  *
  * A missing manifest comes FIRST when it happened, because nothing else the
@@ -217,7 +305,21 @@ export function gapsFrom(
   silent: SilentCompletion = NOTHING_TO_REPORT,
 ): string[] {
   const gaps: string[] = [];
-  if (!session.manifest) {
+  /**
+   * W23-35: a derived manifest reaching the gate is signalled by `closeGate`
+   * being non-null while `session.manifest` is null — the only way that pair
+   * can occur. When it happened, "no Completion Manifest was returned" is no
+   * longer the gap: the harness returned one for it and the gate judged the
+   * work. Whatever the gate then said is the truth about this attempt, and
+   * saying "your criteria already pass, just report" on top of a gate refusal
+   * would tell the next maker to re-report work the gate has just rejected.
+   *
+   * This is where acceptance 4 lands: the "THE WORK IS ALREADY DONE THOUGH"
+   * line is retired exactly where the derived path applies, and kept where it
+   * does not — no fork point, no commits, nothing on disk, or a verify the
+   * harness re-ran and watched fail.
+   */
+  if (!session.manifest && closeGate === null) {
     gaps.push(
       silentCompletionGap(silent) ??
         'no Completion Manifest was returned — reply with ONLY the JSON object described above',
@@ -257,7 +359,8 @@ export function nextFeedback(
   silent: SilentCompletion = NOTHING_TO_REPORT,
 ): { kind: 'continue'; feedback: AttemptFeedback } | { kind: 'no_progress' } {
   const gaps = gapsFrom(session, closeGate, silent);
-  const stalled = previous !== undefined && gaps.length > 0 && sameGaps(previous.gaps, gaps);
+  const stalled =
+    previous !== undefined && gaps.length > 0 && sameGaps(previous.gaps, gaps);
   if (stalled && bounds.mode === 'ladder' && attempt < bounds.limit) {
     return { kind: 'no_progress' };
   }
@@ -293,4 +396,3 @@ export function nextFeedback(
     },
   };
 }
-
