@@ -2360,3 +2360,31 @@ under Law 4 because the gate never trusted the manifest in the first place.
 Verbs used today from the product, all ledgered: widen-scope (refused,
 correctly), retarget-acceptance, depends-on, reject, brief. **Board: 530 done ·
 1 todo (W23-35) · 1 blocked (W12-44).**
+
+**W23-35 done — the harness reports for a session that could not** (2026-09-20).
+The 2026-09-18 Vault shape, closed: a session that commits the fix, passes every
+executable acceptance criterion and returns no Completion Manifest now LANDS on
+the first attempt. `deriveManifest` builds the claim from ground truth — commits
+since the fork point, agent-authored committed files still on disk, the ticket's
+own verify command re-run and reported at the exit it actually returned — and
+`attemptOnce` hands it to the UNMODIFIED close gate. Law 4 is untouched because
+the manifest was never what the gate trusted: it re-runs verify, re-runs every
+criterion including W21-50's base probe, stats every claimed file, and checks the
+claim against the real diff and commit set both ways (W11-13). The gate proved it
+mid-build by refusing this ticket's own first-draft fixture for a tautological
+criterion. A derived manifest says so in `evidence[0]` (`derivedBy: harness`,
+which the gate copies into the signed receipt verbatim) and in a ticket comment
+written BEFORE the gate runs, so the derivation is legible whether the gate then
+accepts or refuses — two channels that already existed, no new receipt field, no
+new trust mode. `memory_written[]` is deliberately not derived: the harness
+cannot claim what it did not write. One defect found while wiring it — a derived
+land reported ZERO commits to the learning hook and the forge mirror, because
+both read `session.manifest?.commits`; they now fall back to the receipt's
+gate-verified set, and only when no session manifest exists, so W16-04's pinned
+verbatim pass-through is byte-unchanged. Scope widened at CLAIM, not at close
+(Law 1): `loop-land-session.ts` + its test, unowned by any live ticket. Red
+fixtures both ways — the silent-and-passing session lands in_review on attempt 1;
+the silent-and-failing one still parks `ladder_exhausted` with the evidence and
+derives nothing. Gate: lint 0, typecheck 0, **5395 tests** (614 files), **76
+e2e**, 6 validators + leaks clean. **Board: 531 done · 0 todo · 1 blocked
+(W12-44).**
