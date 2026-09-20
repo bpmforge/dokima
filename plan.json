@@ -16724,7 +16724,7 @@
       "id": "W23-35",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [
         "US-501"
       ],
@@ -16737,7 +16737,9 @@
         "packages/harbormaster/src/loop-land-session-acceptance.ts",
         "packages/harbormaster/src/loop-land-session-acceptance.test.ts",
         "packages/harbormaster/src/loop-land-ticket.ts",
-        "packages/harbormaster/src/loop-land.test.ts"
+        "packages/harbormaster/src/loop-land.test.ts",
+        "packages/harbormaster/src/loop-land-session.ts",
+        "packages/harbormaster/src/loop-land-session.test.ts"
       ],
       "acceptance": [
         "When a session ends without a Completion Manifest (leash, tool budget, or a plain stop) and silentCompletion finds every executable acceptance criterion passing in the worktree, the harness DERIVES a manifest from git \u2014 files and commits since the ticket's base, verify = the ticket's verify command re-run \u2014 and submits it to the real close gate, which verifies it exactly as it verifies an agent's (Law 4: the manifest is a claim, the gate checks git)",
