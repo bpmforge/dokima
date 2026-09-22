@@ -16883,6 +16883,39 @@
         "DO NOT MAKE IT A GATE while doing this. P13 is report-only by design and its own header says so; raising precision is not an argument for raising teeth, and a gate on note prose would be a new way to fail for the wrong reason.",
         "TRIAGE FIRST, THEN THE REST OF THE BACKLOG. Whatever survives a precision fix is the real dropped-findings list, and it should be worked from a list a person can trust rather than one they have learned to scroll past."
       ]
+    },
+    {
+      "id": "W23-40",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [
+        "US-402"
+      ],
+      "depends_on": [],
+      "lane": "orchestrator",
+      "module": "harbormaster",
+      "points": 3,
+      "title": "the agent commits and is never told the SHA, and cannot read it either \u2014 so it structurally cannot fill manifest.commits[] and deliberates until the leash fires",
+      "write_scope": [
+        "packages/harbormaster/src/agent-session/git-tools.ts",
+        "packages/harbormaster/src/agent-session/git-tools.test.ts",
+        "packages/git/src/commit.ts",
+        "packages/git/src/commit.test.ts"
+      ],
+      "acceptance": [
+        "`agent-session.commit` returns the commit SHA it just created, so an agent that commits can name it in manifest.commits[] without reading git metadata \u2014 commitWithScopeCheck captures it from the commit it performs (`git rev-parse HEAD`, or `git commit` output) and CommitResult carries it",
+        "Red fixture: the live 2026-09-22 shape \u2014 an agent in a LINKED WORKTREE (where `.git` is a file pointing outside the worktree root, which the session sandbox correctly refuses) commits successfully and has the SHA available from the tool result alone; the fixture must use a real linked worktree, not a plain repo, because a plain repo cannot reproduce it",
+        "The sandbox is NOT loosened to let the agent read .git \u2014 containment is the control that makes the closed tool set safe (SC-18), and the fix is to return what the agent needs, never to widen what it may read",
+        "The handoff tells the agent the SHA is in the commit tool's result, so it does not go looking in git metadata it may not read"
+      ],
+      "notes": [
+        "FOUND LIVE 2026-09-22, Vault run on MTPLX, while testing W23-35. The model did the work correctly \u2014 committed `test: explicitly run src/**/*.spec.ts`, and `npm test` in the worktree reports 15 tests / 15 pass \u2014 and then could not report it. Its own generation log names the reason: \"The git metadata is inaccessible (`.git` is a symlink to a directory outside the worktree root), so I can't read the SHA\".",
+        "THE CHAIN, VERIFIED AT THE SOURCE rather than inferred from the model's text. (1) packages/git/src/commit.ts:69 runs `git commit -m` and returns `{committed: true, violations: []}` \u2014 the SHA is never captured and CommitResult has no field for it. (2) harbormaster/agent-session/git-tools.ts:110 returns `{ok: true, committed: true, files}` \u2014 no SHA. (3) In a linked worktree `.git` is a FILE reading `gitdir: <repo>/.git/worktrees/<id>`, a path outside the worktree root, so fs-containment refuses it \u2014 correctly. So the agent can create a commit and has no path to its identity.",
+        "IT EXPLAINS THE FAILURE MODE THE WHOLE W23 ARC HAS BEEN CHASING. A manifest-less session has been read as a model-capability problem \u2014 deliberation, leash, tool budget \u2014 and the escalating turns look exactly like that: 542 -> 662 -> 1780 -> 5345 -> 6267 completion tokens, each one re-confirming that the work is done. An agent that believes it must report real SHAs and cannot obtain them has no honest exit, and re-checking its own state forever is what that looks like from outside.",
+        "W23-35 IS THE RIGHT SAFETY NET AND NOT THE FIX. The harness runs git directly (execa, not the sandboxed tool surface) so it can always derive the commit set; that is why the derived path works precisely where the agent is blocked. But a product whose agent cannot complete its own contract should fix the contract, not only catch the fallout \u2014 and with the SHA returned, the ordinary path starts working and the derived path becomes the exception it was meant to be.",
+        "CHECK BEFORE BUILDING: runCloseGate does NOT appear to validate manifest.commits against the real commit set (it computes `commits` itself via commitsSince and puts THAT on the receipt), so an agent sending `commits: []` may already pass. If so, the honest fix may be partly a HANDOFF change \u2014 tell the agent what is actually required \u2014 and that is cheaper than it looks. Measure which before writing code (L-56)."
+      ]
     }
   ]
 }
