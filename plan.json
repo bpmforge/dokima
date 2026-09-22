@@ -16916,6 +16916,38 @@
         "W23-35 IS THE RIGHT SAFETY NET AND NOT THE FIX. The harness runs git directly (execa, not the sandboxed tool surface) so it can always derive the commit set; that is why the derived path works precisely where the agent is blocked. But a product whose agent cannot complete its own contract should fix the contract, not only catch the fallout \u2014 and with the SHA returned, the ordinary path starts working and the derived path becomes the exception it was meant to be.",
         "CHECK BEFORE BUILDING: runCloseGate does NOT appear to validate manifest.commits against the real commit set (it computes `commits` itself via commitsSince and puts THAT on the receipt), so an agent sending `commits: []` may already pass. If so, the honest fix may be partly a HANDOFF change \u2014 tell the agent what is actually required \u2014 and that is cheaper than it looks. Measure which before writing code (L-56)."
       ]
+    },
+    {
+      "id": "W23-41",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [
+        "US-402"
+      ],
+      "depends_on": [],
+      "lane": "orchestrator",
+      "module": "harbormaster",
+      "points": 3,
+      "title": "W23-35 does not fire on an infra failure \u2014 the derive path sits behind an early return, so a request timeout over finished work still parks it",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-session.ts",
+        "packages/harbormaster/src/loop-land-session.test.ts",
+        "packages/harbormaster/src/loop-land.test.ts"
+      ],
+      "acceptance": [
+        "When a session ends in an INFRA failure (endpoint_failure \u2014 a provider/request timeout) and silentCompletion finds every executable acceptance criterion passing in the worktree, the harness derives the manifest and submits it to the close gate, exactly as it does for a leash, a tool budget or a plain stop",
+        "The free-retry accounting is UNCHANGED when the derive path declines: an infra failure whose criteria do not pass still costs no attempt and still retries on the same rung (W13-27), because that is what makes an endpoint hiccup survivable",
+        "Red fixture: the live 2026-09-22 shape \u2014 the work committed and its criterion passing, the session killed by `request timed out after 900000ms` \u2014 lands into in_review instead of retrying over finished work; and a companion fixture where the criteria FAIL still takes the free retry",
+        "The decision is recorded beside the early return, because \"infra means we do not know what the session did\" is a real argument and the answer is that silentCompletion is evidence about the WORKTREE, not about the session"
+      ],
+      "notes": [
+        "FOUND LIVE 2026-09-22, the first real-model exercise of W23-35, and it is a gap in W23-35 itself rather than in anything older. Sequence: the agent did the ticket correctly (committed the test-glob fix; `npm test` reports 15 tests / 15 pass in the worktree), then could not name its commits (W23-40), deliberated in turns that escalated 542 -> 662 -> 1780 -> 5345 -> 6267 -> 11085 completion tokens, and the 900 s per-request timeout fired at 19:43:48Z \u2014 event 5982, `session.infra_retry`, kind `endpoint_failure`.",
+        "THE MECHANISM, one line in loop-land-session.ts: `if (infraFailure) return { session, closeGate: null, infraFailure, silent: NOTHING_TO_REPORT };` sits BEFORE the provision + silentCompletion + deriveManifest block. It predates W23-35 (W21-83 put it there, for the good reason that an endpoint that died tells you nothing about the work) and W23-35 built on top of it without revisiting it.",
+        "W23-35'S OWN ACCEPTANCE NAMES THREE WAYS BACK WITHOUT A MANIFEST \u2014 'leash, tool budget, or a plain stop' \u2014 and an infra timeout is a fourth. The 2026-09-18 runs that motivated the ticket all hit the SESSION leash (maxSessionSeconds 5400), so the request timeout (requestTimeoutMs 900000) was never the path under test, and the fixtures could not have caught it: they inject a manifest-less session directly, never an infra failure.",
+        "WHY DERIVING IS STILL RIGHT HERE, and the argument against it stated fairly: an endpoint failure means the harness does not know what the session was doing when it died, so treating it as a report would be wrong. But the derive path does not read the session \u2014 silentCompletion runs the ticket's criteria against the WORKTREE, and the close gate then re-derives everything from git. The evidence is the same evidence whatever killed the process.",
+        "DO NOT WEAKEN THE FREE RETRY. W13-27 exists because two endpoint hiccups used to park a ticket whose work had never been judged. Deriving on infra failure must only ever ADD an outcome (the work was done, so land it); an infra failure whose criteria do not pass must keep costing nothing."
+      ]
     }
   ]
 }
