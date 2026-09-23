@@ -4,11 +4,16 @@
  */
 import { describe, expect, it } from 'vitest';
 import { checkNodeSupported } from '../apps/server/src/bootstrap/node-abi-guard.mjs';
-import { readEngines } from './check-node.mjs';
+import { nativeModuleProblem, readEngines } from './check-node.mjs';
 
 describe('the test runner refuses the wrong Node (W13-08)', () => {
   it('reads the supported version from engines, not a literal that can drift', () => {
-    expect(readEngines()).toMatch(/^\d+\.x$/);
+    expect(readEngines()).toMatch(/^\d+\.x( \|\| \d+\.x)*$/);
+  });
+
+  it('supports Node 22 AND Node 24 (v1.0.1 founder decision)', () => {
+    expect(checkNodeSupported(readEngines(), '22.23.1')).toBeNull();
+    expect(checkNodeSupported(readEngines(), '24.14.0')).toBeNull();
   });
 
   it(
@@ -47,4 +52,34 @@ describe('the test runner refuses the wrong Node (W13-08)', () => {
       expect(stripComments(raw)).not.toMatch(/NODE_MODULE_VERSION\s*\d/);
     },
   );
+});
+
+describe('the test runner refuses a native binary built for the other supported Node (v1.0.1)', () => {
+  const abiError = () => {
+    throw new Error(
+      'NODE_MODULE_VERSION 127. This version of Node.js requires\nNODE_MODULE_VERSION 137.',
+    );
+  };
+
+  it(
+    'RED FIXTURE: with two supported majors the major check alone passes on 24 ' +
+      'while node_modules holds a binary built on 22 — the exact "~50 failures ' +
+      'that look like real breakage" W13-08 closed. The probe names it instead',
+    () => {
+      const problem = nativeModuleProblem(abiError, '22.x || 24.x', '24.14.0');
+      expect(problem).toContain('rebuild better-sqlite3');
+      expect(problem).toContain('24.14.0');
+    },
+  );
+
+  it('says nothing when the native module loads', () => {
+    expect(nativeModuleProblem(() => ({}), '22.x || 24.x', '24.14.0')).toBeNull();
+  });
+
+  it('lets an unrelated load failure through untouched rather than calling it an ABI problem', () => {
+    const other = () => {
+      throw new Error('boom');
+    };
+    expect(() => nativeModuleProblem(other, '22.x || 24.x', '24.14.0')).toThrow('boom');
+  });
 });

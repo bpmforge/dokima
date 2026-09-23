@@ -53,11 +53,15 @@ Entry point for coding agents: `MASTER_PROMPT.md` → `plan.json` → `PLAYBOOK.
    property of the output, not of the scheduling. `pnpm validate:serial` keeps
    the old runner as the baseline the equivalence claim is made against;
    evidence in `docs/work/automated-build/GATE_TIMINGS.md`._
-   **Run everything on Node 22** (`.nvmrc`, `engines.node`): the
-   `better-sqlite3` native binary is built for it, and Node 24 fails ~50
-   `apps/server` tests with a `NODE_MODULE_VERSION 127 vs 137` mismatch
-   that looks exactly like real breakage. `fnm`'s default is 24, so put
-   v22 on PATH first.
+   **Node 22 and Node 24 are both supported** (`engines.node` =
+   `22.x || 24.x` since v1.0.1; CI runs the gate on both). `.nvmrc` stays 22
+   as the default dev line. The trap that remains: `better-sqlite3`'s native
+   binary is built for whichever Node ran `pnpm install`, so switching lines
+   in an existing checkout fails ~50 `apps/server` tests with a
+   `NODE_MODULE_VERSION 127 vs 137` mismatch that looks exactly like real
+   breakage. `pretest` now loads the binary first and refuses by name; the
+   fix is `pnpm rebuild better-sqlite3` under the new Node (or stay on the
+   line you installed with).
    _e2e joined the gate 2026-07-27: it was previously excluded, and a
    plans.spec.ts assertion consequently sat silently red from W5-16 until
    the first full e2e audit days later. It runs last (~30s) so the fast
@@ -109,5 +113,5 @@ pnpm monorepo: `apps/server` (Fastify core + CLI), `apps/web` (React/Vite
 canvas), `packages/*` (shared, events, tickets, loop, validators, gateway,
 harbormaster, pipeline, git, forge, mcp, memory), `content/` (imported
 expert + validator library — data, provenance-headed, never hand-restyled).
-Node 22, TypeScript ESM. `pnpm test` = vitest; `pnpm e2e` = Playwright with
+Node 22 or 24, TypeScript ESM. `pnpm test` = vitest; `pnpm e2e` = Playwright with
 the fake-model gateway. No external services required for dev (SQLite only).

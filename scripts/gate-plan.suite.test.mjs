@@ -14,10 +14,16 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 describe('the node:test gate-plan suite runs inside the ordinary test run', () => {
   it('passes, and its output is carried here rather than summarised away', () => {
-    const result = spawnSync('node', ['--test', 'scripts/gate-plan.test.mjs'], {
-      cwd: ROOT,
-      encoding: 'utf8',
-    });
+    // TAP explicitly: Node 24 defaults to the spec reporter even when piped,
+    // and `# fail 0` below is TAP's summary line (v1.0.1, Node 22 + 24).
+    const result = spawnSync(
+      'node',
+      ['--test', '--test-reporter=tap', 'scripts/gate-plan.test.mjs'],
+      {
+        cwd: ROOT,
+        encoding: 'utf8',
+      },
+    );
     const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
     expect(output).toMatch(/# fail 0/);
     expect(result.status, output.slice(-2000)).toBe(0);

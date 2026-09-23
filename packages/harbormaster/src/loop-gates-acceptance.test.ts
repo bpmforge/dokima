@@ -12,6 +12,7 @@ import {
   isExecutableCriterion,
   isNoOpScriptBody,
   noOpVerifyScripts,
+  ranZeroTests,
   runAcceptanceCriteria,
   runGateChecks,
 } from './loop-gates-acceptance.js';
@@ -94,7 +95,11 @@ describe('runAcceptanceCriteria (W21-41)', () => {
       path.join(dir, 'real.test.js'),
       "const {test}=require('node:test');test('t',()=>{});\n",
     );
-    const outcome = await runAcceptanceCriteria(dir, [{ id: 'AC-1', text: 'node --test real.test.js' }], 30_000);
+    const outcome = await runAcceptanceCriteria(
+      dir,
+      [{ id: 'AC-1', text: 'node --test real.test.js' }],
+      30_000,
+    );
     expect(outcome.runs[0]).toMatchObject({ exitCode: 0, ranNothing: false });
     expect(outcome.reasons).toHaveLength(0);
   }, 40_000);
@@ -166,7 +171,15 @@ describe('isNoOpScriptBody (W21-87)', () => {
   });
 
   it('refuses the other obvious shapes of a script that cannot fail', () => {
-    for (const body of ['true', 'exit 0', ':', 'echo ok', 'echo a && true', 'echo a; exit 0', '  ']) {
+    for (const body of [
+      'true',
+      'exit 0',
+      ':',
+      'echo ok',
+      'echo a && true',
+      'echo a; exit 0',
+      '  ',
+    ]) {
       expect(isNoOpScriptBody(body), body).toBe(true);
     }
   });
@@ -188,7 +201,11 @@ describe('isNoOpScriptBody (W21-87)', () => {
 
 describe('noOpVerifyScripts (W21-87)', () => {
   async function manifest(dir: string, scripts: Record<string, string>): Promise<void> {
-    await fs.writeFile(path.join(dir, 'package.json'), JSON.stringify({ scripts }), 'utf8');
+    await fs.writeFile(
+      path.join(dir, 'package.json'),
+      JSON.stringify({ scripts }),
+      'utf8',
+    );
   }
 
   it('names the script the verify command actually invokes', async () => {
@@ -219,7 +236,11 @@ describe('noOpVerifyScripts (W21-87)', () => {
 });
 
 describe('runGateChecks: the verify re-run is checked for vacuity too (W21-87)', () => {
-  const base = { claimed: { command: 'npm test', exit: 0 }, criteria: [], timeoutMs: 30_000 };
+  const base = {
+    claimed: { command: 'npm test', exit: 0 },
+    criteria: [],
+    timeoutMs: 30_000,
+  };
 
   it('RED FIXTURE: a lying test script is refused BY NAME, though verify exits 0', async () => {
     const dir = worktree();
@@ -276,4 +297,25 @@ describe('runGateChecks: the verify re-run is checked for vacuity too (W21-87)',
     expect(result.verify.exitCode).toBe(0);
     expect(result.reasons).toEqual([]);
   }, 60_000);
+});
+
+describe('ranZeroTests on both supported Node lines (v1.0.1)', () => {
+  it(
+    "RED FIXTURE: recognises Node 24's empty run. Node 24 prints `node --test`'s " +
+      "summary with the spec reporter even when piped — `ℹ tests 0`, not TAP's " +
+      '`# tests 0` — so on 24 a glob matching nothing exited zero and the gate called it green',
+    () => {
+      const node24 = 'ℹ tests 0\nℹ suites 0\nℹ pass 0\nℹ fail 0\nℹ duration_ms 2.5\n';
+      expect(ranZeroTests(node24)).toBe(true);
+    },
+  );
+
+  it("still recognises Node 22's TAP shape", () => {
+    expect(ranZeroTests('# tests 0\n# suites 0\n# pass 0\n')).toBe(true);
+  });
+
+  it('a run that executed tests is not empty, in either reporter', () => {
+    expect(ranZeroTests('ℹ tests 10\nℹ pass 10\n')).toBe(false);
+    expect(ranZeroTests('# tests 10\n# pass 10\n')).toBe(false);
+  });
 });

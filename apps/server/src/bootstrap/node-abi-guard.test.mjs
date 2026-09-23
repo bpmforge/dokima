@@ -16,7 +16,10 @@ describe('describeAbiMismatch (W12-24)', () => {
       'product, the supported Node line, the version actually running and the fix — ' +
       'the original names none of those',
     () => {
-      const msg = describeAbiMismatch(REAL_ERROR, { engines: '22.x', running: '24.14.0' });
+      const msg = describeAbiMismatch(REAL_ERROR, {
+        engines: '22.x',
+        running: '24.14.0',
+      });
       expect(msg).toContain('dokima');
       expect(msg).toContain('Node 22.x');
       expect(msg).toContain('24.14.0');
@@ -30,7 +33,10 @@ describe('describeAbiMismatch (W12-24)', () => {
       'lookup table would be a second constant drifting from engines.node and would ' +
       'need editing on every Node release (W12-01 is on the board for that shape)',
     () => {
-      const msg = describeAbiMismatch(REAL_ERROR, { engines: '22.x', running: '24.14.0' });
+      const msg = describeAbiMismatch(REAL_ERROR, {
+        engines: '22.x',
+        running: '24.14.0',
+      });
       expect(msg).toContain('ABI 127');
       expect(msg).toContain('ABI 137');
     },
@@ -86,5 +92,46 @@ describe('checkNodeSupported (W12-24, the guard that actually fires)', () => {
 
   it('stays silent when engines.node is absent rather than guessing a supported range', () => {
     expect(checkNodeSupported(undefined, '24.0.0')).toBeNull();
+  });
+});
+
+describe('Node 22 AND Node 24 are supported (v1.0.1 founder decision)', () => {
+  const BOTH = '22.x || 24.x';
+
+  it('accepts every major named in an `||` range, not just the first one', () => {
+    expect(checkNodeSupported(BOTH, '22.23.1')).toBeNull();
+    expect(checkNodeSupported(BOTH, '24.14.0')).toBeNull();
+    expect(checkNodeSupported(BOTH, '24.19.0')).toBeNull();
+  });
+
+  it('still refuses a major the range does not name — an odd release in between included', () => {
+    for (const running of ['23.1.0', '26.0.0', '20.11.0']) {
+      const msg = checkNodeSupported(BOTH, running);
+      expect(msg).toContain('unsupported Node version');
+      expect(msg).toContain('Node 22.x or 24.x');
+      expect(msg).toContain(running);
+      // Points at the newest supported line, not merely the first one listed.
+      expect(msg).toContain('fnm use 24');
+    }
+  });
+
+  it(
+    'RED FIXTURE: an ABI mismatch on a SUPPORTED Node says rebuild, not "switch to ' +
+      'Node 22". Installing on 22 and then moving to 24 is a supported path now, ' +
+      'and telling that user to go back to 22 is the wrong fix',
+    () => {
+      const msg = describeAbiMismatch(REAL_ERROR, { engines: BOTH, running: '24.14.0' });
+      expect(msg).toContain('dokima');
+      expect(msg).toContain('Node 22.x or 24.x');
+      expect(msg).toContain('ABI 127');
+      expect(msg).toContain('rebuild better-sqlite3');
+      expect(msg).not.toContain('fnm use');
+    },
+  );
+
+  it('an ABI mismatch on an UNSUPPORTED Node still says switch, to the newest supported line', () => {
+    const msg = describeAbiMismatch(REAL_ERROR, { engines: BOTH, running: '26.0.0' });
+    expect(msg).toContain('fnm use 24');
+    expect(msg).not.toContain('rebuild better-sqlite3');
   });
 });

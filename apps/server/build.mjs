@@ -51,8 +51,9 @@ const result = await build({
   bundle: true,
   platform: 'node',
   format: 'esm',
-  // Matches engines.node ("22.x") and .nvmrc. Bumping one without the others
-  // is how you ship syntax the pinned runtime cannot parse.
+  // The OLDEST line engines.node supports ("22.x || 24.x") — 24 runs node22
+  // output; the reverse is how you ship syntax a supported runtime cannot
+  // parse. Raise it only when 22 leaves engines.
   target: 'node22',
   external: EXTERNAL,
   logLevel: 'info',

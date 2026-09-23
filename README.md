@@ -17,7 +17,7 @@ box is a first-class setup, not a downgrade. No account, no network required.
 
 ## Quickstart
 
-Requires **Node 22** and **pnpm 11**. Nothing else — storage is SQLite, and no
+Requires **Node 22 or 24** and **pnpm 11**. Nothing else — storage is SQLite, and no
 external service is needed.
 
 ```sh
