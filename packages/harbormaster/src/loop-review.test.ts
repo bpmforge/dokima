@@ -370,12 +370,13 @@ describe('W23-04: the build path runs the real registry, and the reviewer sees w
       .split('\n')
       .find((line) => line.startsWith('- tool-sast: '));
     expect(statusLine).toBeDefined();
-    const statuses = ['PASSED', 'FINDINGS', 'ERROR', 'UNAVAILABLE', 'NOT_APPLICABLE'];
+    // W23-51: a scanner that could not run reads NOT RUN (ERROR/UNAVAILABLE underneath).
+    const statuses = ['PASSED', 'FINDINGS', 'NOT RUN', 'NOT_APPLICABLE'];
     expect(statuses.some((status) => statusLine!.includes(status))).toBe(true);
     // The sentence that stops a missing scanner reading as a clean one.
     const verdictSentences = [
       'Every required check ran and passed',
-      'A tool that could not run is NOT a clean result',
+      'do not treat it as a clean result, and do not count it against this change',
     ];
     expect(verdictSentences.some((sentence) => prompts[0]!.includes(sentence))).toBe(
       true,

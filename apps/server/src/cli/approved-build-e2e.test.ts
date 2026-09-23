@@ -92,29 +92,33 @@ async function writeAgent(dir: string, body?: readonly string[]): Promise<string
 }
 
 /**
- * A scanner binary that answers cleanly, put on PATH for the run.
+ * A scanner binary that answers cleanly, put on PATH for the run, and a pinned
+ * ruleset for it to be pointed at.
  *
- * THIS IS THE FAKE AB-16 STEP 2 PERMITS, and it is worth naming precisely:
- * `semgrep` is not installed on this machine or in CI, so the real registry
+ * THIS IS THE FAKE AB-16 STEP 2 PERMITS, and it is worth naming precisely: the
+ * SAST engine (`opengrep`, W23-51) is not installed in CI, so the real registry
  * reports `tool-sast: unavailable`, every required check fails, and NOTHING
  * can be machine-accepted. That is correct behaviour — an outage is not a
  * defect, and W23-11 parks on it — and it also means the acceptance path
  * cannot be exercised anywhere without a binary present. The adapter, its
  * exit-code interpretation and its sandboxing are all real; only the
- * executable is ours. The REAL scanner is covered by W23-04's opt-in smoke
- * test (`DOKIMA_TEST_REAL_SCANNERS=1`).
+ * executable and the one-rule ruleset are ours. The REAL scanner is covered by
+ * W23-51's opt-in smoke test (`DOKIMA_TEST_REAL_SCANNERS=1`).
  */
 async function fakeScannerOnPath(dir: string): Promise<string> {
   const bin = path.join(dir, 'fake-bin');
   await fs.mkdir(bin, { recursive: true });
-  const semgrep = path.join(bin, 'semgrep');
+  const opengrep = path.join(bin, 'opengrep');
   await fs.writeFile(
-    semgrep,
+    opengrep,
     ['#!/usr/bin/env bash', 'echo \'{"results":[],"errors":[]}\'', 'exit 0', ''].join(
       '\n',
     ),
   );
-  await fs.chmod(semgrep, 0o755);
+  await fs.chmod(opengrep, 0o755);
+  const rules = path.join(dir, 'sast-rules', 'owasp');
+  await fs.mkdir(rules, { recursive: true });
+  await fs.writeFile(path.join(rules, 'placeholder.yaml'), 'rules: []\n');
   return bin;
 }
 
@@ -226,10 +230,14 @@ async function runBuild(options: RunOptions) {
     DOKIMA_SIGNING_KEY: process.env.DOKIMA_SIGNING_KEY,
     DOKIMA_MODEL_BASE_URL: process.env.DOKIMA_MODEL_BASE_URL,
     PATH: process.env.PATH,
+    DOKIMA_SAST_RULES: process.env.DOKIMA_SAST_RULES,
   };
   process.env.DOKIMA_SIGNING_KEY = 'test-signing-key-ab16';
   process.env.DOKIMA_MODEL_BASE_URL = model.url;
-  if (bin) process.env.PATH = `${bin}:${process.env.PATH ?? ''}`;
+  if (bin) {
+    process.env.PATH = `${bin}:${process.env.PATH ?? ''}`;
+    process.env.DOKIMA_SAST_RULES = path.join(path.dirname(bin), 'sast-rules');
+  }
   const io = collectIO();
   try {
     if (options.entrance === 'http') {

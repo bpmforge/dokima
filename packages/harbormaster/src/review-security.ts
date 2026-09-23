@@ -24,6 +24,8 @@ import {
   type NetworkPolicy,
   type ProjectProfile,
 } from './security-checks.js';
+import { archiveCheckout, removeBaselineCheckout } from './security-baseline.js';
+import type { SastRuleset } from './sast-rules.js';
 
 export interface TicketSecurityChecksInput {
   readonly worktreePath: string;
@@ -32,6 +34,14 @@ export interface TicketSecurityChecksInput {
   readonly networkPolicy: NetworkPolicy;
   readonly secretsValidatorPath?: string | null;
   readonly timeoutMs?: number;
+  /** W23-51: the pinned SAST ruleset; absent, SAST reports NOT RUN. */
+  readonly sastRules?: SastRuleset | null;
+  /**
+   * W23-51: the commit this ticket forked from. Findings a scanner also reports
+   * there are pre-existing and do not count against the ticket. Null (no base
+   * recorded) keeps every finding on the head.
+   */
+  readonly baseCommit?: string | null;
 }
 
 export interface TicketSecurityChecks {
@@ -76,16 +86,33 @@ async function profileOf(worktreePath: string): Promise<ProjectProfile> {
 export async function collectTicketSecurityChecks(
   input: TicketSecurityChecksInput,
 ): Promise<TicketSecurityChecks> {
-  const evidence = await runSecurityChecks({
-    cwd: input.worktreePath,
-    sourceDigest: input.sourceDigest,
-    profile: await profileOf(input.worktreePath),
-    networkPolicy: input.networkPolicy,
-    secretsValidatorPath: input.secretsValidatorPath ?? null,
-    ...(input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }),
-    runTool: sandboxedToolRunner(),
-    isInstalled: executableIsInstalled,
-  });
+  // The base is checked out at most once, and only when a check has findings
+  // to compare — most reviews never pay for it.
+  let baseDir: Promise<string | null> | null = null;
+  const baseCommit = input.baseCommit ?? null;
+  let evidence: readonly CheckEvidence[];
+  try {
+    evidence = await runSecurityChecks({
+      cwd: input.worktreePath,
+      sourceDigest: input.sourceDigest,
+      profile: await profileOf(input.worktreePath),
+      networkPolicy: input.networkPolicy,
+      secretsValidatorPath: input.secretsValidatorPath ?? null,
+      sastRules: input.sastRules ?? null,
+      baseline: baseCommit
+        ? {
+            ref: baseCommit,
+            checkout: () => (baseDir ??= archiveCheckout(input.worktreePath, baseCommit)),
+          }
+        : null,
+      ...(input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }),
+      runTool: sandboxedToolRunner(),
+      isInstalled: executableIsInstalled,
+    });
+  } finally {
+    const dir = baseDir ? await baseDir : null;
+    if (dir) await removeBaselineCheckout(dir);
+  }
   const permit = checksPermitAutomaticCompletion(evidence);
   return { evidence, eligible: permit.eligible, blockedBy: permit.blockedBy };
 }
@@ -95,22 +122,65 @@ export async function collectTicketSecurityChecks(
  * the ones that did not run — a reviewer shown only the passing rows would
  * read a missing scanner as a clean one, which is the failure this whole card
  * exists to remove.
+ *
+ * W23-51: AND A CHECK THAT DID NOT RUN IS NOT EVIDENCE AGAINST THE CHANGE. The
+ * 2026-09-23 live review read "tool-sast: ERROR" as a mark against the diff and
+ * answered CONTRADICTED 4/10 for a ticket whose re-run passed. A scanner that
+ * could not run is missing coverage: it still blocks an automatic acceptance
+ * (decideReview), and it is still never a pass, but the reviewer is told
+ * plainly that it says nothing about this code either way.
  */
 export function securityChecksSection(checks: TicketSecurityChecks): string {
   if (checks.evidence.length === 0) return 'Objective security checks: none configured.';
+  const notRun = (c: CheckEvidence) => c.status === 'error' || c.status === 'unavailable';
   const rows = checks.evidence.map((c) => {
+    const label = notRun(c) ? 'NOT RUN' : c.status.toUpperCase();
     const detail = c.reason
       ? ` — ${c.reason}`
       : c.findingCount > 0
-        ? ` — ${c.findingCount} finding(s)`
+        ? ` — ${c.findingCount} finding(s) introduced by this change`
         : '';
-    return `- ${c.checkId}: ${c.status.toUpperCase()} (exit ${c.exitCode ?? 'none'})${detail}`;
+    return `- ${c.checkId}: ${label} (exit ${c.exitCode ?? 'none'})${detail}`;
   });
+  const findings = checks.evidence.some((c) => c.status === 'findings');
+  const missing = checks.evidence.some(notRun);
+  const closing: string[] = [];
+  if (checks.eligible) closing.push('Every required check ran and passed.');
+  if (findings) {
+    closing.push(
+      'A FINDINGS row is about code this change introduced (findings already present at the ticket base are not counted) — weigh it as evidence about the diff.',
+    );
+  }
+  if (missing) {
+    closing.push(
+      'A NOT RUN row means the tool could not run on this host. That is missing coverage: do not treat it as a clean result, and do not count it against this change either — judge the diff on the evidence you do have.',
+    );
+  }
   return [
     'Objective security checks, executed by the core (not by you, and not by the maker):',
     ...rows,
-    checks.eligible
-      ? 'Every required check ran and passed.'
-      : 'At least one required check did not pass or did not run. A tool that could not run is NOT a clean result, and you must not treat it as one.',
+    ...closing,
   ].join('\n');
+}
+
+/**
+ * What the `review.verdict` event records about the checks: what the CORE
+ * executed, beside what the model said about it (W23-04). W23-51 adds the
+ * baseline facts and the rule digest, so a pass that rests on "pre-existing at
+ * base" says so and names the rules it was about.
+ */
+export function securityChecksPayload(
+  checks: TicketSecurityChecks,
+): readonly Record<string, unknown>[] {
+  return checks.evidence.map((c) => ({
+    checkId: c.checkId,
+    status: c.status,
+    exitCode: c.exitCode,
+    findingCount: c.findingCount,
+    reason: c.reason,
+    ...(c.preexistingCount === undefined
+      ? {}
+      : { preexistingCount: c.preexistingCount, baselineRef: c.baselineRef ?? null }),
+    ...(c.ruleDigest ? { ruleDigest: c.ruleDigest } : {}),
+  }));
 }

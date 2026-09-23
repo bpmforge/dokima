@@ -17262,7 +17262,11 @@
         "apps/server/src/cli/review-pass.ts",
         "apps/server/src/api/pipeline/onboard-security-checks.ts",
         "apps/server/src/cli/ops/doctor.ts",
-        "apps/server/src/cli/ops/doctor.test.ts"
+        "apps/server/src/cli/ops/doctor.test.ts",
+        "packages/harbormaster/src/loop-review.test.ts",
+        "apps/server/src/cli/approved-build-e2e.test.ts",
+        "packages/harbormaster/src/security-tool-runner.ts",
+        "apps/server/src/cli/ops/doctor-sast.ts"
       ],
       "depends_on": [],
       "acceptance": [
@@ -17271,11 +17275,13 @@
         "tool-deps findings that already exist at the ticket's base are distinguishable in the review from findings the ticket introduced"
       ],
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "notes": [
         "FOUND LIVE 2026-09-23 on the throwaway Vault autorun: PLAN-vault-010 landed (gate receipt 0815ef9e) and the review came back CONTRADICTED 4/10, ESCALATE_TO_HUMAN, because tool-sast errored \u2014 'semgrep exited 2 before scanning: [ERROR]: Cannot create auto config when metrics are off' \u2014 and tool-deps reported 14 findings in dependencies the ticket did not touch. The adapter's args are ['--config','auto',...,'--metrics=off']; current semgrep refuses that pair, so the check cannot pass on any host. Needs a founder call (send metrics, pin a local ruleset, or switch to opengrep, which is installed here) before it is a code change.",
         "Scoped 2026-09-23: measured with semgrep 1.175.0 (Homebrew) on this host; opengrep 1.25.0 is also installed. 'cannot pass on any host' holds for semgrep versions that refuse auto config with metrics off. V1 BLOCKER CANDIDATE for the unattended local promise: while tool-sast errors, every machine review escalates, so an approved-build run cannot auto-accept.",
-        "CLAIMED 2026-09-23 (fix/v1-local-autorun) with the founder call recorded: SAST runs on Opengrep with the founder's own rulepacks (bpm-rulepacks), never registry/--config auto rules and never metrics. WIDENED at claim, before any edit: the runner (security-checks.ts) expands the ruleset paths and runs the base-vs-head baseline; review-security.ts/loop-review.ts carry the ticket base and render a scanner that did not run as NOT RUN; review-pass.ts and onboard-security-checks.ts resolve the ruleset; doctor.ts reports opengrep + ruleset with the install fix; new sast-rules.ts / security-baseline.ts hold the resolver and the finding comparison. The rules are NOT vendored into the FSL package (proprietary): the ruleset is located by DOKIMA_SAST_RULES or ~/.dokima/rules/sast and pinned by content digest in the evidence."
+        "CLAIMED 2026-09-23 (fix/v1-local-autorun) with the founder call recorded: SAST runs on Opengrep with the founder's own rulepacks (bpm-rulepacks), never registry/--config auto rules and never metrics. WIDENED at claim, before any edit: the runner (security-checks.ts) expands the ruleset paths and runs the base-vs-head baseline; review-security.ts/loop-review.ts carry the ticket base and render a scanner that did not run as NOT RUN; review-pass.ts and onboard-security-checks.ts resolve the ruleset; doctor.ts reports opengrep + ruleset with the install fix; new sast-rules.ts / security-baseline.ts hold the resolver and the finding comparison. The rules are NOT vendored into the FSL package (proprietary): the ruleset is located by DOKIMA_SAST_RULES or ~/.dokima/rules/sast and pinned by content digest in the evidence.",
+        "WIDENED mid-ticket 2026-09-23, both at the moment found: loop-review.test.ts asserted the old status words (ERROR/UNAVAILABLE) and the old closing sentence, and approved-build-e2e.test.ts put a fake `semgrep` on PATH to reach machine acceptance \u2014 both are the existing tests of files this ticket changes, owned by no open ticket. security-tool-runner.ts and doctor-sast.ts are chapter splits under the 400-line cap (security-checks.ts went to 507, doctor.ts to 433); harbormaster/src/index.ts was held at 397 by condensing the W10-77 header rather than splitting the barrel.",
+        "DONE 2026-09-23 (fix/v1-local-autorun). tool-sast = `opengrep scan --config <pack>... --json --quiet --disable-version-check --error .`, requiresNetwork false, over the ruleset resolved from DOKIMA_SAST_RULES or ~/.dokima/rules/sast (bpm-rulepacks packs/ -> owasp,secrets,framework only), digest-pinned into evidence.ruleDigest and the reuse key; no ruleset -> unavailable 'not run ... missing, not clean', never a registry fallback. Base-vs-head: a check with findings re-runs over a `git archive` of the ticket base and counts only the head's multiset surplus (SAST key rule|path|matched text; deps key package|severity|range); a base that cannot be produced or scanned leaves the head findings standing. The reviewer prompt labels error/unavailable NOT RUN and says it is neither clean nor evidence against the change. doctor gains a `sast` check (warn, names the official opengrep installer and DOKIMA_SAST_RULES). RED (old sources, new tests): 21 failed \u2014 'expected unavailable to be passed' (the semgrep refusal fixture), 'expected semgrep to be opengrep', 'expected findings to be passed' (14 pre-existing), prompt 'NOT RUN' / 'do not treat it as a clean result' missing; NEGATIVE fixtures (introduced dep, introduced SAST finding, duplicated line) green both sides. Opt-in real smoke: opengrep 1.25.0 through sandboxedToolRunner with network denied finds a planted command injection and passes the clean tree. Gate: lint 0, typecheck 0, 5491 tests (623 files, 3 skipped), 76 e2e, 6 validators + temp-leaks clean."
       ],
       "stories": [
         "US-402"

@@ -33,8 +33,6 @@
  * rather than implied.
  */
 
-import { spawnSync } from 'node:child_process';
-import { runSandboxed } from './sandbox/index.js';
 import {
   decideReuse,
   type EvidenceKeyParts,
@@ -45,6 +43,9 @@ import {
   SECURITY_TOOLS,
   digestOfText as digest,
 } from './security-tool-adapters.js';
+import { compareWithBaseline, expandArgs } from './security-baseline.js';
+export { executableIsInstalled, sandboxedToolRunner } from './security-tool-runner.js';
+import { sastRulesFix, type SastRuleset } from './sast-rules.js';
 
 export { SECURITY_TOOLS };
 
@@ -67,6 +68,14 @@ export interface CheckEvidence {
   readonly durationMs: number;
   readonly reason: string | null;
   readonly findingCount: number;
+  /**
+   * W23-51: findings the same scanner also reported at the ticket's base, so
+   * not this change's. Present only when a baseline was measured; a pass with
+   * pre-existing findings says how many, rather than hiding them.
+   */
+  readonly preexistingCount?: number;
+  /** W23-51: the base the head was compared against, when it was. */
+  readonly baselineRef?: string | null;
 }
 
 /** What the runtime knows about how this project is allowed to reach the world. */
@@ -87,6 +96,13 @@ export interface SecurityToolAdapter {
   /** The argument list, constants. `{cwd}` is substituted by the runner, nothing else is. */
   readonly args: readonly string[];
   readonly requiresNetwork: boolean;
+  /** W23-51: runs only over a pinned ruleset; without one it is NOT RUN, never a registry fallback. */
+  readonly needsRules?: boolean;
+  /**
+   * W23-51: one identity per finding, so head can be compared with base.
+   * Null when the output cannot be read, which keeps the head's findings.
+   */
+  findingKeys?(run: ToolRunResult): readonly string[] | null;
   /** True when this project's shape makes the check meaningless (NOT_APPLICABLE with a reason). */
   applicable(profile: ProjectProfile): {
     readonly applicable: boolean;
@@ -120,6 +136,17 @@ export interface RunSecurityChecksOptions {
    * one (Law 9b).
    */
   readonly localAdvisoryDbPath?: string | null;
+  /** W23-51: the pinned SAST ruleset (`resolveSastRules`). Absent, SAST is NOT RUN. */
+  readonly sastRules?: SastRuleset | null;
+  /**
+   * W23-51: the ticket's base, checked out on demand, so findings already
+   * present there are not counted against the change. `checkout` returns null
+   * when the base cannot be produced — the head's findings then stand.
+   */
+  readonly baseline?: {
+    readonly ref: string;
+    readonly checkout: () => Promise<string | null>;
+  } | null;
   readonly timeoutMs?: number;
   /** Injected in tests and in CI; production supplies the sandboxed runner. */
   readonly runTool: (
@@ -184,13 +211,7 @@ export async function runSecurityChecks(
   const results: CheckEvidence[] = [];
 
   for (const adapter of SECURITY_TOOLS) {
-    const args = adapter.args.map((arg) =>
-      arg === '{cwd}'
-        ? options.cwd
-        : arg === '{validatorPath}'
-          ? (options.secretsValidatorPath ?? '')
-          : arg,
-    );
+    const args = expandArgs(adapter, options, options.cwd);
 
     const applicability = adapter.applicable(options.profile);
     if (!applicability.applicable) {
@@ -198,6 +219,18 @@ export async function runSecurityChecks(
         evidence(adapter, options.sourceDigest, args, {
           status: 'not_applicable',
           reason: applicability.reason,
+        }),
+      );
+      continue;
+    }
+
+    if (adapter.needsRules && !options.sastRules) {
+      results.push(
+        evidence(adapter, options.sourceDigest, args, {
+          status: 'unavailable',
+          reason:
+            `not run: no pinned SAST ruleset is configured on this host — ${sastRulesFix()} ` +
+            'Its coverage is missing, not clean.',
         }),
       );
       continue;
@@ -245,8 +278,9 @@ export async function runSecurityChecks(
       sourceDigest: options.sourceDigest,
       commandDigest: digest(`${adapter.executable} ${args.join(' ')}`),
       toolVersion: version,
-      ruleDigest: null,
-      configDigest: null,
+      ruleDigest: adapter.needsRules ? (options.sastRules?.digest ?? null) : null,
+      // The base is part of what a baseline-compared verdict is about.
+      configDigest: options.baseline ? digest(`base:${options.baseline.ref}`) : null,
       predecessorDigests: [],
     };
     const previous = options.previousEvidence?.get(adapter.checkId);
@@ -284,16 +318,21 @@ export async function runSecurityChecks(
       allowNetwork: wantsNetwork && options.networkPolicy === 'network-allowed',
       timeoutMs,
     });
-    const interpreted = adapter.interpret(run);
+    const interpreted = await compareWithBaseline(
+      adapter,
+      options,
+      run,
+      adapter.interpret(run),
+      timeoutMs,
+    );
     results.push(
       evidence(adapter, options.sourceDigest, args, {
-        status: interpreted.status,
-        reason: interpreted.reason,
-        findingCount: interpreted.findingCount,
+        ...interpreted,
         exitCode: run.exitCode,
         durationMs: run.durationMs,
         artifactDigest: run.stdout ? digest(run.stdout) : null,
         toolVersion: (await options.toolVersion?.(adapter.executable)) ?? null,
+        ruleDigest: adapter.needsRules ? (options.sastRules?.digest ?? null) : null,
       }),
     );
   }
@@ -319,64 +358,4 @@ export function checksPermitAutomaticCompletion(checks: readonly CheckEvidence[]
     )
     .map((c) => `${c.checkId}: ${c.status}${c.reason ? ` — ${c.reason}` : ''}`);
   return { eligible: blockedBy.length === 0, blockedBy };
-}
-
-/**
- * The production runner: every tool executes inside the existing sandbox
- * (`runSandboxed`, SC-07/FR-I4), with its own deadline and the network flag
- * the policy decided — not one the tool asked for.
- *
- * A `SandboxUnavailableError` becomes a null exit code, which every adapter
- * reads as "did not run", so a host that cannot isolate reports UNAVAILABLE
- * rather than either crashing the run or — far worse — falling back to an
- * unsandboxed execution of a scanner over code an agent session just wrote.
- */
-export function sandboxedToolRunner(): RunSecurityChecksOptions['runTool'] {
-  return async (adapter, args, opts) => {
-    const started = Date.now();
-    try {
-      const result = await runSandboxed({
-        cwd: opts.cwd,
-        // Constants only. `adapter.executable` and `args` are this module's own
-        // literals plus two runtime-owned paths; no session output reaches here.
-        command: [adapter.executable, ...args].map(shellQuote).join(' '),
-        allowNetwork: opts.allowNetwork,
-        timeoutMs: opts.timeoutMs,
-      });
-      return {
-        exitCode: result.exitCode,
-        stdout: result.stdout,
-        stderr: result.stderr,
-        timedOut: result.timedOut,
-        durationMs: result.durationMs,
-      };
-    } catch (err) {
-      return {
-        exitCode: null,
-        stdout: '',
-        stderr: err instanceof Error ? err.message : String(err),
-        timedOut: false,
-        durationMs: Date.now() - started,
-      };
-    }
-  };
-}
-
-/**
- * Single-quotes an argument for the sandbox's shell command string. The
- * sandbox takes a command line, not an argv, so the quoting has to happen
- * somewhere; doing it here — over constants and two runtime-owned paths —
- * keeps it out of every adapter and makes the one place auditable.
- */
-function shellQuote(arg: string): string {
-  return /^[A-Za-z0-9_./=:-]+$/.test(arg) ? arg : `'${arg.replaceAll("'", `'\\''`)}'`;
-}
-
-/** Whether an executable is on PATH. A miss is UNAVAILABLE, never a pass. */
-export function executableIsInstalled(executable: string): boolean {
-  const result = spawnSync('command', ['-v', executable], {
-    shell: true,
-    encoding: 'utf8',
-  });
-  return result.status === 0;
 }

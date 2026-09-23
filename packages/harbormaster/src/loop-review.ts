@@ -35,8 +35,13 @@ import {
   type ReviewSignalAction,
 } from '@dokima/loop';
 import { reRunVerify } from './loop-gates-verify.js';
-import { collectTicketSecurityChecks, securityChecksSection } from './review-security.js';
+import {
+  collectTicketSecurityChecks,
+  securityChecksPayload,
+  securityChecksSection,
+} from './review-security.js';
 import { reviewCommentBody } from './loop-review-report.js';
+import type { SastRuleset } from './sast-rules.js';
 import {
   decideReview,
   ensureReviewerIdentity,
@@ -83,6 +88,8 @@ export interface ReviewPassOptions {
   readonly makerCalibration?: () => CalibrationRecord | undefined;
   /** W23-04: where the bundled secrets scanner lives in THIS installation — apps/server resolves it; the package must not guess. */
   readonly secretsValidatorPath?: string | null;
+  /** W23-51: the pinned SAST ruleset, resolved by apps/server (`resolveSastRules`). Absent, SAST is NOT RUN. */
+  readonly sastRules?: SastRuleset | null;
   /**
    * W23-16: the project's own network policy, from the settings file the
    * onboard path reads. Hardcoded local-only here, and `tool-sast` needs the
@@ -223,18 +230,18 @@ async function reviewOne(
   };
   const evidence = await collectReviewEvidence(evidenceInput);
 
-  // W23-04: the SAME registry the onboard path runs, pointed at this ticket's
-  // worktree. W23-16: with the project's OWN network policy, resolved by the
-  // caller from the settings file the onboard path already reads — the
-  // hardcoded local-only here made tool-sast permanently unavailable and
-  // machine acceptance permanently unreachable. Local-only remains the
-  // default, because reaching a network by default is the one mistake a
+  // W23-04: the SAME registry the onboard path runs, on this worktree. W23-16:
+  // with the project's OWN network policy (the caller reads it); local-only
+  // stays the default — reaching a network by default is the one mistake a
   // default must not make (Law 9b).
   const security = await collectTicketSecurityChecks({
     worktreePath,
     sourceDigest: evidence.sourceDigest,
     networkPolicy: options.networkPolicy ?? 'local-only',
     secretsValidatorPath: options.secretsValidatorPath ?? null,
+    sastRules: options.sastRules ?? null,
+    // W23-51: findings already present where the ticket forked are not its own.
+    baseCommit: evidence.baseCommit,
   });
 
   // One bounce allowed (R-B2: INCOMPLETE is bounced, not counted). A
@@ -351,13 +358,7 @@ async function reviewOne(
       evidenceStillCurrent: stillCurrent,
       modelVerdict: parsed.verdict,
       // W23-04: what the CORE executed, beside what the model said about it.
-      securityChecks: security.evidence.map((c) => ({
-        checkId: c.checkId,
-        status: c.status,
-        exitCode: c.exitCode,
-        findingCount: c.findingCount,
-        reason: c.reason,
-      })),
+      securityChecks: securityChecksPayload(security),
       securityChecksEligible: security.eligible,
     },
     'review.verdict',

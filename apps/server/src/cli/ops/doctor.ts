@@ -25,6 +25,7 @@ import {
   type PackManifest,
 } from '../../bootstrap/packs-update.js';
 import { buildProvider, loadConfiguredProviders } from './providers-core.js';
+import { checkSast, type SastProbe } from './doctor-sast.js';
 
 export type DoctorCheckStatus = 'ok' | 'warn' | 'fail';
 
@@ -49,6 +50,8 @@ export interface DoctorDeps {
   packSource?: { manifestPath: string; contentDir: string; publicKeyPath: string };
   /** W23-45: opens the throwaway probe database (injected for tests). */
   openProbeDb?: (dbPath: string) => { close(): void };
+  /** W23-51: whether opengrep is on PATH and which pinned ruleset resolves (injected for tests). */
+  sastProbe?: SastProbe;
 }
 
 async function fileExists(filePath: string): Promise<boolean> {
@@ -351,6 +354,7 @@ export async function runDoctor(io: CliIO, deps: DoctorDeps = {}): Promise<Docto
     checkProviders(io, deps),
     checkPackSignatures(deps),
     checkWorktreeOrphans(paths),
+    checkSast(io, deps),
   ]);
   return { checks, ok: checks.every((c) => c.status !== 'fail') };
 }

@@ -41,15 +41,10 @@ export type {
 } from './breakpoints.js';
 
 /**
- * THE EXECUTION ENGINE (W10-77). Everything below was implemented and tested
- * across W3-01a/b/c and then exported from nothing: this file listed only
- * `breakpoints` and `resume`, so `runLandLoop` — the whole claim -> session ->
- * close-gate -> land path — was unreachable from `apps/server` behind an
- * exports map with a single `.` entry. Measured 2026-08-04: `run start` on a
- * build mode minted a run record and returned, because there was no legal way
- * for it to call any of this. Same build-then-wire seam as W10-72 (a UI
- * component mounted nowhere) and W10-74 (a CLI bundled into nothing), one
- * layer down and load-bearing for the product's entire premise.
+ * THE EXECUTION ENGINE (W10-77). Implemented across W3-01a/b/c and exported
+ * from nothing, so `runLandLoop` was unreachable from `apps/server` behind a
+ * single-entry exports map (measured 2026-08-04: `run start` minted a run
+ * record and returned). The build-then-wire seam of W10-72/W10-74.
  */
 export { DEFAULT_MAX_SESSIONS_PER_TICKET } from './loop-claim.js';
 
@@ -358,6 +353,9 @@ export {
   type SecurityToolAdapter,
   type ToolRunResult,
 } from './security-checks.js';
+// W23-51: the pinned SAST ruleset the registry's opengrep check runs over.
+export { resolveSastRules, sastRulesFix, sastRulesLocation } from './sast-rules.js';
+export type { SastRuleset } from './sast-rules.js';
 
 export {
   runCheckSchedule,
