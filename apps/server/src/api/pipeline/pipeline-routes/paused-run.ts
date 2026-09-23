@@ -28,6 +28,7 @@
  */
 
 import { promises as fs } from 'node:fs';
+import { writeFileAtomic } from '../../atomic-write.js';
 import path from 'node:path';
 import type { SynthesizeBlueprintInput } from '@dokima/pipeline';
 
@@ -95,7 +96,10 @@ export async function saveRunRecord(
   record: RunRecord,
 ): Promise<void> {
   await fs.mkdir(runsDir(projectPath), { recursive: true });
-  await fs.writeFile(
+  // W23-46: atomic, because the status route polls this file while the job
+  // rewrites it — a truncate-then-write let a poll read a torn record, which
+  // `loadRunRecord` rightly calls absent: a 404 for a live run.
+  await writeFileAtomic(
     runFile(projectPath, record.runId),
     `${JSON.stringify(record, null, 2)}\n`,
   );
@@ -194,7 +198,7 @@ export function isValidRunId(runId: string): boolean {
 
 export async function savePausedRun(projectPath: string, run: PausedRun): Promise<void> {
   await fs.mkdir(runsDir(projectPath), { recursive: true });
-  await fs.writeFile(
+  await writeFileAtomic(
     runFile(projectPath, run.runId),
     `${JSON.stringify(run, null, 2)}\n`,
   );
@@ -232,8 +236,12 @@ export async function loadPausedRun(
   }
   try {
     const parsed = JSON.parse(raw) as PausedRun & { status?: RunStatus };
-    const pausable = parsed.status === undefined || parsed.status === 'awaiting-decisions';
-    return parsed.runId === runId && parsed.blueprintInput && parsed.slateIdsByKey && pausable
+    const pausable =
+      parsed.status === undefined || parsed.status === 'awaiting-decisions';
+    return parsed.runId === runId &&
+      parsed.blueprintInput &&
+      parsed.slateIdsByKey &&
+      pausable
       ? parsed
       : undefined;
   } catch {

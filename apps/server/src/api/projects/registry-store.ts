@@ -9,7 +9,12 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { computeDokimaHome } from '@dokima/shared';
 import { openEventLog } from '@dokima/events';
-import { STATE_DB_RELATIVE, FLEET_REGISTRY_FILENAME, type ProjectRecord } from './types.js';
+import { writeFileAtomic } from '../atomic-write.js';
+import {
+  STATE_DB_RELATIVE,
+  FLEET_REGISTRY_FILENAME,
+  type ProjectRecord,
+} from './types.js';
 
 export function computeFleetRegistryPath(home: string = computeDokimaHome()): string {
   return path.join(home, FLEET_REGISTRY_FILENAME);
@@ -41,7 +46,9 @@ export async function saveRegistry(
   records: ProjectRecord[],
 ): Promise<void> {
   await fs.mkdir(path.dirname(registryPath), { recursive: true });
-  await fs.writeFile(registryPath, `${JSON.stringify(records, null, 2)}\n`, 'utf8');
+  // W23-46: atomic — every route reads this file on every request, and a
+  // truncate-then-write let one read a torn registry as FLEET_REGISTRY_CORRUPT.
+  await writeFileAtomic(registryPath, `${JSON.stringify(records, null, 2)}\n`);
 }
 
 /** Ensures `.dokima/state.db` has schema applied, without opening (and thus lock-contending) an existing one. */
@@ -51,4 +58,3 @@ export async function ensureStateDb(projectPath: string): Promise<void> {
   await fs.mkdir(path.dirname(dbPath), { recursive: true });
   openEventLog(dbPath).close();
 }
-
