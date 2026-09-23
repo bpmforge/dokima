@@ -17002,7 +17002,7 @@
       "id": "W23-43",
       "role": "coding-agent",
       "phase": 23,
-      "status": "in_progress",
+      "status": "done",
       "stories": [
         "US-402",
         "US-202"
@@ -17028,7 +17028,8 @@
       "notes": [
         "FILED 2026-09-23 from W23-42 (Law 1: found at claim, filed at claim). board-routes.ts fireVerb builds `verify` from `body.verify.exitCode`. Whether this blocks v1 is a founder call: the route is operator-authenticated, but a receipt is a receipt whoever typed the number.",
         "ADDED AT W23-42 CLOSE 2026-09-23: until this lands, an HTTP close writes a CloseReceipt with NO `evidence` block, so it reads the same as an agent-gate close in that field. Reuse apps/server/src/cli/close-evidence.ts (measureCloseEvidence + projectRootFor) rather than a second verifier. Also decide whether close should honour DOKIMA_ALLOW_UNSANDBOXED_VERIFY (build runs do; W23-42 refuses without a sandbox, waiver or not).",
-        "CLAIMED 2026-09-23 (fix/v1-release-hardening). Scope widened AT CLAIM (Law 1) to close-evidence.ts(+test) and cli/run.ts: W23-42 is done so the territory is released, and the acceptance requires ONE measured-close path shared by the CLI and the route, so closeMeasured moves out of run.ts into close-evidence.ts rather than being copied into board-routes.ts."
+        "CLAIMED 2026-09-23 (fix/v1-release-hardening). Scope widened AT CLAIM (Law 1) to close-evidence.ts(+test) and cli/run.ts: W23-42 is done so the territory is released, and the acceptance requires ONE measured-close path shared by the CLI and the route, so closeMeasured moves out of run.ts into close-evidence.ts rather than being copied into board-routes.ts.",
+        "DONE 2026-09-23 (160deaa1). closeMeasured moved to close-evidence.ts as closeWithMeasuredEvidence; the CLI and POST /api/v1/tickets/:id/close both call it, with the registered project as root. A body verify.exitCode is ignored (the command is run). Cheap refusals (status/owner/no files/no commits) precede any run, so a board drag stays an instant 409. RED: body {command:'false',exitCode:0} closed 200 before, 409 MANIFEST_INVALID after; HTTP receipts now carry the evidence block. The waiver question is W23-44. Gate: lint 0, typecheck 0, 5453 tests (618 files, 2 skipped), 76 e2e, 6 validators + temp-leaks clean."
       ]
     },
     {
@@ -17043,7 +17044,11 @@
         "apps/server/src/cli/sandbox-preflight.ts",
         "apps/server/src/cli/sandbox-preflight.test.ts",
         "packages/harbormaster/src/loop-gates-verify.ts",
-        "packages/tickets/src/types.ts"
+        "packages/tickets/src/types.ts",
+        "packages/harbormaster/src/sandbox/index.ts",
+        "packages/harbormaster/src/sandbox/index.test.ts",
+        "packages/harbormaster/src/index.ts",
+        "apps/server/src/api/server/board-routes.ts"
       ],
       "depends_on": [
         "W23-43"
@@ -17055,10 +17060,11 @@
         "Red fixture: a no-sandbox host plus the waiver, which today refuses the close, closes with `sandbox: 'waived'` on the receipt; the same host without the waiver still refuses"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         "FILED 2026-09-23 (v1 release hardening). Founder decision: `dokima close` is the documented human exit from a local-model park, so it must honour the same waiver build runs honour, and the receipt must say verify ran unsandboxed. SUPERSEDES W23-42's acceptance line 'A host with no sandbox refuses the close by name' for the waived case only.",
-        "Found while claiming: the build-run waiver may itself be preflight-only \u2014 assertSandboxOrWaiver appends sandbox.waived, but reRunVerify always calls runSandboxed with no allowNetwork, so a waived run would throw SandboxUnavailableError at the close gate. To be proved RED before fixing, and the build path wired through the same flag if confirmed."
+        "Found while claiming: the build-run waiver may itself be preflight-only \u2014 assertSandboxOrWaiver appends sandbox.waived, but reRunVerify always calls runSandboxed with no allowNetwork, so a waived run would throw SandboxUnavailableError at the close gate. To be proved RED before fixing, and the build path wired through the same flag if confirmed.",
+        "CLAIMED 2026-09-23. PROVED before fixing: with sandbox-exec off PATH and DOKIMA_ALLOW_UNSANDBOXED_VERIFY=1, assertSandboxOrWaiver returned true and appended sandbox.waived, and reRunVerify then THREW SandboxUnavailableError \u2014 the build-run waiver has been preflight-only, every verify on such a host throws. Scope widened AT CLAIM to sandbox/index.ts(+test) and the harbormaster barrel: the waiver belongs where every sandboxed call (reRunVerify's 8 callers, security-checks) goes through, activated explicitly by apps/server."
       ],
       "stories": [
         "US-402",
@@ -17083,10 +17089,11 @@
         "Red fixture: a native loader that throws the bindings error, which today yields `doctor: OK`, yields `doctor: FAILED` naming the fix"
       ],
       "points": 2,
-      "status": "in_progress",
+      "status": "done",
       "notes": [
         "FILED 2026-09-23 (v1 release hardening). better-sqlite3 loads its binding lazily inside `new Database`, and the CLI entry deliberately lets a non-ABI load failure through so --help still works; doctor's only DB check returns 'no state.db yet (fresh project)' without opening anything, so an install with no binary at all reads as healthy.",
-        "CLAIMED 2026-09-23 (fix/v1-release-hardening)."
+        "CLAIMED 2026-09-23 (fix/v1-release-hardening).",
+        "DONE 2026-09-23 (de1cb4b6). native-db check: openEventLog on a temp path, always removed. RED live on the packed 1.0.1 tarball installed with --ignore-scripts: 'doctor: OK' before, '[FAIL] native-db ... doctor: FAILED' after; the named 'npm rebuild better-sqlite3 --ignore-scripts=false' then gives '[OK] native-db ... doctor: OK'. ABI mismatch reuses describeAbiMismatch via node-abi-guard.d.mts. Gate: lint 0, typecheck 0, 5453 tests (618 files, 2 skipped), 76 e2e, 6 validators + temp-leaks clean."
       ],
       "stories": []
     },
@@ -17113,11 +17120,12 @@
         "No client-side retry is added: a 404 on the status route still means the run does not exist"
       ],
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "notes": [
         "FILED 2026-09-23 from the nightly logs (gh run view --log-failed, runs 35841145119, 35708636549, 35501436153, 35203491589, 35077674768). Every red nightly since 09-16 is one of two specs, and both show the SAME client symptom: a 404 from GET /pipeline/runs/:runId, rendered as 'the server that answered doesn't offer this step' (W13-39) and 'doesn't have the guided-sample pipeline route wired in' (guided sample). pollPipelineRun throws on the first non-2xx. saveRunRecord is fs.writeFile (O_TRUNC then write) and loadRunRecord maps unreadable/unparseable to undefined -> 404.",
         "The 09-22 `ENOENT ... .dokima/blueprint.md` is a CONSEQUENCE, not a cause: gateway calls were 3 (the pipeline had finished its model work), the page degraded on the torn poll, the test threw, and its afterEach removed WORKSPACE while the server job was still writing the blueprint. The 09-16 run shows the same sequence ending in ENOTEMPTY.",
-        "CLAIMED 2026-09-23 (fix/v1-release-hardening)."
+        "CLAIMED 2026-09-23 (fix/v1-release-hardening).",
+        "DONE 2026-09-23 (9be2927f). writeFileAtomic (temp .tmp sibling + rename) backs saveRunRecord, savePausedRun, saveRegistry. RED: 6/150 racing reads returned undefined (the 404) before, 0 after. Nightly runs Node 22 and 24. The only real proof is the nightly itself; P6-22 (pipeline board) holds the 10-green criterion. Gate: lint 0, typecheck 0, 5453 tests (618 files, 2 skipped), 76 e2e, 6 validators + temp-leaks clean."
       ],
       "stories": [
         "US-101"
@@ -17142,10 +17150,11 @@
         "Red fixture: Node v24.x against this repo's engines, refused today via the .nvmrc pin, is accepted; v26 is refused"
       ],
       "points": 1,
-      "status": "in_progress",
+      "status": "done",
       "notes": [
         "FILED 2026-09-23 (v1 release hardening). scripts/conductor.mjs:111 compares process.version against .nvmrc ('22'), so a Node 24 shell \u2014 a supported line since v1.0.1 \u2014 cannot run the conductor.",
-        "CLAIMED 2026-09-23 (fix/v1-release-hardening)."
+        "CLAIMED 2026-09-23 (fix/v1-release-hardening).",
+        "DONE 2026-09-23 (d429c5fd). nodeRequirementMismatch: engines.node first, .nvmrc pin as fallback, skip with neither. RED: v24 vs 22.x || 24.x refused before, accepted after; v26 refused. Gate: lint 0, typecheck 0, 5453 tests (618 files, 2 skipped), 76 e2e, 6 validators + temp-leaks clean."
       ],
       "stories": []
     },
@@ -17167,10 +17176,11 @@
         "CHANGELOG [Unreleased] states the removal as a breaking CLI change with the replacement, and that no 1.x release carrying the flag was published to npm"
       ],
       "points": 1,
-      "status": "in_progress",
+      "status": "done",
       "notes": [
         "FILED 2026-09-23 (v1 release hardening), from W23-42's breaking change.",
-        "CLAIMED 2026-09-23 (fix/v1-release-hardening)."
+        "CLAIMED 2026-09-23 (fix/v1-release-hardening).",
+        "DONE 2026-09-23 (396a41e4). --verify-exit refused before required-flag checks with the replacement named; CHANGELOG [Unreleased] ### Removed states the breaking change. RED: '--verify-exit 0' without --verify-cmd got 'requires --verify-cmd' before. Gate: lint 0, typecheck 0, 5453 tests (618 files, 2 skipped), 76 e2e, 6 validators + temp-leaks clean."
       ],
       "stories": [
         "US-402"
@@ -17196,6 +17206,31 @@
       "status": "todo",
       "notes": [
         "FILED 2026-09-23 from the Vault log (run-2026-09-22T18:52:54.207Z, events 6074/6075): PLAN-vault-000 landed through the close gate and then review.bounced twice, 'unparseable verdict', reviewer lm-studio/qwen/qwen3.8-27b. Nothing in the event records what the reviewer actually said. Not investigated in the v1 hardening pass; the 2026-09-23 live run is watched for a repeat."
+      ],
+      "stories": [
+        "US-402"
+      ]
+    },
+    {
+      "id": "W23-50",
+      "title": "free infra retries fire back-to-back with no delay \u2014 a model reload on LM Studio burns all three in 200 ms and the ticket parks as 'attempted nothing'",
+      "phase": 23,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-infra.ts",
+        "packages/harbormaster/src/loop-land-infra.test.ts"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "A free infrastructure retry waits before re-running (bounded backoff, injected clock in tests), so a provider that is mid-reload gets time to come back instead of three immediate retries",
+        "Red fixture: three endpoint_failure sessions in a row no longer all run within one second of each other",
+        "The free-retry count and the park-with-evidence behaviour are unchanged"
+      ],
+      "points": 2,
+      "status": "todo",
+      "notes": [
+        "FOUND LIVE 2026-09-23 on the throwaway Vault autorun (LM Studio, qwen/qwen3.8-27b). Another client's request for qwen/qwen3-coder-next (a 'ping', max_tokens 8, seen 24 times in the day's LM Studio log, not from Dokima) made LM Studio unload the maker mid-session ('Channel Error ... Model unloaded'), then 'Failed to load model ... Operation canceled' for ~1 s. Dokima's three free retries ran at 18:02:14.97, 15.12, 15.25Z (and again 18:06:22.18, 22.79, 23.39Z for PLAN-vault-002), all 400, and both tickets parked. The eviction is outside Dokima; spending the whole retry budget inside the reload window is not."
       ],
       "stories": [
         "US-402"
