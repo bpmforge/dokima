@@ -17196,7 +17196,11 @@
       "lane": "orchestrator",
       "write_scope": [
         "apps/server/src/cli/review-pass.ts",
-        "apps/server/src/cli/review-pass.test.ts"
+        "apps/server/src/cli/review-pass.test.ts",
+        "packages/harbormaster/src/loop-review.ts",
+        "packages/harbormaster/src/loop-review.test.ts",
+        "packages/harbormaster/src/loop-review-prompt.ts",
+        "packages/harbormaster/src/loop-review-prompt.test.ts"
       ],
       "depends_on": [],
       "acceptance": [
@@ -17205,10 +17209,11 @@
         "A bounced review still never reads as an approval"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         "FILED 2026-09-23 from the Vault log (run-2026-09-22T18:52:54.207Z, events 6074/6075): PLAN-vault-000 landed through the close gate and then review.bounced twice, 'unparseable verdict', reviewer lm-studio/qwen/qwen3.8-27b. Nothing in the event records what the reviewer actually said. Not investigated in the v1 hardening pass; the 2026-09-23 live run is watched for a repeat.",
-        "2026-09-23 live runs: NOT reproduced. With qwen/qwen3-coder-next as maker and qwen/qwen3.8-27b as reviewer, PLAN-vault-010's review parsed first time (review.verdict CONTRADICTED 4/10 \u2014 for the reasons in W23-51, not a parse failure). The 09-22 bounce was reviewer qwen3.8-27b on the MTPLX-era matrix; the recording acceptance still stands so the next bounce is diagnosable."
+        "2026-09-23 live runs: NOT reproduced. With qwen/qwen3-coder-next as maker and qwen/qwen3.8-27b as reviewer, PLAN-vault-010's review parsed first time (review.verdict CONTRADICTED 4/10 \u2014 for the reasons in W23-51, not a parse failure). The 09-22 bounce was reviewer qwen3.8-27b on the MTPLX-era matrix; the recording acceptance still stands so the next bounce is diagnosable.",
+        "CLAIMED 2026-09-23 (fix/v1-local-autorun). WIDENED at claim: the bounce is recorded in harbormaster's loop-review.ts (not in apps/server/src/cli/review-pass.ts, which only wires the chat), and the parser lives in loop-review-prompt.ts. loop-review.ts sits at the 400-line cap, so the ask-parse-bounce sequence moves into loop-review-prompt.ts beside the parser."
       ],
       "stories": [
         "US-402"
