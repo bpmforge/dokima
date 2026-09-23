@@ -16888,7 +16888,7 @@
       "id": "W23-40",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [
         "US-402"
       ],
@@ -16901,7 +16901,10 @@
         "packages/harbormaster/src/agent-session/git-tools.ts",
         "packages/harbormaster/src/agent-session/git-tools.test.ts",
         "packages/git/src/commit.ts",
-        "packages/git/src/commit.test.ts"
+        "packages/git/src/commit.test.ts",
+        "packages/loop/src/handoff.ts",
+        "packages/loop/src/handoff.test.ts",
+        "packages/harbormaster/src/agent-session/tools.ts"
       ],
       "acceptance": [
         "`agent-session.commit` returns the commit SHA it just created, so an agent that commits can name it in manifest.commits[] without reading git metadata \u2014 commitWithScopeCheck captures it from the commit it performs (`git rev-parse HEAD`, or `git commit` output) and CommitResult carries it",
@@ -16914,7 +16917,8 @@
         "THE CHAIN, VERIFIED AT THE SOURCE rather than inferred from the model's text. (1) packages/git/src/commit.ts:69 runs `git commit -m` and returns `{committed: true, violations: []}` \u2014 the SHA is never captured and CommitResult has no field for it. (2) harbormaster/agent-session/git-tools.ts:110 returns `{ok: true, committed: true, files}` \u2014 no SHA. (3) In a linked worktree `.git` is a FILE reading `gitdir: <repo>/.git/worktrees/<id>`, a path outside the worktree root, so fs-containment refuses it \u2014 correctly. So the agent can create a commit and has no path to its identity.",
         "IT EXPLAINS THE FAILURE MODE THE WHOLE W23 ARC HAS BEEN CHASING. A manifest-less session has been read as a model-capability problem \u2014 deliberation, leash, tool budget \u2014 and the escalating turns look exactly like that: 542 -> 662 -> 1780 -> 5345 -> 6267 completion tokens, each one re-confirming that the work is done. An agent that believes it must report real SHAs and cannot obtain them has no honest exit, and re-checking its own state forever is what that looks like from outside.",
         "W23-35 IS THE RIGHT SAFETY NET AND NOT THE FIX. The harness runs git directly (execa, not the sandboxed tool surface) so it can always derive the commit set; that is why the derived path works precisely where the agent is blocked. But a product whose agent cannot complete its own contract should fix the contract, not only catch the fallout \u2014 and with the SHA returned, the ordinary path starts working and the derived path becomes the exception it was meant to be.",
-        "CHECK BEFORE BUILDING: runCloseGate does NOT appear to validate manifest.commits against the real commit set (it computes `commits` itself via commitsSince and puts THAT on the receipt), so an agent sending `commits: []` may already pass. If so, the honest fix may be partly a HANDOFF change \u2014 tell the agent what is actually required \u2014 and that is cheaper than it looks. Measure which before writing code (L-56)."
+        "CHECK BEFORE BUILDING: runCloseGate does NOT appear to validate manifest.commits against the real commit set (it computes `commits` itself via commitsSince and puts THAT on the receipt), so an agent sending `commits: []` may already pass. If so, the honest fix may be partly a HANDOFF change \u2014 tell the agent what is actually required \u2014 and that is cheaper than it looks. Measure which before writing code (L-56).",
+        "CLAIMED 2026-09-23 (release-blocking: unattended autorun on local models is a v1 promise). MEASURED BEFORE BUILDING (L-56), as the last note asked: runCloseGate never reads manifest.commits \u2014 loop-gates.test.ts's happy path already closes with a FABRICATED sha and asserts the real commit set, not the claim, lands on the receipt; `commits: []` passes the parser's shape check. So the commit identity was never needed by the gate, and the handoff's `commits: ['the commit sha you made']` asked the agent for something it could not obtain and the gate did not use. SCOPE WIDENED AT CLAIM (Law 1) by three files, all owned only by done tickets: packages/loop/src/handoff.ts + handoff.test.ts (the RETURN block is where the agent is told what commits[] holds \u2014 acceptance 4 lives there) and packages/harbormaster/src/agent-session/tools.ts (the commit tool's own description, the other place a model reads what the tool returns)."
       ]
     },
     {
