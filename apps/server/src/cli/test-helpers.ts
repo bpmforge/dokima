@@ -19,7 +19,11 @@ export async function createTempProject(): Promise<TempProject> {
 export function collectIO(): {
   stdout: string[];
   stderr: string[];
-  io: { stdout: (line: string) => void; stderr: (line: string) => void };
+  io: {
+    stdout: (line: string) => void;
+    stderr: (line: string) => void;
+    sleep: (ms: number) => Promise<void>;
+  };
 } {
   const stdout: string[] = [];
   const stderr: string[] = [];
@@ -29,6 +33,8 @@ export function collectIO(): {
     io: {
       stdout: (line: string) => stdout.push(line),
       stderr: (line: string) => stderr.push(line),
+      // W23-50: a free infra retry backs off for seconds; fixtures do not wait.
+      sleep: async () => {},
     },
   };
 }

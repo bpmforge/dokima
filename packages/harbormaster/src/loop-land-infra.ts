@@ -33,6 +33,42 @@ import {
 export const MAX_FREE_INFRA_RETRIES = 3;
 
 /**
+ * W23-50: how long a free retry waits before it re-runs. LIVE 2026-09-23: LM
+ * Studio evicted the maker to load another client's model, answered "Failed
+ * to load model ... Operation canceled" for about a second, and Dokima's three
+ * free retries all ran inside 200 ms of each other — the whole budget spent
+ * inside the reload window, and the ticket parked as "attempted nothing".
+ *
+ * Exponential with a cap: 5 s, 15 s, 45 s for an endpoint that failed, and a
+ * longer start (15 s, 45 s, 60 s) when the provider's own words say a model is
+ * loading or was unloaded — a 27B reload takes seconds, not milliseconds. The
+ * count of free retries is unchanged; only their spacing is new.
+ */
+export const INFRA_RETRY_BACKOFF = Object.freeze({
+  baseMs: 5_000,
+  modelLoadBaseMs: 15_000,
+  factor: 3,
+  capMs: 60_000,
+});
+
+/** LM Studio / MTPLX / Ollama phrasings for "the model is not resident right now". */
+const MODEL_RELOAD =
+  /failed to load model|model unloaded|model_not_loaded|model is (?:loading|not loaded)|operation canceled|channel error/i;
+
+/** The wait before free retry number `retry` (1-based). */
+export function infraRetryDelayMs(retry: number, detail?: string): number {
+  const base =
+    detail && MODEL_RELOAD.test(detail)
+      ? INFRA_RETRY_BACKOFF.modelLoadBaseMs
+      : INFRA_RETRY_BACKOFF.baseMs;
+  const delay = base * INFRA_RETRY_BACKOFF.factor ** Math.max(0, retry - 1);
+  return Math.min(delay, INFRA_RETRY_BACKOFF.capMs);
+}
+
+const realSleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
  * The attempt ceiling for `policy`'s mode (D-018: ladder's fixed cap, locked's
  * FR-L7 convergence ceiling, token-gated's climbable R1-R3 range).
  *
@@ -72,7 +108,7 @@ export interface FreeRetryGate {
    * which point at completely different fixes — and cost real misdiagnoses
    * during the live UAT before this was threaded through.
    */
-  take(kind: InfraFailureKind | null, attempt: number, detail?: string): boolean;
+  take(kind: InfraFailureKind | null, attempt: number, detail?: string): Promise<boolean>;
   /** How many retries were absorbed — evidence, not a counter the cap uses (W21-15). */
   absorbed(): number;
 }
@@ -99,16 +135,17 @@ export function createFreeRetryGate(
   };
 }
 
-function takeFreeInfraRetry(
+async function takeFreeInfraRetry(
   options: LandLoopOptions,
   infra: InfraFailureTracker,
   kind: InfraFailureKind | null,
   ticketId: string,
   attempt: number,
   detail?: string,
-): boolean {
+): Promise<boolean> {
   if (!kind || infra.total >= MAX_FREE_INFRA_RETRIES) return false;
   infra.record(kind);
+  const waitMs = infraRetryDelayMs(infra.total, detail);
   // Recorded so the run explains itself: a ticket that took four passes to
   // land should say why, rather than looking like a model that needed four
   // tries.
@@ -122,9 +159,13 @@ function takeFreeInfraRetry(
       kind,
       freeRetries: infra.total,
       attempt,
+      waitMs,
       ...(detail ? { reason: trimReason(redactString(detail)) } : {}),
     },
   });
+  // W23-50: the wait happens AFTER the ledger row, so a run someone is watching
+  // says why it is idle before it goes quiet.
+  await (options.sleep ?? realSleep)(waitMs);
   return true;
 }
 
@@ -139,4 +180,3 @@ export function sameGaps(a: readonly string[], b: readonly string[]): boolean {
   const right = [...b].sort();
   return left.every((value, i) => value === right[i]);
 }
-

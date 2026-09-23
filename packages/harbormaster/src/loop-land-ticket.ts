@@ -196,7 +196,7 @@ export async function landClaimedTicket(
     // W21-13: hand the provider's own words to the ledger, not just the
     // category. `session.output` is where runSessionAbsorbingProviderFailure
     // put them (`provider failure: …`).
-    if (freeRetry.take(infraFailure, attempt, session.output)) continue;
+    if (await freeRetry.take(infraFailure, attempt, session.output)) continue;
     // W21-63: the skipped-to rung is UNREACHABLE, not failing the work.
     if (infraFailure !== null && rungOffset > 0) {
       rungOffset = fallBackToRememberedRung(options, ticket.id, attempts.length);

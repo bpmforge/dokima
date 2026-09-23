@@ -151,6 +151,8 @@ export interface LandLoopOptions {
   /** `git remote` names to push a landed ticket branch to (FR-I2, dual-remote sync). Defaults to whatever remotes are actually configured on the repo (`git remote`, read fresh per ticket) — local-first: zero configured remotes is a normal, valid setup and pushes nothing. */
   readonly pushRemotes?: readonly string[];
   readonly now?: () => string;
+  /** W23-50: the free infra retry's backoff wait; injected in tests (defaults to a real timer). */
+  readonly sleep?: (ms: number) => Promise<void>;
   /** W14-05: injected learning hook — see `AttemptOutcomeHook`. */
   readonly attemptOutcome?: AttemptOutcomeHook;
   /**

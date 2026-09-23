@@ -292,6 +292,7 @@ export async function executeBuildRun(
     ...(command.stopSwitch ? { stopSwitch: command.stopSwitch } : {}),
     conflictWatch: { humanActorId: command.actorId }, // W16-10 (FR-T6)
     now: io.now,
+    ...(io.sleep ? { sleep: io.sleep } : {}), // W23-50
     // P6-05: chosen landing mode; omitted when per-ticket (pre-P6-05 shape).
     // Wired on BOTH paths since P6-11: runLandLoop and the berth engine park + sweep.
     ...(landingMode === 'per-feature' ? { landing: 'per-feature' as const } : {}),

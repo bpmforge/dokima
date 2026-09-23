@@ -17225,7 +17225,10 @@
         "packages/harbormaster/src/loop-land-infra.test.ts",
         "packages/harbormaster/src/loop-land-ticket.ts",
         "packages/harbormaster/src/loop-land.ts",
-        "packages/harbormaster/src/loop-land.test.ts"
+        "packages/harbormaster/src/loop-land.test.ts",
+        "apps/server/src/cli/run-types.ts",
+        "apps/server/src/cli/run-build.ts",
+        "apps/server/src/cli/test-helpers.ts"
       ],
       "depends_on": [],
       "acceptance": [
@@ -17234,11 +17237,13 @@
         "The free-retry count and the park-with-evidence behaviour are unchanged"
       ],
       "points": 2,
-      "status": "in_progress",
+      "status": "done",
       "notes": [
         "FOUND LIVE 2026-09-23 on the throwaway Vault autorun (LM Studio, qwen/qwen3.8-27b). Another client's request for qwen/qwen3-coder-next (a 'ping', max_tokens 8, seen 24 times in the day's LM Studio log; not in Dokima's src or bundle and not produced by the e2e or unit suites when each was run alone against the live log \u2014 unattributed) made LM Studio unload the maker mid-session ('Channel Error ... Model unloaded'), then 'Failed to load model ... Operation canceled' for ~1 s. Dokima's three free retries ran at 18:02:14.97, 15.12, 15.25Z (and again 18:06:22.18, 22.79, 23.39Z for PLAN-vault-002), all 400, and both tickets parked. The eviction is outside Dokima; spending the whole retry budget inside the reload window is not.",
         "2026-09-23 run A (maker qwen/qwen3.8-27b, 17:54-18:41Z): 0 landed, 3 parked attempted_nothing (PLAN-vault-000a, -002, -002c). Each ticket start coincided with the unidentified 'ping' to qwen3-coder-next; LM Studio evicted the maker, Dokima's three free retries all 400'd inside one second, and the one real attempt left either read without writing or hit the 900 s request timeout (002c). With the maker set to the model the pinger loads (run C) a fresh ticket landed in 1 attempt.",
-        "CLAIMED 2026-09-23 (fix/v1-local-autorun). WIDENED at claim: the gate's `take` becomes async so it can wait (its one caller, loop-land-ticket.ts, adds an `await`), LandLoopOptions gains an injected `sleep` (loop-land.ts), and loop-land.test.ts's endpoint-failure fixtures inject a no-op sleep so the suite does not wait out real backoff. PINGER IDENTIFIED before any edit: the 'ping' (max_tokens 8, temperature 0.1, streamed) to qwen/qwen3-coder-next is RepoPulse's packages/analysis/src/t2/live.integration.test.ts warm-up (T2_DEFAULTS.warmup {pingPrompt:'ping', retries:2} = bursts of 3; RepoPulse .env LMSTUDIO_MODEL=qwen/qwen3-coder-next; localhost:1234 is always appended so the suite never skips), run by the concurrent RepoPulse agent all day (its board records the same 'Failed to load model qwen/qwen3-coder-next ... Operation canceled'). Not Dokima: Dokima's own warm-up is GET /v1/models only (oai-compat.ts health())."
+        "CLAIMED 2026-09-23 (fix/v1-local-autorun). WIDENED at claim: the gate's `take` becomes async so it can wait (its one caller, loop-land-ticket.ts, adds an `await`), LandLoopOptions gains an injected `sleep` (loop-land.ts), and loop-land.test.ts's endpoint-failure fixtures inject a no-op sleep so the suite does not wait out real backoff. PINGER IDENTIFIED before any edit: the 'ping' (max_tokens 8, temperature 0.1, streamed) to qwen/qwen3-coder-next is RepoPulse's packages/analysis/src/t2/live.integration.test.ts warm-up (T2_DEFAULTS.warmup {pingPrompt:'ping', retries:2} = bursts of 3; RepoPulse .env LMSTUDIO_MODEL=qwen/qwen3-coder-next; localhost:1234 is always appended so the suite never skips), run by the concurrent RepoPulse agent all day (its board records the same 'Failed to load model qwen/qwen3-coder-next ... Operation canceled'). Not Dokima: Dokima's own warm-up is GET /v1/models only (oai-compat.ts health()).",
+        "WIDENED mid-ticket 2026-09-23, when found: the first full gate took run-build.test.ts from 9 s to 188 s with 2 timeouts \u2014 its executeBuildRun fixtures hit endpoint failures and now waited out the real backoff. RunCliIO gains an optional `sleep` that run-build.ts threads into the land options, and the shared collectIO() test helper injects a no-op. Production passes none, so the real timer is the default.",
+        "DONE 2026-09-23 (fix/v1-local-autorun). A free infra retry now waits before re-running: 5 s / 15 s / 45 s, capped at 60 s; 15 s / 45 s / 60 s when the provider's words say a model is loading or was unloaded (LM Studio 'Failed to load model ... Operation canceled', 'Model unloaded', 'Channel Error'). The wait is ledgered (`waitMs` on session.infra_retry) before it starts. MAX_FREE_INFRA_RETRIES (3) and park-with-evidence unchanged. Sleep injected via LandLoopOptions.sleep / RunCliIO.sleep; production uses the real timer. RED (old loop-land-infra.ts, new tests): 'expected 0 to be greater than 1000' (three retries at the same instant), 'infraRetryDelayMs is not a function', 'expected [] to have a length of 3' (no waits). Gate: lint 0, typecheck 0, 5494 tests (623 files, 3 skipped), 76 e2e, 6 validators + temp-leaks clean. Backoff does not save a session evicted MID-generation; the evictor here was RepoPulse's live test (see claim note), which serving the maker on MTPLX sidesteps."
       ],
       "stories": [
         "US-402"

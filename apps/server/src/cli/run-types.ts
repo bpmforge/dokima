@@ -8,6 +8,8 @@ export interface RunCliIO {
   stdout: (line: string) => void;
   stderr: (line: string) => void;
   now?: () => string;
+  /** W23-50: the free infra retry's backoff wait; tests inject a no-op (defaults to a real timer). */
+  sleep?: (ms: number) => Promise<void>;
   /**
    * W22-23: `--project <id>` resolves through the fleet registry under this
    * env's DOKIMA_HOME, exactly as `CliIO` documents. `runCli` has always handed
