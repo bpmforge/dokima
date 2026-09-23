@@ -66,6 +66,9 @@ export {
 // P6-14: the post-merge smoke re-uses the landing's own verify derivation.
 export { deriveVerifyCommand } from './verify-command.js';
 export { reRunVerify } from './loop-gates-verify.js';
+// W23-42: the CLI close measures its evidence with the gate's own primitives.
+export { classifyManifestFiles } from './scope.js';
+export { DEFAULT_VERIFY_TIMEOUT_MS } from './loop-gates-types.js';
 export type { FeatureLandingReport } from './loop-land-feature-run.js';
 /**
  * W12-18: the land-loop policy types were never re-exported, so `run-build.ts`

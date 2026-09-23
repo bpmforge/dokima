@@ -63,7 +63,7 @@ describe('parseCliArgs', () => {
     );
   });
 
-  it('parses close with csv files/commits and defaults verify-exit to 0', () => {
+  it('parses close with csv files/commits and a verify COMMAND — never an exit code (W23-42)', () => {
     expect(
       parseCliArgs([
         'close',
@@ -83,28 +83,30 @@ describe('parseCliArgs', () => {
       actorId: 'maker-1',
       files: ['a.ts', 'b.ts'],
       commits: ['abc123'],
-      verify: { command: 'pnpm test', exitCode: 0 },
+      verifyCommand: 'pnpm test',
       dbPath: undefined,
     });
   });
 
-  it('parses an explicit non-zero --verify-exit', () => {
-    const parsed = parseCliArgs([
-      'close',
-      'W1-01',
-      '--actor',
-      'maker-1',
-      '--files',
-      'a.ts',
-      '--commits',
-      'abc',
-      '--verify-cmd',
-      'pnpm test',
-      '--verify-exit',
-      '1',
-    ]);
-    expect(parsed.kind).toBe('close');
-    if (parsed.kind === 'close') expect(parsed.verify.exitCode).toBe(1);
+  it('W23-42: close refuses --verify-exit by name — the exit is measured, never supplied', () => {
+    expect(() =>
+      parseCliArgs([
+        'close',
+        'W1-01',
+        '--actor',
+        'maker-1',
+        '--files',
+        'a.ts',
+        '--commits',
+        'abc',
+        '--verify-cmd',
+        'pnpm test',
+        '--verify-exit',
+        '0',
+      ]),
+    ).toThrow(
+      /--verify-exit is no longer accepted: close runs the verify command itself/,
+    );
   });
 
   it('close refuses a non-integer --verify-exit', () => {

@@ -1,7 +1,11 @@
 import { parseArgs } from 'node:util';
-import type { VerifyResult } from '@dokima/tickets';
 import { CliUsageError } from './cli-usage-error.js';
-import { parseBoardEdit, requirePositional, splitCsv, type BoardEditCommand } from './parse-board-edits.js';
+import {
+  parseBoardEdit,
+  requirePositional,
+  splitCsv,
+  type BoardEditCommand,
+} from './parse-board-edits.js';
 
 export { CliUsageError } from './cli-usage-error.js';
 
@@ -33,7 +37,10 @@ function parseArgsOrUsage<T>(parse: () => T, usage: string): T {
     return parse();
   } catch (err) {
     const code = (err as { code?: unknown }).code;
-    if (code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' || code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') {
+    if (
+      code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' ||
+      code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE'
+    ) {
       // Node's message names the option and then explains `--` handling at
       // length; the first sentence is the part a person needs.
       const first = String((err as Error).message).split('.')[0];
@@ -68,7 +75,8 @@ export type CliCommand =
       actorId: string;
       files: string[];
       commits: string[];
-      verify: VerifyResult;
+      /** W23-42: a command to RUN (when the ticket declares no verify), never an exit to record. */
+      verifyCommand: string;
       dbPath?: string;
       projectId?: string;
     }
@@ -96,7 +104,6 @@ export type CliCommand =
 function isSimpleVerb(command: string): command is SimpleVerb {
   return (SIMPLE_VERBS as readonly string[]).includes(command);
 }
-
 
 export function parseCliArgs(argv: string[]): CliCommand {
   const [command, ...rest] = argv;
@@ -239,7 +246,7 @@ export function parseCliArgs(argv: string[]): CliCommand {
     const ticketId = requirePositional(
       positionals,
       'usage: dokima close <ticketId> --actor <id> --files <a,b> --commits <c1,c2> ' +
-        '--verify-cmd <cmd> [--verify-exit <n>] [--db <path>]',
+        '--verify-cmd <cmd> [--db <path>]',
     );
     if (!values.actor) throw new CliUsageError('close requires --actor <actorId>');
     if (!values.files)
@@ -248,10 +255,14 @@ export function parseCliArgs(argv: string[]): CliCommand {
       throw new CliUsageError('close requires --commits <comma-separated shas>');
     if (!values['verify-cmd'])
       throw new CliUsageError('close requires --verify-cmd <command string>');
-    const exitCodeRaw = values['verify-exit'] ?? '0';
-    const exitCode = Number(exitCodeRaw);
-    if (!Number.isInteger(exitCode)) {
-      throw new CliUsageError(`--verify-exit must be an integer, got '${exitCodeRaw}'`);
+    // W23-42: the exit code is MEASURED — close runs the verify itself. The
+    // flag stays declared only so a caller still passing it is told why it
+    // went, rather than getting a bare "unknown option".
+    if (values['verify-exit'] !== undefined) {
+      throw new CliUsageError(
+        '--verify-exit is no longer accepted: close runs the verify command itself ' +
+          'and records the exit code it actually returns',
+      );
     }
     return {
       kind: 'close',
@@ -259,7 +270,7 @@ export function parseCliArgs(argv: string[]): CliCommand {
       actorId: values.actor,
       files: splitCsv(values.files),
       commits: splitCsv(values.commits),
-      verify: { command: values['verify-cmd'], exitCode },
+      verifyCommand: values['verify-cmd'],
       dbPath: values.db,
       projectId: values.project,
     };

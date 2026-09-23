@@ -27,6 +27,30 @@ export interface VerifyResult {
  * durable, hash-anchored `receipts` table; a later ticket wires this into
  * that primitive without changing the shape consumers rely on here.
  */
+/**
+ * How each part of a close's evidence was established (W23-42).
+ *
+ * A receipt that records what a caller TYPED looks exactly like one that
+ * records what was MEASURED, and that was the defect: `dokima close
+ * --verify-cmd false` produced `{"command":"false","exitCode":0}`. The CLI now
+ * measures every part it can and says so here; the one part it cannot measure
+ * — commits in a project with no git repo — is recorded as `caller_asserted`,
+ * never as verified.
+ *
+ * Absent on closes made through the agent close gate, which mints its own
+ * signed receipt carrying the re-derived evidence (`runCloseGate`).
+ */
+export interface CloseEvidence {
+  /** The verify command was run by the closer, and `verify.exitCode` is what it returned. */
+  verify: 'ran';
+  /** Whose command ran: the ticket's own `verify`, or (when it declares none) the caller's. */
+  verifySource: 'ticket' | 'caller';
+  /** Every file was found on disk inside the project. */
+  files: 'verified';
+  /** Every SHA resolved to a commit in the project's repo — or there was no repo to ask. */
+  commits: 'verified' | 'caller_asserted';
+}
+
 export interface CloseReceipt {
   ticketId: string;
   ownerId: string;
@@ -34,6 +58,8 @@ export interface CloseReceipt {
   commits: string[];
   files: string[];
   mintedAt: string;
+  /** W23-42: provenance of the evidence above, when the closer measured it. */
+  evidence?: CloseEvidence;
 }
 
 export interface TicketManifest {

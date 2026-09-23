@@ -40,6 +40,7 @@ export { isValidTransition, TRANSITIONS } from './transitions.js';
 export type { LifecycleVerb } from './transitions.js';
 export type {
   AcceptanceCriterion,
+  CloseEvidence,
   CloseReceipt,
   CreateTicketInput,
   Ticket,

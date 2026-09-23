@@ -418,9 +418,7 @@ describe('runPackagedCli', () => {
           '--commits',
           'abc1234',
           '--verify-cmd',
-          'pnpm test',
-          '--verify-exit',
-          '1',
+          'false',
           '--project',
           projectId,
         ],
@@ -429,6 +427,10 @@ describe('runPackagedCli', () => {
     ).toBe(1);
     expect(stderr.join('\n')).toContain('MANIFEST_INVALID');
 
+    // W23-42: close measures in the PROJECT (found through --project, not
+    // cwd), so the claimed file has to exist there and the verify really runs.
+    await fs.mkdir(path.join(projectDir, 'src'), { recursive: true });
+    await fs.writeFile(path.join(projectDir, 'src/a.ts'), 'export {};\n');
     expect(
       await runPackagedCli(
         [
@@ -441,9 +443,7 @@ describe('runPackagedCli', () => {
           '--commits',
           'abc1234',
           '--verify-cmd',
-          'pnpm test',
-          '--verify-exit',
-          '0',
+          'test -s src/a.ts',
           '--project',
           projectId,
         ],
@@ -501,10 +501,7 @@ describe('DEFAULT_PORT is declared once (W12-01)', () => {
       const { fileURLToPath } = await import('node:url');
       const path = await import('node:path');
       const here = path.dirname(fileURLToPath(import.meta.url));
-      const files = [
-        path.join(here, 'cli.ts'),
-        path.join(here, '..', 'api', 'main.ts'),
-      ];
+      const files = [path.join(here, 'cli.ts'), path.join(here, '..', 'api', 'main.ts')];
       const declaring = files.filter((f) => /\b4317\b/.test(readFileSync(f, 'utf8')));
       expect(declaring).toHaveLength(1);
       expect(declaring[0]).toContain('main.ts');
