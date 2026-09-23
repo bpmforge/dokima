@@ -16937,7 +16937,8 @@
       "write_scope": [
         "packages/harbormaster/src/loop-land-session.ts",
         "packages/harbormaster/src/loop-land-session.test.ts",
-        "packages/harbormaster/src/loop-land.test.ts"
+        "packages/harbormaster/src/loop-land.test.ts",
+        "packages/harbormaster/src/loop-land-session-derive.ts"
       ],
       "acceptance": [
         "When a session ends in an INFRA failure (endpoint_failure \u2014 a provider/request timeout) and silentCompletion finds every executable acceptance criterion passing in the worktree, the harness derives the manifest and submits it to the close gate, exactly as it does for a leash, a tool budget or a plain stop",
@@ -16950,7 +16951,8 @@
         "THE MECHANISM, one line in loop-land-session.ts: `if (infraFailure) return { session, closeGate: null, infraFailure, silent: NOTHING_TO_REPORT };` sits BEFORE the provision + silentCompletion + deriveManifest block. It predates W23-35 (W21-83 put it there, for the good reason that an endpoint that died tells you nothing about the work) and W23-35 built on top of it without revisiting it.",
         "W23-35'S OWN ACCEPTANCE NAMES THREE WAYS BACK WITHOUT A MANIFEST \u2014 'leash, tool budget, or a plain stop' \u2014 and an infra timeout is a fourth. The 2026-09-18 runs that motivated the ticket all hit the SESSION leash (maxSessionSeconds 5400), so the request timeout (requestTimeoutMs 900000) was never the path under test, and the fixtures could not have caught it: they inject a manifest-less session directly, never an infra failure.",
         "WHY DERIVING IS STILL RIGHT HERE, and the argument against it stated fairly: an endpoint failure means the harness does not know what the session was doing when it died, so treating it as a report would be wrong. But the derive path does not read the session \u2014 silentCompletion runs the ticket's criteria against the WORKTREE, and the close gate then re-derives everything from git. The evidence is the same evidence whatever killed the process.",
-        "DO NOT WEAKEN THE FREE RETRY. W13-27 exists because two endpoint hiccups used to park a ticket whose work had never been judged. Deriving on infra failure must only ever ADD an outcome (the work was done, so land it); an infra failure whose criteria do not pass must keep costing nothing."
+        "DO NOT WEAKEN THE FREE RETRY. W13-27 exists because two endpoint hiccups used to park a ticket whose work had never been judged. Deriving on infra failure must only ever ADD an outcome (the work was done, so land it); an infra failure whose criteria do not pass must keep costing nothing.",
+        "SCOPE WIDENED MID-WORK, 2026-09-23 (Law 1 \u2014 answered when found, which was after the claim, not at it): the fix took loop-land-session.ts from 398 to 461 lines, past the 400-line CODE_BOOK_PROTOCOL cap. New chapter packages/harbormaster/src/loop-land-session-derive.ts (unowned, new) holds derivedManifestNotice \u2014 moved verbatim plus its W23-41 infra line \u2014 and the hasCommitsSinceBase precheck. The decision itself stays in attemptOnce."
       ]
     },
     {
