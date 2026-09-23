@@ -107,7 +107,8 @@ export const AGENT_SESSION_TOOL_SCHEMAS: readonly ToolSchema[] = [
     name: TOOL_COMMIT,
     description:
       'Commit explicit files on the ticket branch. Refused wholesale if any path falls ' +
-      "outside the ticket's write_scope, is hard-excluded, or escapes the worktree via a symlink.",
+      "outside the ticket's write_scope, is hard-excluded, or escapes the worktree via a symlink. " +
+      "On success returns the new commit's `sha` — put it in the manifest's commits[].",
     parameters: {
       type: 'object',
       properties: {

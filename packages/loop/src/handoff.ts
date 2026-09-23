@@ -60,6 +60,13 @@ const BLOCK_RULE = '═'.repeat(40);
  * strips thinking blocks; making it accept prose would mean accepting an
  * unverifiable claim, which is the opposite of what a manifest is for.
  *
+ * WHERE THE SHA COMES FROM IS SAID OUT LOUD (W23-40). The example used to
+ * read "the commit sha you made", and an agent in a linked worktree cannot read
+ * one: `.git` is a file pointing outside the root it may read. Live 2026-09-22
+ * a local model committed the fix and then deliberated in escalating turns
+ * until the request timeout fired, looking for a SHA it had no way to reach.
+ * The commit tool now returns it, and this block says so.
+ *
  * THE EXAMPLE IS FILLED IN WITH THIS TICKET'S OWN VALUES, not a placeholder. A
  * schema a model has to infer is a schema it will get wrong, and that matters
  * most for a smaller local model — which is the configuration this product
@@ -75,7 +82,7 @@ function returnBlock(ticketId: string, verify: string): string {
       {
         ticket: ticketId,
         files: ['path/you/changed.ts'],
-        commits: ['the commit sha you made'],
+        commits: ['the sha each commit tool call returned'],
         verify: { command: verify, exit: 0 },
         evidence: ['what you checked, and what it showed'],
       },
@@ -83,6 +90,11 @@ function returnBlock(ticketId: string, verify: string): string {
       2,
     ),
     '```',
+    '',
+    "commits[]: every commit tool call returns the new commit's `sha` in its",
+    'result — list those. Never read `.git` for them: in a ticket worktree it',
+    'points outside the files you may read, and the close gate checks the real',
+    'commit set from git itself.',
   ].join('\n');
 }
 

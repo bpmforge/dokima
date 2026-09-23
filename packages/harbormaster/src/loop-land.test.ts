@@ -1844,3 +1844,144 @@ describe('W23-35 — the harness reports for a session that could not', () => {
     expect(bodies.some((b) => b.includes('no completion manifest returned'))).toBe(true);
   });
 });
+
+describe('W23-41 — an infra failure over finished work still lands', () => {
+  vi.setConfig({ testTimeout: LAND_LOOP_TIMEOUT_MS });
+  let fixture: Fixture | undefined;
+
+  afterEach(async () => {
+    await fixture?.cleanup();
+    fixture = undefined;
+  });
+
+  /**
+   * The live 2026-09-22 shape: the session commits the work, then the request
+   * timeout fires mid-deliberation (event 5982, `request timed out after
+   * 900000ms`). `commitsFirst` decides whether the committed check passes.
+   * Calls after `infraCalls` behave like `after` — so a free retry that WAS
+   * taken shows up as a second session, and one that was not never runs.
+   */
+  function workThenTimeout(
+    checkExit: number,
+    options: { readonly infraCalls?: number; readonly outOfScope?: boolean } = {},
+    after: SpawnSession = silentWorkingSpawn(0),
+  ): SpawnSession {
+    const infraCalls = options.infraCalls ?? 1;
+    let calls = 0;
+    return async (input) => {
+      if (calls++ >= infraCalls) return after(input);
+      const relative = 'packages/example/check.mjs';
+      await fs.mkdir(path.join(input.cwd, 'packages/example'), { recursive: true });
+      await fs.writeFile(
+        path.join(input.cwd, relative),
+        `// infra ${calls}\nprocess.exit(${checkExit});\n`,
+      );
+      const files = [relative];
+      if (options.outOfScope) {
+        await fs.writeFile(path.join(input.cwd, 'outside.txt'), 'out of scope\n');
+        files.push('outside.txt');
+      }
+      await git(input.cwd, ['add', '--', ...files]);
+      await git(input.cwd, ['commit', '-m', `test: explicitly run the specs (${calls})`]);
+      throw new ProviderTimeoutError('mtplx', 900_000);
+    };
+  }
+
+  function infraRetries(log: EventLog) {
+    return listEvents(log).filter((e) => e.eventType === 'session.infra_retry');
+  }
+
+  it('RED FIXTURE: the work committed, its criterion passing, the request timed out — lands in_review on the FIRST attempt', async () => {
+    fixture = await setupFixture();
+    const { log } = fixture;
+    seedTicket(log, 'W9-01', {
+      acceptance: [{ id: 'AC-1', text: CHECK_CRITERION, done: false }],
+    });
+    // Anything after the timed-out session must NOT run: a retry over
+    // finished work is the defect.
+    const neverAgain: SpawnSession = async () => {
+      throw new Error('a second session ran over work that was already done');
+    };
+
+    const result = await runLandLoop({
+      ...baseOptions(fixture, workThenTimeout(0, {}, neverAgain)),
+      maxLadderAttempts: 2,
+    });
+
+    const outcome = result.processed[0]!;
+    expect(outcome.landed).toBe(true);
+    expect(outcome.parked).toBe(false);
+    expect(outcome.finalStatus).toBe('in_review');
+    expect(outcome.attempts).toHaveLength(1);
+    expect(outcome.attempts[0]!.closeGate?.ok).toBe(true);
+    expect(outcome.attempts[0]!.session.output).toMatch(/^provider failure: /);
+    expect(infraRetries(log)).toHaveLength(0);
+
+    const ticket = getTicket(log, 'W9-01') as Ticket;
+    const notice = ticket.history
+      .filter((h) => h.verb === 'comment')
+      .map((h) => h.body ?? '')
+      .find((body) => body.includes('derivedBy: harness'));
+    expect(notice).toBeDefined();
+    // Said out loud: the session died of infra, and the evidence is the worktree's.
+    expect(notice).toContain('endpoint_failure');
+  });
+
+  it('companion: an infra failure whose criterion FAILS still takes the free retry (W13-27 unchanged)', async () => {
+    fixture = await setupFixture();
+    const { log } = fixture;
+    seedTicket(log, 'W9-01', {
+      acceptance: [{ id: 'AC-1', text: CHECK_CRITERION, done: false }],
+    });
+
+    const result = await runLandLoop({
+      ...baseOptions(fixture, workThenTimeout(1)),
+      maxLadderAttempts: 2,
+    });
+
+    const outcome = result.processed[0]!;
+    // The timed-out session cost nothing: it is a free retry, and the ONE
+    // judged attempt is the session after it (which does the work and lands).
+    const retries = infraRetries(log);
+    expect(retries).toHaveLength(1);
+    expect((retries[0]?.payload as { kind: string }).kind).toBe('endpoint_failure');
+    expect(outcome.attempts).toHaveLength(1);
+    expect(outcome.attempts[0]!.session.output).not.toMatch(/^provider failure: /);
+    expect(outcome.landed).toBe(true);
+  });
+
+  it('a derived manifest the GATE refuses after an infra failure keeps the free retry — deriving only ever ADDS an outcome', async () => {
+    fixture = await setupFixture();
+    const { log } = fixture;
+    seedTicket(log, 'W9-01', {
+      acceptance: [{ id: 'AC-1', text: CHECK_CRITERION, done: false }],
+    });
+    // The criterion passes, but the commit set breaches write_scope, so the
+    // gate refuses the derived claim. The endpoint then stays down, so every
+    // later session is an infra failure too — nothing but the infra path runs.
+    const stillDown: SpawnSession = async () => {
+      throw new ProviderUnreachableError('mtplx', new Error('ECONNREFUSED'));
+    };
+
+    const result = await runLandLoop({
+      ...baseOptions(fixture, workThenTimeout(0, { outOfScope: true }, stillDown)),
+      maxLadderAttempts: 2,
+    });
+
+    const outcome = result.processed[0]!;
+    // The gate DID judge the derived claim on the infra path, and refused it
+    // for the scope breach…
+    const ticket = getTicket(log, 'W9-01') as Ticket;
+    const bodies = ticket.history
+      .filter((h) => h.verb === 'comment')
+      .map((h) => h.body ?? '');
+    expect(bodies.some((b) => b.includes('derivedBy: harness'))).toBe(true);
+    expect(bodies.some((b) => b.includes('outside.txt'))).toBe(true);
+    // …and the accounting is exactly W13-27's for an endpoint that is down:
+    // every free retry taken, nothing landed.
+    const retries = infraRetries(log);
+    expect(retries).toHaveLength(MAX_FREE_INFRA_RETRIES);
+    expect(retries[0]?.payload as { attempt: number }).toMatchObject({ attempt: 1 });
+    expect(outcome.landed).toBe(false);
+  });
+});

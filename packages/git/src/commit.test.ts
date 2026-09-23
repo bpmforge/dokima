@@ -42,6 +42,29 @@ describe('commitWithScopeCheck', () => {
     expect(log).toBe('feat(W0-06): add new-file');
   });
 
+  it('W23-40: returns the SHA of the commit it just made, so the caller never has to read git metadata', async () => {
+    repo = await createTempRepo();
+    handle = await createWorktree({
+      repoRoot: repo.repoRoot,
+      ticketId: 'W23-40',
+      slug: 'commit returns sha',
+    });
+    const filePath = path.join(handle.path, 'packages', 'git', 'src', 'sha.ts');
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, 'export const sha = true;\n');
+
+    const result = await commitWithScopeCheck(handle, {
+      paths: ['packages/git/src/sha.ts'],
+      message: 'feat(W23-40): sha',
+      writeScope: ['packages/git/**'],
+    });
+
+    const { stdout: head } = await git(handle.path, ['rev-parse', 'HEAD']);
+    expect(result.committed).toBe(true);
+    expect(result.sha).toBe(head.trim());
+    expect(result.sha).toMatch(/^[0-9a-f]{40}$/);
+  });
+
   it('refuses to commit and unstages when a staged path is outside write_scope', async () => {
     repo = await createTempRepo();
     handle = await createWorktree({

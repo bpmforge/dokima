@@ -2,7 +2,8 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { git } from '@dokima/git';
+import { createWorktree, git } from '@dokima/git';
+import { readTool } from './fs-tools.js';
 import { commitTool, verifyTool } from './git-tools.js';
 
 describe('agent-session git-tools', () => {
@@ -38,13 +39,56 @@ describe('agent-session git-tools', () => {
       message: 'feat: add file',
     })) as { ok: boolean; committed: boolean };
 
+    const { stdout: head } = await git(dir, ['rev-parse', 'HEAD']);
     expect(result).toEqual({
       ok: true,
       committed: true,
       files: ['packages/example/file.ts'],
+      sha: head.trim(),
     });
     const { stdout } = await git(dir, ['log', '--oneline', '-1']);
     expect(stdout).toContain('feat: add file');
+  });
+
+  /**
+   * RED FIXTURE, the live 2026-09-22 shape (W23-40). A LINKED worktree — where
+   * `.git` is a FILE pointing at `<repo>/.git/worktrees/<id>`, outside the
+   * worktree root — is the only place this reproduces: a plain repo's `.git/`
+   * sits inside the root. The agent commits, and the SHA it must report comes
+   * back in the tool result; the sandbox that stops it reading the gitdir is
+   * NOT loosened to get there (SC-18).
+   */
+  it('in a LINKED worktree the commit result carries the SHA, and the gitdir stays unreadable', async () => {
+    const dir = await tmpRepo();
+    const worktree = await createWorktree({
+      repoRoot: dir,
+      ticketId: 'W23-40',
+      slug: 'linked worktree sha',
+    });
+    const dotGit = await fs.stat(path.join(worktree.path, '.git'));
+    expect(dotGit.isFile()).toBe(true);
+    await fs.mkdir(path.join(worktree.path, 'src'), { recursive: true });
+    await fs.writeFile(path.join(worktree.path, 'src/a.spec.ts'), 'export {};\n');
+
+    const result = (await commitTool(worktree.path, ['src/**'], {
+      files: ['src/a.spec.ts'],
+      message: 'test: explicitly run src/**/*.spec.ts',
+    })) as { ok: boolean; sha?: string };
+
+    const { stdout: head } = await git(worktree.path, ['rev-parse', 'HEAD']);
+    expect(result.ok).toBe(true);
+    expect(result.sha).toBe(head.trim());
+
+    // Containment is untouched: the gitdir the agent would have had to read
+    // is still refused by the read tool.
+    const gitdir = path.relative(
+      worktree.path,
+      path.join(dir, '.git', 'worktrees', 'W23-40', 'HEAD'),
+    );
+    const read = (await readTool(worktree.path, { path: gitdir }).catch(() => ({
+      ok: false,
+    }))) as { ok: boolean };
+    expect(read.ok).toBe(false);
   });
 
   it('refuses to commit a file outside write_scope, and leaves it uncommitted', async () => {

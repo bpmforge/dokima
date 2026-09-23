@@ -6,6 +6,7 @@ import { validateLaneWriteScopes } from './lanes.js';
 import { loadTickets } from './query.js';
 import { isValidTransition, TRANSITIONS, type LifecycleVerb } from './transitions.js';
 import type {
+  CloseEvidence,
   CloseReceipt,
   Ticket,
   TicketManifest,
@@ -138,15 +139,18 @@ export interface CloseTicketInput {
   files: string[];
   verify: VerifyResult;
   commits: string[];
+  /** W23-42: how the evidence was established; copied onto the receipt verbatim. */
+  evidence?: CloseEvidence;
 }
 
 /**
  * Refuses without a non-empty file list, a passing (`exitCode === 0`) verify
  * result, and at least one attached commit (FR-T2); on success mints a close
  * receipt embedded verbatim in the manifest for `accept` to check later.
- * Trusts the caller's stated evidence structurally — re-running `verify` and
- * stat-ing the claimed files against disk is the out-of-session Harbormaster
- * gate (FR-H1), outside this package's write_scope.
+ * Trusts the caller's stated evidence structurally — this package is sync and
+ * runs nothing — so every caller must MEASURE before it calls: the agent path
+ * through `runCloseGate` (FR-H1), the CLI through `measureCloseEvidence`
+ * (W23-42), which also records how each part was established in `evidence`.
  */
 export function closeTicket(
   log: EventLog,
@@ -180,6 +184,7 @@ export function closeTicket(
       commits: input.commits,
       files: input.files,
       mintedAt,
+      ...(input.evidence ? { evidence: input.evidence } : {}),
     };
     const manifest: TicketManifest = {
       files: input.files,

@@ -17,6 +17,10 @@ import {
 } from './loop-land-repetition.js';
 import { runCloseGate, type CloseGateResult } from './loop-gates.js';
 import { DEFAULT_VERIFY_TIMEOUT_MS } from './loop-gates-types.js';
+import {
+  derivedManifestNotice,
+  hasCommitsSinceBase,
+} from './loop-land-session-derive.js';
 import { extractSessionCheckpoint } from './agent-session/session-checkpoint.js';
 import type { LandLoopOptions } from './loop-land.js';
 import type { AttemptFeedback } from './loop-handoff.js';
@@ -131,14 +135,23 @@ export async function attemptOnce(
     spawn,
   });
   if (!session.manifest) {
-    // NOT infra when `infraFailure` is null: a session that answered without a
-    // Completion Manifest failed the contract, and that must keep costing an
-    // attempt or a real defect retries forever.
-    //
-    // W21-83: but ask whether it finished anyway. Provision first for the same
-    // reason the gate path does — the criteria cannot run against a toolchain
-    // that is not installed.
-    if (infraFailure)
+    /**
+     * NOT infra when `infraFailure` is null: answering without a manifest fails
+     * the contract and keeps costing an attempt. W21-83: but ask whether it
+     * finished anyway, provisioning first so the criteria have a toolchain.
+     * W23-41: an infra failure is ASKED too. The early return W21-83 put here
+     * ("an endpoint that died tells you nothing about the session") predated
+     * W23-35 and hid its derive path: live 2026-09-22 the fix was committed,
+     * its criterion passed, the 900 s request timeout fired, and the harness
+     * retried over finished work. The argument does not apply to deriving —
+     * silentCompletion is evidence about the WORKTREE, and the gate re-derives
+     * everything from git; neither reads the session. Deriving only ADDS an
+     * outcome: no commits or a declined derive return exactly as before (free
+     * retry, W13-27, and no criteria run over an untouched worktree); a gate
+     * that accepts clears `infraFailure` and lands; a gate that refuses keeps
+     * it, so the attempt still costs nothing.
+     */
+    if (infraFailure && !(await hasCommitsSinceBase(worktree.path, baseRef)))
       return { session, closeGate: null, infraFailure, silent: NOTHING_TO_REPORT };
     await provisionWorktree({
       worktreePath: worktree.path,
@@ -183,7 +196,14 @@ export async function attemptOnce(
       found: silent,
       timeoutMs,
     });
-    if (!derived) return { session, closeGate: null, infraFailure, silent };
+    // W23-41: the infra path's accounting is byte-identical to before.
+    if (!derived)
+      return {
+        session,
+        closeGate: null,
+        infraFailure,
+        silent: infraFailure ? NOTHING_TO_REPORT : silent,
+      };
     // The ticket's own history says so before the gate runs, so the derivation
     // is legible whether the gate then accepts or refuses (acceptance 2).
     commentTicket(
@@ -191,7 +211,7 @@ export async function attemptOnce(
       {
         ticketId: ticket.id,
         actorId: options.actorId,
-        body: derivedManifestNotice(derived.files, derived.commits),
+        body: derivedManifestNotice(derived.files, derived.commits, infraFailure),
       },
       { runId: options.runId ?? null, ...(options.now ? { now: options.now } : {}) },
     );
@@ -213,7 +233,13 @@ export async function attemptOnce(
       memoryEligibleRoles: options.memoryEligibleRoles,
       now: options.now,
     });
-    return { session, closeGate: derivedGate, infraFailure, silent };
+    // W23-41: a land clears the flag (no free retry over in_review work).
+    return {
+      session,
+      closeGate: derivedGate,
+      infraFailure: derivedGate.ok ? null : infraFailure,
+      silent,
+    };
   }
   /**
    * W21-74: provision AGAIN, now that the session has run.
@@ -266,30 +292,6 @@ export async function attemptOnce(
     now: options.now,
   });
   return { session, closeGate, infraFailure, silent: NOTHING_TO_REPORT };
-}
-
-/**
- * The ticket-history row a derivation writes before the gate runs (W23-35).
- *
- * Deliberately a `ticket.commented` event rather than a new event type or a
- * new receipt field: the gate already copies `manifest.evidence` into the
- * close receipt's payload verbatim, so the receipt half of acceptance 2 costs
- * the gate nothing, and `commentTicket` is the row the gate itself writes for
- * every refusal. Two existing channels, no new trust mode.
- */
-export function derivedManifestNotice(
-  files: readonly string[],
-  commits: readonly string[],
-): string {
-  return [
-    'Completion Manifest DERIVED BY THE HARNESS (derivedBy: harness, W23-35).',
-    'This session returned no manifest; every executable acceptance criterion',
-    'passed in the worktree, so the manifest below was derived from git and',
-    'submitted to the ordinary close gate, which verifies it exactly as it',
-    "verifies an agent's — the manifest was never the thing the gate trusted.",
-    `- commits: ${commits.length}`,
-    `- files: ${files.join(', ')}`,
-  ].join('\n');
 }
 
 /**

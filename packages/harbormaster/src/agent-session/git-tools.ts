@@ -107,7 +107,9 @@ export async function commitTool(
       violations: result.violations,
     };
   }
-  return { ok: true, committed: true, files };
+  // W23-40: the SHA rides back in the result, so the agent can fill
+  // manifest.commits[] without reading git metadata it may not read.
+  return { ok: true, committed: true, files, sha: result.sha };
 }
 
 export async function verifyTool(

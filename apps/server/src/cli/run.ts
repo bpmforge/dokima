@@ -3,6 +3,7 @@ import {
   claimTicket,
   closeTicket,
   commentTicket,
+  isValidTransition,
   createTicketValidatingLanes,
   rejectTicket,
   retargetTicketAcceptance,
@@ -26,7 +27,13 @@ import {
   UnknownProjectError,
 } from './db.js';
 import { ensureActorIdentity } from './identity.js';
-import { CliUsageError, parseCliArgs, type SimpleVerb } from './parse.js';
+import { measureCloseEvidence, projectRootFor } from './close-evidence.js';
+import {
+  CliUsageError,
+  parseCliArgs,
+  type CliCommand,
+  type SimpleVerb,
+} from './parse.js';
 import { executeRunCommand } from './run-cmd.js';
 import { checkChain, renderChainResult } from './verify-chain.js';
 
@@ -77,6 +84,57 @@ function reportVerbError(err: unknown, io: CliIO): number {
     return 1;
   }
   throw err;
+}
+
+/**
+ * W23-42: close with MEASURED evidence — the verify run, the files stat-ed, the
+ * commits resolved (close-evidence.ts). A ticket this actor cannot close is
+ * refused by `closeTicket` itself BEFORE anything runs: nobody's verify command
+ * executes for a close that could never happen. That refusal path passes a
+ * failing verify, so even a lifecycle check that somehow passed could not
+ * record unmeasured evidence.
+ */
+async function closeMeasured(
+  log: Parameters<typeof closeTicket>[0],
+  command: Extract<CliCommand, { kind: 'close' }>,
+  root: string,
+  io: CliIO,
+): Promise<Ticket> {
+  const base = {
+    ticketId: command.ticketId,
+    actorId: command.actorId,
+    files: command.files,
+    commits: command.commits,
+  };
+  const current = listTickets(log).find((t) => t.id === command.ticketId);
+  if (
+    !current ||
+    !isValidTransition('close', current.status) ||
+    current.ownerId !== command.actorId
+  ) {
+    return closeTicket(
+      log,
+      { ...base, verify: { command: command.verifyCommand, exitCode: 1 } },
+      { now: io.now },
+    );
+  }
+  const measured = await measureCloseEvidence(root, current, {
+    files: command.files,
+    commits: command.commits,
+    verifyCommand: command.verifyCommand,
+  });
+  if (!measured.ok) {
+    throw new TicketError(
+      'MANIFEST_INVALID',
+      command.ticketId,
+      `close refused: ${measured.reasons.join('; ')}`,
+    );
+  }
+  return closeTicket(
+    log,
+    { ...base, verify: measured.verify, evidence: measured.evidence },
+    { now: io.now },
+  );
 }
 
 /** CLI entry point over the ticket verbs + projections (BLUEPRINT §3.6, "a board that cannot lie, moved by CLI"). */
@@ -160,18 +218,17 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
       case 'close': {
         ensureActorIdentity(log, command.actorId, io.now);
         try {
-          const ticket = closeTicket(
+          const ticket = await closeMeasured(
             log,
-            {
-              ticketId: command.ticketId,
-              actorId: command.actorId,
-              files: command.files,
-              commits: command.commits,
-              verify: command.verify,
-            },
-            { now: io.now },
+            command,
+            projectRootFor(dbPath, io.cwd),
+            io,
           );
-          io.stdout(`${ticket.id} close -> ${ticket.status}`);
+          const asserted =
+            ticket.manifest?.closeReceipt.evidence?.commits === 'caller_asserted'
+              ? ' (commits caller-asserted: no git repo to check them against)'
+              : '';
+          io.stdout(`${ticket.id} close -> ${ticket.status}${asserted}`);
           return 0;
         } catch (err) {
           return reportVerbError(err, io);
@@ -190,9 +247,7 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
             },
             { now: io.now },
           );
-          io.stdout(
-            `${ticket.id} write_scope -> ${ticket.writeScope.join(', ')}`,
-          );
+          io.stdout(`${ticket.id} write_scope -> ${ticket.writeScope.join(', ')}`);
           return 0;
         } catch (err) {
           return reportVerbError(err, io);
@@ -288,7 +343,11 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
         try {
           const ticket = rejectTicket(
             log,
-            { ticketId: command.ticketId, actorId: command.actorId, reason: command.reason },
+            {
+              ticketId: command.ticketId,
+              actorId: command.actorId,
+              reason: command.reason,
+            },
             { now: io.now },
           );
           io.stdout(`${ticket.id} reject -> ${ticket.status}`);
