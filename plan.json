@@ -16948,6 +16948,74 @@
         "WHY DERIVING IS STILL RIGHT HERE, and the argument against it stated fairly: an endpoint failure means the harness does not know what the session was doing when it died, so treating it as a report would be wrong. But the derive path does not read the session \u2014 silentCompletion runs the ticket's criteria against the WORKTREE, and the close gate then re-derives everything from git. The evidence is the same evidence whatever killed the process.",
         "DO NOT WEAKEN THE FREE RETRY. W13-27 exists because two endpoint hiccups used to park a ticket whose work had never been judged. Deriving on infra failure must only ever ADD an outcome (the work was done, so land it); an infra failure whose criteria do not pass must keep costing nothing."
       ]
+    },
+    {
+      "id": "W23-42",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [
+        "US-402",
+        "US-202"
+      ],
+      "depends_on": [],
+      "lane": "core",
+      "module": "cli",
+      "points": 3,
+      "title": "`dokima close` records caller-asserted evidence as verified \u2014 `--verify-cmd false` closes and the receipt says exit 0",
+      "write_scope": [
+        "apps/server/src/cli/close-evidence.ts",
+        "apps/server/src/cli/close-evidence.test.ts",
+        "apps/server/src/cli/run.ts",
+        "apps/server/src/cli/run.test.ts",
+        "apps/server/src/cli/parse.ts",
+        "apps/server/src/cli/parse.test.ts",
+        "apps/server/src/bootstrap/cli.test.ts",
+        "packages/tickets/src/types.ts",
+        "packages/tickets/src/verbs.ts",
+        "packages/harbormaster/src/index.ts"
+      ],
+      "acceptance": [
+        "`dokima close` RUNS the verify command itself (the sandboxed `reRunVerify` the close gate uses) and records the exit code it actually returned; a non-zero exit refuses the close. The command run is the ticket's own `verify` when it declares one (SC-02, as the agent gate does), and the caller's `--verify-cmd` only when it does not \u2014 and the receipt says which",
+        "`--verify-exit` is refused as a usage error naming why: the exit is measured, never supplied",
+        "Every `--files` path must exist inside the project (the gate's `classifyManifestFiles`, symlink escapes refused), checked AFTER verify runs; a missing one refuses the close",
+        "Every `--commits` SHA must resolve to a commit in the project's git repo; an unknown one refuses the close. When the project is not a git repo, the close proceeds and the receipt marks the commits caller-asserted \u2014 never as verified",
+        "A host with no sandbox refuses the close by name (never a stack trace, never an unsandboxed run)",
+        "Red fixture: the 2026-09-23 repro \u2014 `close T --files x.txt --commits deadbeef\u2026 --verify-cmd false` \u2014 which today succeeds and stores `{\"command\":\"false\",\"exitCode\":0}`, is refused"
+      ],
+      "notes": [
+        "FOUND 2026-09-23 in the v1 release review. `parseCliArgs` defaults `--verify-exit` to 0 (parse.test.ts:66) and `closeTicket` trusts its caller structurally (verbs.ts:143-148), so the CLI minted a close receipt for a verify that never ran, files that do not exist, and a commit that is not in the repo. Founder decision the same day: the receipt must never record caller-asserted evidence as verified.",
+        "SAME CLASS, DIFFERENT DOOR: the HTTP verb route (`POST /api/v1/tickets/:id/close`, board-routes.ts fireVerb) takes `verify.exitCode` from the request body the same way. Filed as W23-43 rather than widened here \u2014 it needs the registry-resolved project root and its own route tests, and the founder scoped this fix to the CLI.",
+        "OVERLAP WITH W23-37, NOT THE SAME CODE: W23-37 is a pipeline-authored `test -s` verify that the close gate runs faithfully but that checks too little. This ticket is a verify that was never run at all. Different files, different defect."
+      ]
+    },
+    {
+      "id": "W23-43",
+      "role": "coding-agent",
+      "phase": 23,
+      "status": "todo",
+      "stories": [
+        "US-402",
+        "US-202"
+      ],
+      "depends_on": [
+        "W23-42"
+      ],
+      "lane": "core",
+      "module": "tickets",
+      "points": 3,
+      "title": "the HTTP close verb takes `verify.exitCode` from the request body \u2014 the same caller-asserted receipt W23-42 closed on the CLI",
+      "write_scope": [
+        "apps/server/src/api/server/board-routes.ts",
+        "apps/server/src/api/server/board-routes.test.ts"
+      ],
+      "acceptance": [
+        "`POST /api/v1/tickets/:id/close` runs the verify command and checks files and commits exactly as `dokima close` does after W23-42 (reusing its close-evidence module, never a parallel verifier), and never records a body-supplied exit code",
+        "Red fixture: a close whose body claims `{command: \"false\", exitCode: 0}` is refused"
+      ],
+      "notes": [
+        "FILED 2026-09-23 from W23-42 (Law 1: found at claim, filed at claim). board-routes.ts fireVerb builds `verify` from `body.verify.exitCode`. Whether this blocks v1 is a founder call: the route is operator-authenticated, but a receipt is a receipt whoever typed the number."
+      ]
     }
   ]
 }
