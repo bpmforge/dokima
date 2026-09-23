@@ -29,6 +29,7 @@ import {
   pageMountWarning,
   boardUnreadableGap,
   nodePinMismatch,
+  nodeRequirementMismatch,
   testSiblingWarning,
   validateModels,
   wave,
@@ -571,6 +572,41 @@ describe('conductor-lib: misc pure helpers', () => {
       verdict: 'APPROVE',
     });
     expect(parseJson('not json at all')).toBeNull();
+  });
+});
+
+describe('conductor-lib: engines.node wins over the .nvmrc pin (W23-47)', () => {
+  it('RED FIXTURE: Node 24 is accepted when engines.node names it, though .nvmrc pins 22', () => {
+    expect(
+      nodeRequirementMismatch('v24.14.0', { engines: '22.x || 24.x', pin: '22' }),
+    ).toBeNull();
+    expect(
+      nodeRequirementMismatch('v22.23.1', { engines: '22.x || 24.x', pin: '22' }),
+    ).toBeNull();
+  });
+
+  it('refuses a major engines.node does not name, naming the supported lines', () => {
+    expect(
+      nodeRequirementMismatch('v26.0.0', { engines: '22.x || 24.x', pin: '22' }),
+    ).toBe('node v26.0.0 is not a supported line (engines.node: 22.x || 24.x)');
+    // The prefix trap, one level up: v2 is not 22.
+    expect(nodeRequirementMismatch('v2.1.0', { engines: '22.x || 24.x' })).toBe(
+      'node v2.1.0 is not a supported line (engines.node: 22.x || 24.x)',
+    );
+  });
+
+  it('falls back to the pin, unchanged, when there is no engines.node', () => {
+    expect(nodeRequirementMismatch('v24.14.0', { pin: '22' })).toBe(
+      'node v24.14.0 != v22.x',
+    );
+    expect(
+      nodeRequirementMismatch('v22.1.0', { engines: undefined, pin: '22\n' }),
+    ).toBeNull();
+  });
+
+  it('skips the check when neither is declared', () => {
+    expect(nodeRequirementMismatch('v26.0.0', {})).toBeNull();
+    expect(nodeRequirementMismatch('v26.0.0', { engines: '', pin: '' })).toBeNull();
   });
 });
 

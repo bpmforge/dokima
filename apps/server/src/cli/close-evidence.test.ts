@@ -137,7 +137,40 @@ describe('measureCloseEvidence (W23-42)', () => {
         verifySource: 'ticket',
         files: 'verified',
         commits: 'verified',
+        sandbox: 'isolated',
       },
     });
+  });
+
+  it('RED FIXTURE (W23-44): with the waiver, a host that cannot sandbox CLOSES, and the receipt says the verify ran unsandboxed', async () => {
+    const { root, sha } = await repoWithFile();
+    sandbox.available = false;
+
+    const result = await measureCloseEvidence(
+      root,
+      { verify: null },
+      {
+        files: ['x.txt'],
+        commits: [sha],
+        verifyCommand: 'true',
+        unsandboxedWaiver: true,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.evidence.sandbox).toBe('waived');
+  });
+
+  it('W23-44: without the waiver the refusal names the variable that would lift it', async () => {
+    const { root, sha } = await repoWithFile();
+    sandbox.available = false;
+    const result = await measureCloseEvidence(
+      root,
+      { verify: null },
+      { files: ['x.txt'], commits: [sha], verifyCommand: 'true' },
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok)
+      expect(result.reasons[0]).toContain('DOKIMA_ALLOW_UNSANDBOXED_VERIFY');
   });
 });

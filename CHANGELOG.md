@@ -18,11 +18,41 @@ name what a change means for that boundary, not just what moved.
   it declares one), checks every `--files` path exists in the project, and
   resolves every `--commits` SHA in the project's git repo; any failure refuses
   the close. Without a git repo the commits are recorded on the receipt as
-  caller-asserted, never as verified. **Breaking:** `--verify-exit` is removed
-  and is now a usage error — the exit code is measured, never supplied.
+  caller-asserted, never as verified.
+- **The HTTP close verb measures the same way.** `POST
+/api/v1/tickets/:id/close` runs the verify, stats the files and resolves the
+  commits in the registered project, exactly as `dokima close` does; a
+  `verify.exitCode` in the request body is ignored, and the receipt carries the
+  same evidence block.
+- **`DOKIMA_ALLOW_UNSANDBOXED_VERIFY` now does what it says, everywhere.** On a
+  host with no process sandbox it was honoured at a build run's preflight and
+  nowhere after it — every verify then failed with "sandbox unavailable" — and
+  `dokima close` refused outright. With the waiver set, build runs and both
+  close doors now run verify with network allowed and the environment still
+  cleaned; without it, they still refuse. Close receipts record which it was
+  (`evidence.sandbox`: `isolated` or `waived`). A host that can sandbox is
+  unaffected.
+- **`dokima doctor` opens a real database.** A new `native-db` check loads
+  better-sqlite3 and opens (then removes) a throwaway database, so an install
+  made with `ignore-scripts=true` — no native binary — now fails by name with
+  the fix, instead of reporting `doctor: OK`.
+
+### Removed
+
+- **Breaking CLI change: `dokima close --verify-exit` is gone.** The exit code
+  is measured, never supplied, so the flag is now a usage error that says what
+  to do instead: drop `--verify-exit` and keep passing `--verify-cmd <command>`
+  — close runs it and records what it returns, and when the ticket declares
+  its own `verify`, that runs in its place. No 1.x release carrying the flag
+  was ever published to npm (`npm view @bpmforge/dokima` is a 404; v1.0.0 is a
+  git tag only), so no installed CLI is affected; a script written against the
+  source checkout must drop the flag.
 
 ### Fixed
 
+- A pipeline run's progress record and the fleet registry are written
+  atomically, so a status poll can no longer catch either mid-write and report
+  a live run as missing (404) or the registry as corrupt.
 - Autonomous sessions can report their own commits: the agent's `commit` tool
   returns the new commit's `sha`, and the handoff says so (in a linked worktree
   the agent cannot read `.git`, and was being asked to).

@@ -8,7 +8,6 @@ import {
   acceptTicket,
   rejectTicket,
   claimTicket,
-  closeTicket,
   commentTicket,
   loadTickets,
   releaseTicket,
@@ -23,6 +22,7 @@ import {
   extractIdempotencyKey,
   IdempotencyStore,
 } from '../idempotency.js';
+import { closeWithMeasuredEvidence, projectRootFor } from '../../cli/close-evidence.js';
 import { computeFleetRegistryPath } from '../projects.js';
 import type { WsHub } from '../ws-hub.js';
 import { ensureOperatorIdentity, OPERATOR_ACTOR_ID } from './board-actor.js';
@@ -143,12 +143,13 @@ interface VerbBody {
   commits?: unknown;
 }
 
-function fireVerb(
+async function fireVerb(
   log: EventLog,
   verb: LifecycleVerb,
   ticketId: string,
   body: VerbBody,
-): Ticket {
+  projectPath: string,
+): Promise<Ticket> {
   const actorId = OPERATOR_ACTOR_ID;
   switch (verb) {
     case 'claim':
@@ -172,13 +173,21 @@ function fireVerb(
         body: typeof body.body === 'string' ? body.body : '',
       });
     case 'close': {
+      // W23-43: the body names a verify COMMAND; its `exitCode`, if sent, is
+      // ignored. The close runs the command (the ticket's own verify when it
+      // declares one), stats the files and resolves the commits in the
+      // registered project — the same path `dokima close` takes (W23-42), so a
+      // body claiming `{command: "false", exitCode: 0}` is refused, and the
+      // receipt carries the evidence block saying how each part was measured.
       const files = Array.isArray(body.files) ? (body.files as string[]) : [];
       const commits = Array.isArray(body.commits) ? (body.commits as string[]) : [];
-      const verify = {
-        command: typeof body.verify?.command === 'string' ? body.verify.command : '',
-        exitCode: typeof body.verify?.exitCode === 'number' ? body.verify.exitCode : 1,
-      };
-      return closeTicket(log, { ticketId, actorId, files, commits, verify });
+      const verifyCommand =
+        typeof body.verify?.command === 'string' ? body.verify.command : '';
+      return closeWithMeasuredEvidence(
+        log,
+        { ticketId, actorId, files, commits, verifyCommand },
+        projectPath,
+      );
     }
   }
 }
@@ -227,7 +236,15 @@ function registerVerbRoute(
         const body = (request.body ?? {}) as VerbBody;
         let updated: Ticket;
         try {
-          updated = fireVerb(log, verb, ticketId, body);
+          // `stateDbPath` is always `<project>/.dokima/state.db`, so the root
+          // is the registered project directory — never the server's cwd.
+          updated = await fireVerb(
+            log,
+            verb,
+            ticketId,
+            body,
+            projectRootFor(log.path, ''),
+          );
         } catch (err) {
           if (err instanceof TicketError) {
             const { status, body: problemBody } = ticketErrorToProblem(

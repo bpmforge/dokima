@@ -109,6 +109,31 @@ describe('parseCliArgs', () => {
     );
   });
 
+  it('W23-48: an old caller passing --verify-exit WITHOUT --verify-cmd is told what to do instead, not "requires --verify-cmd"', () => {
+    let message = '';
+    try {
+      parseCliArgs([
+        'close',
+        'W1-01',
+        '--actor',
+        'maker-1',
+        '--files',
+        'a.ts',
+        '--commits',
+        'abc',
+        '--verify-exit',
+        '0',
+      ]);
+    } catch (err) {
+      message = (err as Error).message;
+    }
+    expect(message).toMatch(/--verify-exit is no longer accepted/);
+    // The replacement, named: drop the flag, pass the command to run.
+    expect(message).toMatch(/drop --verify-exit/i);
+    expect(message).toMatch(/--verify-cmd <command>/);
+    expect(message).toMatch(/ticket's own verify/);
+  });
+
   it('close refuses a non-integer --verify-exit', () => {
     expect(() =>
       parseCliArgs([

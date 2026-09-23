@@ -2425,3 +2425,66 @@ fixtures are the evidence.
 Gate on Node 22: lint 0, typecheck 0, **5436 tests** (616 files, 2 skipped),
 **76 e2e**, 6 validators + temp-leaks clean. **Board: 534 done · 5 todo · 1
 blocked (W12-44).**
+
+## 2026-09-23 (afternoon) — v1 release hardening (`fix/v1-release-hardening`)
+
+**W23-43 done — the HTTP close measures, too.** `POST /api/v1/tickets/:id/close`
+took `verify.exitCode` from the body; a body claiming `{command: "false",
+exitCode: 0}` closed the ticket (RED: 200, now 409). `closeWithMeasuredEvidence`
+in close-evidence.ts is the one path both doors call; HTTP receipts carry the
+evidence block. Cheap refusals come first, so a board drag stays an instant 409.
+
+**W23-44 done — the unsandboxed waiver was preflight-only.** Proved with
+sandbox-exec off PATH: the build run's preflight passed and appended
+`sandbox.waived`, then every `reRunVerify` threw `SandboxUnavailableError`.
+harbormaster now has an explicit `setUnsandboxedVerifyWaiver()` that
+`runSandboxed` honours only where isolation is unavailable (network allowed,
+env still cleaned); apps/server reads the variable in one place. `dokima close`
+and the HTTP close honour it and record `sandbox: 'waived'` on the receipt
+(`'isolated'` otherwise). Supersedes W23-42's no-sandbox acceptance for the
+waived case only.
+
+**W23-45 done — doctor opens a real database.** Live RED on the packed 1.0.1
+tarball installed with `--ignore-scripts`: no better-sqlite3 binary, `doctor:
+OK`. Now `[FAIL] native-db` names ignore-scripts and the fix; the named `npm
+rebuild better-sqlite3 --ignore-scripts=false` turns it OK.
+
+**W23-46 done — the nightly's red was a torn read.** Every red nightly since
+09-16 (W13-39 rejoin; guided sample) was a 404 from `GET
+/pipeline/runs/:runId`, read from the uploaded DOM snapshots: the run record
+was truncate-then-written while the poll read it. Atomic temp+rename writes
+for run records and fleet.json (RED 6/150 torn reads → 0). The 09-22 ENOENT on
+`.dokima/blueprint.md` was downstream (afterEach deleting WORKSPACE under a
+still-running job). Nightly now runs Node 22 and 24; a dispatched run on the
+branch (35902007196) was green on both. P6-22 stays open for 10 green nights.
+
+**W23-47, W23-48 done.** The conductor accepts any line `engines.node` names;
+`--verify-exit` is refused first with its replacement named, and CHANGELOG
+records the removal as breaking (nothing 1.x reached npm).
+
+**Live local-model autorun on a THROWAWAY copy of Vault** (LM Studio,
+`localhost:1234`; the real Vault was not touched; the copy's `model_matrix` was
+edited by SQL and PLAN-vault-000 was accepted by hand on the copy to unblock
+it). Run A, maker `qwen/qwen3.8-27b`: 0 landed, 3 parked — an unidentified
+client pinging `qwen/qwen3-coder-next` made LM Studio evict the maker at each
+ticket start, and the three free retries all 400'd inside a second (**W23-50**
+filed). Run B, maker `qwen/qwen3-coder-next`: PLAN-vault-000a's derived
+manifest was correctly refused (its criterion passes at base); 002/002c
+refused to start on branches from a different base. Run C, a fresh ticket
+(PLAN-vault-010, toHex + spec): **landed in 1 attempt**, 26 turns — the session
+returned its OWN Completion Manifest naming commit `b6d9f1e2…`, the branch's
+real HEAD (W23-40 live), close receipt `0815ef9e…` minted, ticket in_review.
+Machine review parsed (W23-49 not reproduced) but said CONTRADICTED 4/10 →
+escalate: tool-sast can never run (`semgrep --config auto --metrics=off` is
+refused by semgrep) and tool-deps counted 14 pre-existing findings
+(**W23-51** filed; a v1 blocker candidate — while SAST errors, no review can
+auto-accept). Not `done`: acceptance is a human verb. The pinging client is
+unattributed: not in src or the bundle, and neither the e2e nor the unit suite
+produced one when run alone. The unit suite DID make a real LM Studio call —
+`product-loop-berths.test.mjs` spawned the CLI with the developer's
+`~/.dokima` (Law 9a; **W23-52**, fixed: throwaway DOKIMA_HOME, RED 2 requests
+→ 0). Runs A ran main's dist (a766f181); B and C ran this branch's (52c7aeb6).
+
+Gate on Node 22: lint 0, typecheck 0, **5458 tests** (619 files, 2 skipped),
+**76 e2e**, 6 validators + temp-leaks clean. **Board: 541 done · 7 todo · 1
+blocked (W12-44).**

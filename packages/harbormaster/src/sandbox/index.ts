@@ -31,9 +31,43 @@ export async function runSandboxed(
   options: SandboxRunOptions,
 ): Promise<SandboxRunResult> {
   const profile = options.profile ?? 'process';
-  return profile === 'container'
-    ? runInContainerSandbox(options)
-    : runInProcessSandbox(options);
+  if (profile === 'container') return runInContainerSandbox(options);
+  // W23-44: the waiver applies only where isolation is genuinely unavailable.
+  // It lifts the network denial — the one part that needs a platform wrapper
+  // — and keeps everything else: the cleaned env, the process group, the
+  // timeout. A host that CAN isolate is never affected by it.
+  if (isUnsandboxedVerifyWaived()) {
+    return runInProcessSandbox({ ...options, allowNetwork: true });
+  }
+  return runInProcessSandbox(options);
+}
+
+/**
+ * W23-44: the DOKIMA_ALLOW_UNSANDBOXED_VERIFY waiver, as an explicit switch.
+ *
+ * The waiver was honoured at the build run's preflight — which appended
+ * `sandbox.waived` and said "running verify UNSANDBOXED" — and nowhere after
+ * it: every sandboxed call still went through the process profile's own
+ * probe and threw `SandboxUnavailableError`. Proved by running it with
+ * sandbox-exec off PATH before this was written.
+ *
+ * A switch rather than a parameter because the gate reaches this module from
+ * ten call sites (the close gate's verify, the acceptance and base probes,
+ * review, the security scanners); threading a flag through each would leave
+ * the next new caller unwaived by default — the shape of the original defect.
+ * This package never reads the environment: `apps/server` switches it on, and
+ * only after recording the waiver (`sandbox-preflight.ts`) or putting it on
+ * the close receipt (`close-evidence.ts`).
+ */
+let unsandboxedVerifyWaiver = false;
+
+export function setUnsandboxedVerifyWaiver(on: boolean): void {
+  unsandboxedVerifyWaiver = on;
+}
+
+/** True when a sandboxed run would actually run unisolated under the waiver. */
+export function isUnsandboxedVerifyWaived(): boolean {
+  return unsandboxedVerifyWaiver && !isProcessSandboxAvailable();
 }
 
 /**

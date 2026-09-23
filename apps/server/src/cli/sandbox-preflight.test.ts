@@ -10,12 +10,16 @@ import { createIdentity, listEvents, openEventLog, type EventLog } from '@dokima
 import { assertSandboxOrWaiver } from './sandbox-preflight.js';
 
 vi.mock('@dokima/harbormaster', async () => {
-  const actual = await vi.importActual<typeof import('@dokima/harbormaster')>(
-    '@dokima/harbormaster',
-  );
-  return { ...actual, isSandboxProfileAvailable: vi.fn() };
+  const actual =
+    await vi.importActual<typeof import('@dokima/harbormaster')>('@dokima/harbormaster');
+  return {
+    ...actual,
+    isSandboxProfileAvailable: vi.fn(),
+    setUnsandboxedVerifyWaiver: vi.fn(),
+  };
 });
-const { isSandboxProfileAvailable } = await import('@dokima/harbormaster');
+const { isSandboxProfileAvailable, setUnsandboxedVerifyWaiver } =
+  await import('@dokima/harbormaster');
 
 const dirs: string[] = [];
 let log: EventLog | undefined;
@@ -25,7 +29,9 @@ afterEach(async () => {
   log = undefined;
   vi.resetAllMocks();
   delete process.env.DOKIMA_ALLOW_UNSANDBOXED_VERIFY;
-  await Promise.all(dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })));
+  await Promise.all(
+    dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
+  );
 });
 
 async function openLog(): Promise<EventLog> {
@@ -39,16 +45,19 @@ async function openLog(): Promise<EventLog> {
 
 function io() {
   const stderr: string[] = [];
-  return { stderr, io: { cwd: '.', stdout: () => {}, stderr: (l: string) => stderr.push(l) } };
+  return {
+    stderr,
+    io: { cwd: '.', stdout: () => {}, stderr: (l: string) => stderr.push(l) },
+  };
 }
 
 describe('assertSandboxOrWaiver (W13-25)', () => {
   it('lets a run proceed when the host can isolate', async () => {
     vi.mocked(isSandboxProfileAvailable).mockReturnValue(true);
     const sink = io();
-    expect(assertSandboxOrWaiver(await openLog(), 'worker-1', 'run-1', sink.io as never)).toBe(
-      true,
-    );
+    expect(
+      assertSandboxOrWaiver(await openLog(), 'worker-1', 'run-1', sink.io as never),
+    ).toBe(true);
     expect(sink.stderr).toEqual([]);
   });
 
@@ -81,12 +90,17 @@ describe('assertSandboxOrWaiver (W13-25)', () => {
       const opened = await openLog();
       const sink = io();
 
-      expect(assertSandboxOrWaiver(opened, 'worker-1', 'run-1', sink.io as never)).toBe(true);
+      expect(assertSandboxOrWaiver(opened, 'worker-1', 'run-1', sink.io as never)).toBe(
+        true,
+      );
       const waived = listEvents(opened).filter((e) => e.eventType === 'sandbox.waived');
       expect(waived).toHaveLength(1);
       expect(waived[0]?.runId).toBe('run-1');
       // And it says so out loud, not only in the log.
       expect(sink.stderr.join('\n')).toMatch(/UNSANDBOXED/);
+      // W23-44 RED: and the verify runs it waives actually get the waiver —
+      // before this, the preflight passed and every reRunVerify threw.
+      expect(setUnsandboxedVerifyWaiver).toHaveBeenCalledWith(true);
     },
   );
 });

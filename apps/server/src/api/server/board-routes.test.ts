@@ -1,4 +1,5 @@
-import { promises as fs } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -370,6 +371,162 @@ describe('board routes — GET tickets / POST verbs', () => {
   });
 });
 
+/**
+ * W23-43: the HTTP close measures its evidence exactly as `dokima close` does
+ * (W23-42) — it runs the verify, stats the files and resolves the commits in
+ * the registered project's repo — and never records a body-supplied exit code.
+ */
+describe('POST /tickets/:id/close measures its evidence (W23-43)', () => {
+  const dirs: string[] = [];
+  let active: ApiServer | undefined;
+
+  afterEach(async () => {
+    await active?.app.close();
+    active = undefined;
+    await Promise.all(
+      dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
+    );
+  });
+
+  const port = PORT + 3;
+  const headers = (key: string) => ({
+    host: `127.0.0.1:${port}`,
+    authorization: `Bearer ${TOKEN}`,
+    'idempotency-key': key,
+  });
+
+  /** A registered project, a real committed file, and T-9 in progress under the operator. */
+  async function projectWithWork(): Promise<{
+    app: ApiServer['app'];
+    id: string;
+    projectDir: string;
+    sha: string;
+  }> {
+    const fleetHome = await tmpDir('dokima-measured-close-');
+    dirs.push(fleetHome);
+    const server = await buildApiServer({
+      token: TOKEN,
+      port,
+      isDbOpen: () => true,
+      logger: false,
+      fleetHome,
+    });
+    active = server;
+    const projectDir = path.join(fleetHome, 'measured');
+    const res = await server.app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: headers('k-register'),
+      payload: { path: projectDir, mode: 'new' },
+    });
+    const { id } = res.json() as { id: string };
+    const run = (args: string[]) =>
+      execFileSync('git', args, { cwd: projectDir, encoding: 'utf8' }).trim();
+    if (!existsSync(path.join(projectDir, '.git'))) run(['init', '-q']);
+    run(['config', 'user.email', 'maker@example.test']);
+    run(['config', 'user.name', 'Maker']);
+    await fs.mkdir(path.join(projectDir, 'a'), { recursive: true });
+    await fs.writeFile(path.join(projectDir, 'a', 'x.ts'), 'export {};\n');
+    run(['add', 'a/x.ts']);
+    run(['commit', '-q', '-m', 'work']);
+    const sha = run(['rev-parse', 'HEAD']);
+
+    const log = openEventLog(path.join(projectDir, '.dokima', 'state.db'));
+    createIdentity(log, { id: 'agent-1', name: 'Agent', kind: 'machine' });
+    createTicket(log, 'agent-1', {
+      id: 'T-9',
+      type: 'task',
+      title: 'Operator-owned in progress',
+      lane: 'ui',
+      writeScope: ['a/**'],
+    });
+    log.close();
+    for (const verb of ['claim', 'start']) {
+      await server.app.inject({
+        method: 'POST',
+        url: `/api/v1/tickets/T-9/${verb}?project=${id}`,
+        headers: headers(`k-${verb}`),
+        payload: {},
+      });
+    }
+    return { app: server.app, id, projectDir, sha };
+  }
+
+  it('RED FIXTURE: a body claiming {command: "false", exitCode: 0} is refused — the verify is run, not believed', async () => {
+    const { app, id, sha } = await projectWithWork();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tickets/T-9/close?project=${id}`,
+      headers: headers('k-close-false'),
+      payload: {
+        files: ['a/x.ts'],
+        commits: [sha],
+        verify: { command: 'false', exitCode: 0 },
+      },
+    });
+    expect(res.statusCode).toBe(409);
+    const problem = res.json() as { rule: string; detail: string };
+    expect(problem.rule).toBe('MANIFEST_INVALID');
+    expect(problem.detail).toContain('exited 1');
+  });
+
+  it('a file that is not in the project, or a commit that is not in its repo, refuses the close', async () => {
+    const { app, id, sha } = await projectWithWork();
+    const missingFile = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tickets/T-9/close?project=${id}`,
+      headers: headers('k-close-missing'),
+      payload: { files: ['a/nope.ts'], commits: [sha], verify: { command: 'true' } },
+    });
+    expect(missingFile.statusCode).toBe(409);
+    expect((missingFile.json() as { detail: string }).detail).toContain('a/nope.ts');
+
+    const unknownCommit = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tickets/T-9/close?project=${id}`,
+      headers: headers('k-close-unknown'),
+      payload: {
+        files: ['a/x.ts'],
+        commits: ['deadbeefdeadbeefdeadbeefdeadbeefdeadbeef'],
+        verify: { command: 'true' },
+      },
+    });
+    expect(unknownCommit.statusCode).toBe(409);
+    expect((unknownCommit.json() as { detail: string }).detail).toContain('deadbeef');
+  });
+
+  it('a passing close records the MEASURED exit and carries the evidence block, whatever exit the body claimed', async () => {
+    const { app, id, sha } = await projectWithWork();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tickets/T-9/close?project=${id}`,
+      headers: headers('k-close-ok'),
+      payload: {
+        files: ['a/x.ts'],
+        commits: [sha],
+        verify: { command: 'true', exitCode: 7 },
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const ticket = res.json() as {
+      status: string;
+      manifest: {
+        verify: { command: string; exitCode: number };
+        closeReceipt: { evidence?: Record<string, string> };
+      };
+    };
+    expect(ticket.status).toBe('in_review');
+    expect(ticket.manifest.verify).toEqual({ command: 'true', exitCode: 0 });
+    expect(ticket.manifest.closeReceipt.evidence).toEqual({
+      verify: 'ran',
+      verifySource: 'caller',
+      files: 'verified',
+      commits: 'verified',
+      sandbox: 'isolated',
+    });
+  });
+});
+
 describe('D-020 accept-actor: operator != agent-maker by construction', () => {
   const dirs: string[] = [];
   let active: ApiServer | undefined;
@@ -491,14 +648,27 @@ describe('D-020 accept-actor: operator != agent-maker by construction', () => {
     });
     expect(startRes.statusCode).toBe(200);
 
+    // W23-43: the close is MEASURED now, so the evidence has to be real — a
+    // committed file and a verify that actually passes when it is run.
+    const projectDir = path.join(fleetHome, 'accept-actor-project');
+    const run = (args: string[]) =>
+      execFileSync('git', args, { cwd: projectDir, encoding: 'utf8' }).trim();
+    if (!existsSync(path.join(projectDir, '.git'))) run(['init', '-q']);
+    run(['config', 'user.email', 'operator@example.test']);
+    run(['config', 'user.name', 'Operator']);
+    await fs.mkdir(path.join(projectDir, 'a'), { recursive: true });
+    await fs.writeFile(path.join(projectDir, 'a', 'x.ts'), 'export {};\n');
+    run(['add', 'a/x.ts']);
+    run(['commit', '-q', '-m', 'operator work']);
+
     const closeRes = await app.inject({
       method: 'POST',
       url: `/api/v1/tickets/W-OPERATOR/close?project=${id}`,
       headers: idem('k-op-close'),
       payload: {
         files: ['a/x.ts'],
-        commits: ['def456'],
-        verify: { command: 'pnpm test', exitCode: 0 },
+        commits: [run(['rev-parse', 'HEAD'])],
+        verify: { command: 'true' },
       },
     });
     expect(closeRes.statusCode).toBe(200);

@@ -171,7 +171,9 @@ describe('runDoctor', () => {
       // sending anyone who read it looking for a ticket that never existed.
       const io = await scratchIo();
       const paths = resolveProjectPaths(io.cwd);
-      await fs.mkdir(path.join(paths.worktreesDir, 'W1-99--base-probe'), { recursive: true });
+      await fs.mkdir(path.join(paths.worktreesDir, 'W1-99--base-probe'), {
+        recursive: true,
+      });
 
       const report = await runDoctor(io, {
         detectRunningCore: vi.fn().mockResolvedValue(false),
@@ -193,7 +195,9 @@ describe('runDoctor', () => {
     const io = await scratchIo();
     const paths = resolveProjectPaths(io.cwd);
     await fs.mkdir(path.join(paths.worktreesDir, 'W1-98'), { recursive: true });
-    await fs.mkdir(path.join(paths.worktreesDir, 'W1-99--base-probe'), { recursive: true });
+    await fs.mkdir(path.join(paths.worktreesDir, 'W1-99--base-probe'), {
+      recursive: true,
+    });
 
     const report = await runDoctor(io, {
       detectRunningCore: vi.fn().mockResolvedValue(false),
@@ -244,6 +248,102 @@ describe('runDoctor', () => {
     const keychainCheck = report.checks.find((c) => c.name === 'keychain');
     expect(keychainCheck?.status).toBe('fail');
     expect(keychainCheck?.detail).toContain('no OS keychain adapter');
+  });
+});
+
+/**
+ * W23-45: doctor must actually load the native module and open a database.
+ *
+ * LIVE, 2026-09-23: the packed 1.0.1 tarball installed with
+ * `npm install --ignore-scripts` has no better-sqlite3 binary at all, and
+ * `dokima doctor` printed six OKs and `doctor: OK` — better-sqlite3 loads its
+ * binding lazily inside `new Database`, and on a fresh home doctor's only DB
+ * check returns "no state.db yet" without opening anything.
+ */
+describe('native-db (W23-45)', () => {
+  const scratchDirs: string[] = [];
+  afterEach(async () => {
+    for (const dir of scratchDirs.splice(0)) {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  async function freshIo(): Promise<CliIO> {
+    const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sw-doctor-native-'));
+    scratchDirs.push(projectDir);
+    return { stdout: vi.fn(), stderr: vi.fn(), cwd: projectDir, env: {} };
+  }
+
+  const baseDeps = {
+    detectRunningCore: vi.fn().mockResolvedValue(false),
+    resolveCredentialStore: () => createInMemoryCredentialStore(),
+    loadConfiguredProviders: vi.fn().mockResolvedValue([]),
+    packSource: defaultFirstPartyPackSource(),
+  };
+
+  // The exact message better-sqlite3 throws from `new Database` when the
+  // install skipped its build (captured from the ignore-scripts install).
+  const missingBinding = () => {
+    throw new Error(
+      'Could not locate the bindings file. Tried:\n → /x/node_modules/better-sqlite3/build/better_sqlite3.node',
+    );
+  };
+
+  it('RED FIXTURE: an install with no native binary is FAILED, naming the cause and the fix — not "doctor: OK"', async () => {
+    const io = await freshIo();
+    const code = await runDoctorCommand(io, { ...baseDeps, openProbeDb: missingBinding });
+
+    expect(code).toBe(1);
+    const printed = vi
+      .mocked(io.stdout)
+      .mock.calls.map((c) => String(c[0]))
+      .join('\n');
+    expect(printed).toContain('doctor: FAILED');
+    expect(printed).toMatch(/\[FAIL\] native-db: .*native binary is missing/);
+    expect(printed).toContain('ignore-scripts');
+    expect(printed).toContain('npm rebuild better-sqlite3');
+  });
+
+  it("an ABI mismatch is named with the bootstrap's own wording, not a second copy", async () => {
+    const io = await freshIo();
+    const report = await runDoctor(io, {
+      ...baseDeps,
+      openProbeDb: () => {
+        throw new Error(
+          'The module was compiled against a different Node.js version using\n' +
+            'NODE_MODULE_VERSION 127. This version of Node.js requires\nNODE_MODULE_VERSION 137.',
+        );
+      },
+    });
+    const check = report.checks.find((c) => c.name === 'native-db');
+    expect(check?.status).toBe('fail');
+    expect(check?.detail).toContain('this Node cannot load the bundled native modules');
+  });
+
+  it('on a fresh home it really opens (and then removes) a throwaway database', async () => {
+    const io = await freshIo();
+    const opened: string[] = [];
+    const report = await runDoctor(io, {
+      ...baseDeps,
+      openProbeDb: (dbPath: string) => {
+        opened.push(dbPath);
+        return openEventLog(dbPath);
+      },
+    });
+    expect(opened).toHaveLength(1);
+    expect(report.checks.find((c) => c.name === 'native-db')?.status).toBe('ok');
+    // The project was not touched, and the probe did not outlive the check.
+    await expect(fs.stat(path.join(io.cwd, '.dokima'))).rejects.toThrow();
+    await expect(fs.stat(path.dirname(opened[0]!))).rejects.toThrow();
+  });
+
+  it('the default probe opens a real database with the product migrations', async () => {
+    const report = await runDoctor(await freshIo(), baseDeps);
+    expect(report.checks.find((c) => c.name === 'native-db')).toEqual({
+      name: 'native-db',
+      status: 'ok',
+      detail: 'better-sqlite3 loaded; a throwaway database was opened and migrated',
+    });
   });
 });
 

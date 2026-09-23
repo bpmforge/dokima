@@ -49,6 +49,12 @@ export interface CloseEvidence {
   files: 'verified';
   /** Every SHA resolved to a commit in the project's repo — or there was no repo to ask. */
   commits: 'verified' | 'caller_asserted';
+  /**
+   * W23-44: whether the verify ran under the process sandbox or under the
+   * DOKIMA_ALLOW_UNSANDBOXED_VERIFY waiver on a host that cannot isolate.
+   * Absent on receipts minted before W23-44.
+   */
+  sandbox?: 'isolated' | 'waived';
 }
 
 export interface CloseReceipt {
