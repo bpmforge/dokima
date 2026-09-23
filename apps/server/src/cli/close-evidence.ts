@@ -35,12 +35,14 @@ import path from 'node:path';
 import { git } from '@dokima/git';
 import {
   classifyManifestFiles,
-  DEFAULT_VERIFY_TIMEOUT_MS,
   isSandboxProfileAvailable,
   reRunVerify,
 } from '@dokima/harbormaster';
 import type { CloseEvidence, Ticket, VerifyResult } from '@dokima/tickets';
 import { PROJECT_STATE_DIR } from './db.js';
+
+/** The close gate's own verify ceiling (DEFAULT_VERIFY_TIMEOUT_MS, loop-gates-types.ts). */
+const CLOSE_VERIFY_TIMEOUT_MS = 10 * 60 * 1000;
 
 export interface CloseClaim {
   readonly files: readonly string[];
@@ -99,7 +101,7 @@ export async function measureCloseEvidence(
   root: string,
   ticket: Pick<Ticket, 'verify'>,
   claim: CloseClaim,
-  timeoutMs: number = DEFAULT_VERIFY_TIMEOUT_MS,
+  timeoutMs: number = CLOSE_VERIFY_TIMEOUT_MS,
 ): Promise<MeasuredClose> {
   // SC-07 fails closed, exactly as a build run does (sandbox-preflight.ts):
   // verify is untrusted code, and running it unsandboxed would be a green the
