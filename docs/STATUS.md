@@ -2421,6 +2421,7 @@ costs nothing. The live 2026-09-22 shape (work committed, criterion passing,
 
 Not re-run live on a local model in this session; the unit and land-loop
 fixtures are the evidence.
+
 Gate on Node 22: lint 0, typecheck 0, **5436 tests** (616 files, 2 skipped),
 **76 e2e**, 6 validators + temp-leaks clean. **Board: 534 done · 5 todo · 1
 blocked (W12-44).**

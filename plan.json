@@ -17023,7 +17023,8 @@
         "Red fixture: a close whose body claims `{command: \"false\", exitCode: 0}` is refused"
       ],
       "notes": [
-        "FILED 2026-09-23 from W23-42 (Law 1: found at claim, filed at claim). board-routes.ts fireVerb builds `verify` from `body.verify.exitCode`. Whether this blocks v1 is a founder call: the route is operator-authenticated, but a receipt is a receipt whoever typed the number."
+        "FILED 2026-09-23 from W23-42 (Law 1: found at claim, filed at claim). board-routes.ts fireVerb builds `verify` from `body.verify.exitCode`. Whether this blocks v1 is a founder call: the route is operator-authenticated, but a receipt is a receipt whoever typed the number.",
+        "ADDED AT W23-42 CLOSE 2026-09-23: until this lands, an HTTP close writes a CloseReceipt with NO `evidence` block, so it reads the same as an agent-gate close in that field. Reuse apps/server/src/cli/close-evidence.ts (measureCloseEvidence + projectRootFor) rather than a second verifier. Also decide whether close should honour DOKIMA_ALLOW_UNSANDBOXED_VERIFY (build runs do; W23-42 refuses without a sandbox, waiver or not)."
       ]
     }
   ]
