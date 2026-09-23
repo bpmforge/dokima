@@ -12,6 +12,7 @@
 
 import { spawn, spawnSync } from 'node:child_process';
 import type {
+  ReadOnlyMount,
   SandboxContainerOptions,
   SandboxRunOptions,
   SandboxRunResult,
@@ -59,19 +60,34 @@ function resolveBinary(requested: 'podman' | 'docker' | undefined): string {
   return found;
 }
 
-function buildRunArgs(
+/**
+ * Exported for its tests (W23-54). `-v` separates source, target and options
+ * with `:` and options with `,`, so a path carrying either would be parsed as
+ * something else — refused, never passed through.
+ */
+export function buildRunArgs(
   binary: string,
   cwd: string,
   command: string,
   allowNetwork: boolean,
   container: SandboxContainerOptions,
+  readOnlyMounts: readonly ReadOnlyMount[] = [],
 ): string[] {
   const image = container.image ?? DEFAULT_IMAGE;
+  const mounts = readOnlyMounts.flatMap((m) => {
+    if (/[:,]/.test(m.source) || /[:,]/.test(m.target)) {
+      throw new SandboxUnavailableError(
+        `cannot mount ${m.source} read-only: a ':' or ',' in the path would be read as mount options`,
+      );
+    }
+    return ['-v', `${m.source}:${m.target}:ro`];
+  });
   return [
     'run',
     '--rm',
     '-v',
     `${cwd}:/work:rw`,
+    ...mounts,
     '-w',
     '/work',
     '--network',
@@ -112,6 +128,7 @@ export async function runInContainerSandbox(
     options.command,
     allowNetwork,
     container,
+    options.readOnlyMounts ?? [],
   );
 
   const start = Date.now();

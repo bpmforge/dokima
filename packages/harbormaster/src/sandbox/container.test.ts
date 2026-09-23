@@ -3,7 +3,11 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { isContainerRuntimeAvailable, runInContainerSandbox } from './container.js';
+import {
+  buildRunArgs,
+  isContainerRuntimeAvailable,
+  runInContainerSandbox,
+} from './container.js';
 
 const TEST_IMAGE = 'node:22-alpine';
 
@@ -82,5 +86,25 @@ describe('runInContainerSandbox', () => {
     // Static shape check — doesn't require a runtime, keeps this suite
     // meaningful even when podman/docker aren't installed at all.
     expect(isContainerRuntimeAvailable()).toEqual(expect.any(Boolean));
+  });
+});
+
+describe('W23-54: read-only mounts for runtime-owned paths', () => {
+  it('RED: each read-only mount is a -v source:target:ro before the image, and the worktree stays rw at /work', () => {
+    const args = buildRunArgs('podman', '/host/wt', 'true', false, {}, [
+      { source: '/real/rules/owasp', target: '/home/me/.dokima/rules/sast/owasp' },
+    ]);
+    const image = args.indexOf('node:22-slim');
+    const ro = args.indexOf('/real/rules/owasp:/home/me/.dokima/rules/sast/owasp:ro');
+    expect(ro).toBeGreaterThan(0);
+    expect(args[ro - 1]).toBe('-v');
+    expect(ro).toBeLessThan(image);
+    expect(args).toContain('/host/wt:/work:rw');
+  });
+
+  it('a mount path carrying a colon or a comma is refused rather than mis-parsed as mount options', () => {
+    expect(() =>
+      buildRunArgs('podman', '/w', 'true', false, {}, [{ source: '/a:b', target: '/a' }]),
+    ).toThrow(/mount/);
   });
 });

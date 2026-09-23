@@ -26,6 +26,30 @@ export const digestOfText = (text: string): string =>
   `sha256:${createHash('sha256').update(text).digest('hex')}`;
 
 /**
+ * W23-54: the tool was never started. `sh -c` answers a missing command with
+ * exit 127 ("opengrep: not found") — under the container profile the default
+ * image has no opengrep, and on the host an executable can vanish between the
+ * install probe and the run. That is NOT RUN, never an error about the code
+ * and never — as `npm audit`'s empty stdout parsed to — a pass.
+ */
+function notStarted(
+  run: { readonly exitCode: number | null; readonly stderr: string },
+  tool: string,
+): { status: 'unavailable'; reason: string; findingCount: 0 } | null {
+  const missing =
+    run.exitCode === 127 ||
+    (run.exitCode !== 0 &&
+      /command not found|: not found\b|executable file not found/i.test(run.stderr));
+  return missing
+    ? {
+        status: 'unavailable',
+        reason: `${tool} could not be started, so it did not run: ${run.stderr.trim().slice(0, 240)}`,
+        findingCount: 0,
+      }
+    : null;
+}
+
+/**
  * Opengrep over the founder's own pinned rule packs (W23-51). 0 clean, 1
  * findings (`--error`), anything else is the tool failing, not the code passing.
  *
@@ -71,6 +95,8 @@ const SAST: SecurityToolAdapter = {
         findingCount: 0,
       };
     }
+    const sastMissing = notStarted(run, 'opengrep');
+    if (sastMissing) return sastMissing;
     if (run.exitCode !== 0 && run.exitCode !== 1) {
       return {
         status: 'error',
@@ -127,6 +153,8 @@ const SECRETS: SecurityToolAdapter = {
   interpret: (run) => {
     if (run.timedOut)
       return { status: 'error', reason: 'the secrets scan timed out', findingCount: 0 };
+    const secretsMissing = notStarted(run, 'the secrets scanner');
+    if (secretsMissing) return secretsMissing;
     if (run.exitCode === 0) return { status: 'passed', reason: null, findingCount: 0 };
     if (run.exitCode === 1) {
       // Its stdout is one JSON envelope (`_lib.sh` validator_exit): count the
@@ -168,6 +196,8 @@ const DEPS: SecurityToolAdapter = {
   interpret: (run) => {
     if (run.timedOut)
       return { status: 'error', reason: 'npm audit timed out', findingCount: 0 };
+    const npmMissing = notStarted(run, 'npm audit');
+    if (npmMissing) return npmMissing;
     let parsed: {
       metadata?: { vulnerabilities?: Record<string, number> };
       error?: unknown;

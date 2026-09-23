@@ -254,6 +254,22 @@ export function expandArgs(
   );
 }
 
+/**
+ * W23-54: the runtime-owned host paths an adapter's command line names — the
+ * pinned rule packs, the bundled scanner's directory (it sources `_lib.sh`
+ * beside itself). A container runner mounts exactly these, read-only.
+ */
+export function runtimePathsOf(
+  adapter: SecurityToolAdapter,
+  options: RunSecurityChecksOptions,
+): readonly string[] {
+  if (adapter.args.includes('{sastConfig}')) return options.sastRules?.configPaths ?? [];
+  if (adapter.args.includes('{validatorPath}') && options.secretsValidatorPath) {
+    return [path.dirname(options.secretsValidatorPath)];
+  }
+  return [];
+}
+
 type Interpreted = {
   readonly status: CheckStatus;
   readonly reason: string | null;
@@ -291,6 +307,7 @@ export async function compareWithBaseline(
     cwd: baseDir,
     allowNetwork: adapter.requiresNetwork && options.networkPolicy === 'network-allowed',
     timeoutMs,
+    readOnlyPaths: runtimePathsOf(adapter, options),
   });
   const base = adapter.interpret(baseRun);
   const baseKeys =

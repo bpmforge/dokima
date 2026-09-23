@@ -43,7 +43,7 @@ import {
   SECURITY_TOOLS,
   digestOfText as digest,
 } from './security-tool-adapters.js';
-import { compareWithBaseline, expandArgs } from './security-baseline.js';
+import { compareWithBaseline, expandArgs, runtimePathsOf } from './security-baseline.js';
 export { executableIsInstalled, sandboxedToolRunner } from './security-tool-runner.js';
 import { sastRulesFix, type SastRuleset } from './sast-rules.js';
 
@@ -161,6 +161,8 @@ export interface RunSecurityChecksOptions {
       readonly cwd: string;
       readonly allowNetwork: boolean;
       readonly timeoutMs: number;
+      /** W23-54: runtime-owned paths the command line names, for a runner that must mount them. */
+      readonly readOnlyPaths?: readonly string[];
     },
   ) => Promise<ToolRunResult>;
   /** Whether the executable exists on this host. Missing is UNAVAILABLE, never NOT_APPLICABLE. */
@@ -322,6 +324,7 @@ export async function runSecurityChecks(
       cwd: options.cwd,
       allowNetwork: wantsNetwork && options.networkPolicy === 'network-allowed',
       timeoutMs,
+      readOnlyPaths: runtimePathsOf(adapter, options),
     });
     const interpreted = await compareWithBaseline(
       adapter,
