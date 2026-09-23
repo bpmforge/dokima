@@ -110,6 +110,11 @@ describe('P6-07 — the goal loop drives the PRODUCT engine against the PRODUCT 
             // the one refusal this test cannot see through a spawn (P6-21).
             DOKIMA_NO_KEYCHAIN: '1',
             DOKIMA_VAULT_KEY: 'test-vault-key',
+            // W23-52 (Law 9a): a throwaway home. Inheriting the developer's
+            // ~/.dokima let the review pass call whatever reviewer model the
+            // machine's global config names — measured: a real POST to LM
+            // Studio from `pnpm test`.
+            DOKIMA_HOME: join(stubDir, 'home'),
           },
         });
         if (r.status !== 0 || !/1 landed/.test(r.stdout ?? '')) {

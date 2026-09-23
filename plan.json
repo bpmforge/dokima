@@ -17233,7 +17233,7 @@
       "points": 2,
       "status": "todo",
       "notes": [
-        "FOUND LIVE 2026-09-23 on the throwaway Vault autorun (LM Studio, qwen/qwen3.8-27b). Another client's request for qwen/qwen3-coder-next (a 'ping', max_tokens 8, seen 24 times in the day's LM Studio log, not from Dokima) made LM Studio unload the maker mid-session ('Channel Error ... Model unloaded'), then 'Failed to load model ... Operation canceled' for ~1 s. Dokima's three free retries ran at 18:02:14.97, 15.12, 15.25Z (and again 18:06:22.18, 22.79, 23.39Z for PLAN-vault-002), all 400, and both tickets parked. The eviction is outside Dokima; spending the whole retry budget inside the reload window is not.",
+        "FOUND LIVE 2026-09-23 on the throwaway Vault autorun (LM Studio, qwen/qwen3.8-27b). Another client's request for qwen/qwen3-coder-next (a 'ping', max_tokens 8, seen 24 times in the day's LM Studio log; not in Dokima's src or bundle and not produced by the e2e or unit suites when each was run alone against the live log \u2014 unattributed) made LM Studio unload the maker mid-session ('Channel Error ... Model unloaded'), then 'Failed to load model ... Operation canceled' for ~1 s. Dokima's three free retries ran at 18:02:14.97, 15.12, 15.25Z (and again 18:06:22.18, 22.79, 23.39Z for PLAN-vault-002), all 400, and both tickets parked. The eviction is outside Dokima; spending the whole retry budget inside the reload window is not.",
         "2026-09-23 run A (maker qwen/qwen3.8-27b, 17:54-18:41Z): 0 landed, 3 parked attempted_nothing (PLAN-vault-000a, -002, -002c). Each ticket start coincided with the unidentified 'ping' to qwen3-coder-next; LM Studio evicted the maker, Dokima's three free retries all 400'd inside one second, and the one real attempt left either read without writing or hit the 900 s request timeout (002c). With the maker set to the model the pinger loads (run C) a fresh ticket landed in 1 attempt."
       ],
       "stories": [
@@ -17259,11 +17259,35 @@
       "points": 3,
       "status": "todo",
       "notes": [
-        "FOUND LIVE 2026-09-23 on the throwaway Vault autorun: PLAN-vault-010 landed (gate receipt 0815ef9e) and the review came back CONTRADICTED 4/10, ESCALATE_TO_HUMAN, because tool-sast errored \u2014 'semgrep exited 2 before scanning: [ERROR]: Cannot create auto config when metrics are off' \u2014 and tool-deps reported 14 findings in dependencies the ticket did not touch. The adapter's args are ['--config','auto',...,'--metrics=off']; current semgrep refuses that pair, so the check cannot pass on any host. Needs a founder call (send metrics, pin a local ruleset, or switch to opengrep, which is installed here) before it is a code change."
+        "FOUND LIVE 2026-09-23 on the throwaway Vault autorun: PLAN-vault-010 landed (gate receipt 0815ef9e) and the review came back CONTRADICTED 4/10, ESCALATE_TO_HUMAN, because tool-sast errored \u2014 'semgrep exited 2 before scanning: [ERROR]: Cannot create auto config when metrics are off' \u2014 and tool-deps reported 14 findings in dependencies the ticket did not touch. The adapter's args are ['--config','auto',...,'--metrics=off']; current semgrep refuses that pair, so the check cannot pass on any host. Needs a founder call (send metrics, pin a local ruleset, or switch to opengrep, which is installed here) before it is a code change.",
+        "Scoped 2026-09-23: measured with semgrep 1.175.0 (Homebrew) on this host; opengrep 1.25.0 is also installed. 'cannot pass on any host' holds for semgrep versions that refuse auto config with metrics off. V1 BLOCKER CANDIDATE for the unattended local promise: while tool-sast errors, every machine review escalates, so an approved-build run cannot auto-accept."
       ],
       "stories": [
         "US-402"
       ]
+    },
+    {
+      "id": "W23-52",
+      "title": "product-loop-berths.test.mjs reaches a real LM Studio: its CLI spawn inherits the developer's DOKIMA_HOME, so the review pass calls the configured reviewer model (Law 9a)",
+      "phase": 23,
+      "module": "quality",
+      "lane": "quality",
+      "write_scope": [
+        "scripts/product-loop-berths.test.mjs"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "The spawned `run start` gets a throwaway DOKIMA_HOME, so no global config, model matrix or provider from the developer's machine reaches it",
+        "Red evidence: a full `pnpm test` on a machine whose ~/.dokima/config.json routes code-reviewer to lm-studio makes a POST to localhost:1234 (a 'You are reviewing finished work on ticket PRD-US-1' prompt) before, and none after",
+        "The test still lands its ticket through the real engine"
+      ],
+      "points": 1,
+      "status": "done",
+      "notes": [
+        "FOUND 2026-09-23 while checking whether the 'ping' requests that evicted the live-run maker came from Dokima's own gate: the e2e suite made no LM Studio request; `pnpm test` made one POST /v1/chat/completions to qwen/qwen3.8-27b at 14:58:26 local with the review prompt for PRD-US-1. The spawn passes `...process.env` with no DOKIMA_HOME, and ~/.dokima/config.json on this machine routes code-reviewer to lm-studio. The 'ping' requests themselves (max_tokens 8, content 'ping') were NOT reproduced by either suite and are not in src or the bundle: unattributed. CLAIMED at filing.",
+        "DONE 2026-09-23. The spawn gets DOKIMA_HOME under the test's own stub dir (removed in afterAll). RED: the old file alone made GET /v1/models + POST /v1/chat/completions to LM Studio; fixed, 0 requests, and a full pnpm test made 0 LM Studio requests. Gate: lint 0, typecheck 0, 5458 tests (619 files, 2 skipped), 76 e2e (unchanged surface), 6 validators + temp-leaks clean."
+      ],
+      "stories": []
     }
   ]
 }

@@ -2477,8 +2477,14 @@ real HEAD (W23-40 live), close receipt `0815ef9e…` minted, ticket in_review.
 Machine review parsed (W23-49 not reproduced) but said CONTRADICTED 4/10 →
 escalate: tool-sast can never run (`semgrep --config auto --metrics=off` is
 refused by semgrep) and tool-deps counted 14 pre-existing findings
-(**W23-51** filed). Not `done`: acceptance is a human verb.
+(**W23-51** filed; a v1 blocker candidate — while SAST errors, no review can
+auto-accept). Not `done`: acceptance is a human verb. The pinging client is
+unattributed: not in src or the bundle, and neither the e2e nor the unit suite
+produced one when run alone. The unit suite DID make a real LM Studio call —
+`product-loop-berths.test.mjs` spawned the CLI with the developer's
+`~/.dokima` (Law 9a; **W23-52**, fixed: throwaway DOKIMA_HOME, RED 2 requests
+→ 0). Runs A ran main's dist (a766f181); B and C ran this branch's (52c7aeb6).
 
 Gate on Node 22: lint 0, typecheck 0, **5458 tests** (619 files, 2 skipped),
-**76 e2e**, 6 validators + temp-leaks clean. **Board: 540 done · 7 todo · 1
+**76 e2e**, 6 validators + temp-leaks clean. **Board: 541 done · 7 todo · 1
 blocked (W12-44).**

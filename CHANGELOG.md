@@ -24,6 +24,18 @@ name what a change means for that boundary, not just what moved.
   commits in the registered project, exactly as `dokima close` does; a
   `verify.exitCode` in the request body is ignored, and the receipt carries the
   same evidence block.
+- **`DOKIMA_ALLOW_UNSANDBOXED_VERIFY` now does what it says, everywhere.** On a
+  host with no process sandbox it was honoured at a build run's preflight and
+  nowhere after it — every verify then failed with "sandbox unavailable" — and
+  `dokima close` refused outright. With the waiver set, build runs and both
+  close doors now run verify with network allowed and the environment still
+  cleaned; without it, they still refuse. Close receipts record which it was
+  (`evidence.sandbox`: `isolated` or `waived`). A host that can sandbox is
+  unaffected.
+- **`dokima doctor` opens a real database.** A new `native-db` check loads
+  better-sqlite3 and opens (then removes) a throwaway database, so an install
+  made with `ignore-scripts=true` — no native binary — now fails by name with
+  the fix, instead of reporting `doctor: OK`.
 
 ### Removed
 
@@ -38,6 +50,9 @@ name what a change means for that boundary, not just what moved.
 
 ### Fixed
 
+- A pipeline run's progress record and the fleet registry are written
+  atomically, so a status poll can no longer catch either mid-write and report
+  a live run as missing (404) or the registry as corrupt.
 - Autonomous sessions can report their own commits: the agent's `commit` tool
   returns the new commit's `sha`, and the handoff says so (in a linked worktree
   the agent cannot read `.git`, and was being asked to).
