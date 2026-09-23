@@ -17394,16 +17394,120 @@
       "write_scope": [
         "packages/harbormaster/src/security-tool-adapters.ts",
         "packages/harbormaster/src/security-baseline.ts",
-        "packages/harbormaster/src/security-baseline.test.ts"
+        "packages/harbormaster/src/security-baseline.test.ts",
+        "packages/harbormaster/src/security-checks.ts",
+        "packages/harbormaster/src/security-tool-adapters.test.ts",
+        "packages/harbormaster/src/security-checks.test.ts"
       ],
       "acceptance": [
         "tool-secrets itemises its findings (a key per finding: rule + path + masked match) so the W23-51 baseline can compare head with base",
-        "Red fixture: a secret present at base and head is pre-existing (passed, counted); a secret the ticket adds is FINDINGS"
+        "Red fixture: a secret present at base and head is pre-existing (passed, counted); a secret the ticket adds is FINDINGS",
+        "The key is a fingerprint of the secret itself, computed in memory by the core from the flagged file and line (the scanner masks every AWS key to the same text, and masks the file's FIRST match, not the flagged line's) \u2014 so a secret REPLACED by a different secret of the same shape in the same file is introduced, not pre-existing; neither the value, its mask, nor its fingerprint reaches a reason, a payload or a log",
+        "findingCount is the number of items the scanner reported (its stdout is a JSON envelope; the old count of \"- \" lines could never match it and was always 1)"
       ],
       "points": 2,
+      "status": "in_progress",
+      "notes": [
+        "FILED 2026-09-23 during W23-51 close-out (Law 1): W23-51 gave findingKeys to tool-sast and tool-deps only. The bundled secrets scanner reports '- ...' lines with no stable identity, so it is still counted whole.",
+        "CLAIMED 2026-09-23 (fix/v1-review-gaps). WIDENED at claim, before any edit: the adapter interface (security-checks.ts) gives findingKeys the scanned root, because a real per-secret identity needs the flagged line re-read and re-matched in the core \u2014 the manifest-pinned content/validators/secrets-scan.sh prints only `AKIA...REDACTED(20 chars)`, identical for every AWS key, so a category|path|mask key would pass a replaced secret as pre-existing. security-tool-adapters.test.ts and security-checks.test.ts are the existing tests of the files changed, owned by no open ticket. MEASURED before claim: the scanner's stdout is `{\"validator\":\"secrets-scan\",\"gaps\":3,\"exit\":1,\"items\":[{\"category\":\"aws-access-key-id\",\"detail\":\"c.js:1 \u2014 AKIA...REDACTED(20 chars)\"},...]}`, so the adapter's `^\\s*-\\s` line count was 0 and findingCount was always max(0,1) = 1."
+      ]
+    },
+    {
+      "id": "W23-56",
+      "title": "a local-only project can never machine-accept a ticket: tool-deps needs an advisory database it may not reach, reports NOT RUN, and NOT RUN blocks \u2014 even for a ticket that changed no dependency",
+      "phase": 23,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/security-checks.ts",
+        "packages/harbormaster/src/security-checks.test.ts",
+        "packages/harbormaster/src/security-tool-adapters.ts",
+        "packages/harbormaster/src/review-security.ts",
+        "packages/harbormaster/src/review-security.test.ts",
+        "packages/harbormaster/src/loop-review.ts",
+        "packages/harbormaster/src/verified-ticket-decision.ts",
+        "packages/harbormaster/src/verified-ticket-decision.test.ts",
+        "apps/server/src/cli/review-pass.ts",
+        "apps/server/src/api/pipeline/onboard-security-checks.ts",
+        "apps/server/src/cli/ops/doctor.ts",
+        "apps/server/src/cli/ops/doctor-sast.ts",
+        "apps/server/src/cli/ops/doctor.test.ts"
+      ],
+      "depends_on": [
+        "W23-55"
+      ],
+      "acceptance": [
+        "A reviewed ticket whose change (fork point to worktree) leaves every root manifest and lockfile byte-identical gets tool-deps NOT_APPLICABLE with that measured reason \u2014 its dependency set is the base's, so it cannot have introduced an advisory (W23-51 counts only introduced findings). An unresolvable fork point or an unreadable base falls through to the ordinary check, never to a pass",
+        "A ticket that DID change dependencies, under local-only with no advisory data, still reports tool-deps NOT RUN (unavailable) with a named reason; the project setting `security.unauditedDependencies` in the PROJECT ROOT's .dokima/settings.json decides whether that blocks machine acceptance \u2014 default \"block\"; \"allow\" waives exactly tool-deps + unavailable (never findings, never error, never another check) and the waiver is recorded in the verdict payload and the decision",
+        "The setting is read from the repository root, never from the ticket worktree, so a maker cannot waive its own check",
+        "The dead `localAdvisoryDbPath` option is removed: nothing passed it, and if anything had, npm audit would have run with the network denied and reported \"could not reach\" \u2014 it claimed snapshot support that does not exist",
+        "`dokima doctor` reports the dependency-audit coverage for the project (network policy, the waiver) and names the fix",
+        "Red fixtures: an unchanged-lockfile ticket under local-only is eligible; a changed-lockfile ticket is not (default) and is with \"allow\"; \"allow\" does not waive tool-deps FINDINGS"
+      ],
+      "points": 3,
       "status": "todo",
       "notes": [
-        "FILED 2026-09-23 during W23-51 close-out (Law 1): W23-51 gave findingKeys to tool-sast and tool-deps only. The bundled secrets scanner reports '- ...' lines with no stable identity, so it is still counted whole."
+        "FILED 2026-09-23 (Law 1) from the founder's v1 brief: \"a local-only project (no network) can't machine-accept because tool-deps needs an advisory snapshot\". Measured in source: security-checks.ts returns unavailable for local-only without `localAdvisoryDbPath`; no caller anywhere passes it; checksPermitAutomaticCompletion and verified-ticket-decision both treat unavailable as blocking. The offline advisory SNAPSHOT itself (fetch/import + a lockfile matcher that consumes it) is W23-58 \u2014 an importer nothing reads would be a dropped finding."
+      ],
+      "stories": [
+        "US-402"
+      ]
+    },
+    {
+      "id": "W23-57",
+      "title": "the `sandbox: container` project setting (DEPLOYMENT.md \u00a75) is read nowhere: no production caller passes a sandbox profile, so every verify, gate and security scan runs under the process profile whatever the project chose",
+      "phase": 23,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "apps/server/src/cli/sandbox-preflight.ts",
+        "packages/harbormaster/src/sandbox/index.ts",
+        "packages/harbormaster/src/sandbox/index.test.ts"
+      ],
+      "depends_on": [
+        "W23-54"
+      ],
+      "acceptance": [
+        "A project whose settings choose the container profile has its sandboxed runs (verify, close gate, security tools) executed under it, and the receipt names the profile",
+        "A project that chose it on a host with no container runtime fails closed with the reason, never a silent process-profile run",
+        "Red fixture: settings `sandbox: container` reaches runSandboxed as profile \"container\""
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": [
+        "FILED 2026-09-23 (Law 1) while claiming W23-54: `grep -rn \"profile: 'container'\"` over apps/ and packages/ finds no production caller; runSandboxed defaults to \"process\"; sandboxedToolRunner passes no profile. W23-54 makes the SECURITY TOOLS correct under the container profile when it is selected; this ticket is the selection."
+      ],
+      "stories": [
+        "US-402"
+      ]
+    },
+    {
+      "id": "W23-58",
+      "title": "no offline advisory data: a local-only project that changes dependencies can only waive tool-deps, never run it \u2014 fetch/import an OSV snapshot and audit the lockfile against it locally",
+      "phase": 23,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/security-tool-adapters.ts",
+        "apps/server/src/cli/ops/doctor.ts",
+        "docs/TECH_STACK.md"
+      ],
+      "depends_on": [
+        "W23-56"
+      ],
+      "acceptance": [
+        "A CLI/doctor path fetches (on a networked host) or imports (from a file the user carried over) an advisory snapshot \u2014 the OSV npm export \u2014 into ~/.dokima, recording its source, date and digest",
+        "Under local-only, tool-deps audits the lockfile against that snapshot with no network, and its evidence names the snapshot's date and digest (a stale snapshot is visible, not implied current)",
+        "A version-range matcher is a declared, pinned dependency recorded in TECH_STACK (Law 2), not hand-rolled",
+        "Red fixture: a lockfile pinning a version inside an OSV affected range is FINDINGS offline; one outside it passes"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": [
+        "FILED 2026-09-23 (Law 1) from the founder's v1 brief, split from W23-56 at design: a captured `npm audit --json` only matches an unchanged lockfile, which W23-56 already answers without any advisory data, so a useful snapshot is a full advisory export plus a local matcher \u2014 a feature, not a switch. Needs the founder's call on the source (OSV export vs npm bulk endpoint) and on the dependency."
+      ],
+      "stories": [
+        "US-402"
       ]
     }
   ]
