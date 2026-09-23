@@ -2388,3 +2388,39 @@ the silent-and-failing one still parks `ladder_exhausted` with the evidence and
 derives nothing. Gate: lint 0, typecheck 0, **5395 tests** (614 files), **76
 e2e**, 6 validators + leaks clean. **Board: 531 done · 0 todo · 1 blocked
 (W12-44).**
+
+## 2026-09-23 — v1 release blockers: close receipts and local-model autorun
+
+**W23-42 done — `dokima close` measures what it records.** Found in the v1
+release review: `close T --files x.txt --commits deadbeef… --verify-cmd false`
+closed the ticket and the receipt stored `{"command":"false","exitCode":0}` —
+`--verify-exit` defaulted to 0 and `closeTicket` trusts its caller. Founder
+decision the same day: a receipt never records caller-asserted evidence as
+verified. The CLI now runs the verify itself through the close gate's sandboxed
+`reRunVerify` (the ticket's own `verify` when it declares one, SC-02; the
+caller's `--verify-cmd` only otherwise), stats every file with the gate's
+`classifyManifestFiles` AFTER verify runs, and resolves every SHA to a commit
+object in the project's repo. With no repo the close proceeds and the receipt's
+new optional `evidence` block marks commits `caller_asserted` (and the CLI says
+so). `--verify-exit` is now a named usage error — a breaking CLI change. The HTTP
+verb route has the identical defect and is filed as **W23-43**, not fixed here.
+
+**W23-40 done — the commit tool returns the SHA it made.** `CommitResult.sha`,
+returned by `agent-session.commit`; the handoff's RETURN block and the tool's
+description say where it comes from and never to read `.git`. Measured first:
+the close gate never reads `manifest.commits`, so the agent had been asked for
+something it could not obtain in a linked worktree and the gate did not use.
+Red fixture on a real `git worktree add`; the read tool still refuses the gitdir.
+
+**W23-41 done — an infra failure over finished work lands.** The early return
+that hid W23-35's derive path on `endpoint_failure` is gone: no commits or a
+declined derive keep W13-27's free retry byte-for-byte; a derived manifest the
+gate accepts lands (infra flag cleared); one it refuses is ledgered and still
+costs nothing. The live 2026-09-22 shape (work committed, criterion passing,
+900 s request timeout) now lands in_review on attempt 1.
+
+Not re-run live on a local model in this session; the unit and land-loop
+fixtures are the evidence.
+Gate on Node 22: lint 0, typecheck 0, **5436 tests** (616 files, 2 skipped),
+**76 e2e**, 6 validators + temp-leaks clean. **Board: 534 done · 5 todo · 1
+blocked (W12-44).**

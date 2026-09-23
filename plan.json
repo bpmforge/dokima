@@ -16888,7 +16888,7 @@
       "id": "W23-40",
       "role": "coding-agent",
       "phase": 23,
-      "status": "in_progress",
+      "status": "done",
       "stories": [
         "US-402"
       ],
@@ -16918,14 +16918,15 @@
         "IT EXPLAINS THE FAILURE MODE THE WHOLE W23 ARC HAS BEEN CHASING. A manifest-less session has been read as a model-capability problem \u2014 deliberation, leash, tool budget \u2014 and the escalating turns look exactly like that: 542 -> 662 -> 1780 -> 5345 -> 6267 completion tokens, each one re-confirming that the work is done. An agent that believes it must report real SHAs and cannot obtain them has no honest exit, and re-checking its own state forever is what that looks like from outside.",
         "W23-35 IS THE RIGHT SAFETY NET AND NOT THE FIX. The harness runs git directly (execa, not the sandboxed tool surface) so it can always derive the commit set; that is why the derived path works precisely where the agent is blocked. But a product whose agent cannot complete its own contract should fix the contract, not only catch the fallout \u2014 and with the SHA returned, the ordinary path starts working and the derived path becomes the exception it was meant to be.",
         "CHECK BEFORE BUILDING: runCloseGate does NOT appear to validate manifest.commits against the real commit set (it computes `commits` itself via commitsSince and puts THAT on the receipt), so an agent sending `commits: []` may already pass. If so, the honest fix may be partly a HANDOFF change \u2014 tell the agent what is actually required \u2014 and that is cheaper than it looks. Measure which before writing code (L-56).",
-        "CLAIMED 2026-09-23 (release-blocking: unattended autorun on local models is a v1 promise). MEASURED BEFORE BUILDING (L-56), as the last note asked: runCloseGate never reads manifest.commits \u2014 loop-gates.test.ts's happy path already closes with a FABRICATED sha and asserts the real commit set, not the claim, lands on the receipt; `commits: []` passes the parser's shape check. So the commit identity was never needed by the gate, and the handoff's `commits: ['the commit sha you made']` asked the agent for something it could not obtain and the gate did not use. SCOPE WIDENED AT CLAIM (Law 1) by three files, all owned only by done tickets: packages/loop/src/handoff.ts + handoff.test.ts (the RETURN block is where the agent is told what commits[] holds \u2014 acceptance 4 lives there) and packages/harbormaster/src/agent-session/tools.ts (the commit tool's own description, the other place a model reads what the tool returns)."
+        "CLAIMED 2026-09-23 (release-blocking: unattended autorun on local models is a v1 promise). MEASURED BEFORE BUILDING (L-56), as the last note asked: runCloseGate never reads manifest.commits \u2014 loop-gates.test.ts's happy path already closes with a FABRICATED sha and asserts the real commit set, not the claim, lands on the receipt; `commits: []` passes the parser's shape check. So the commit identity was never needed by the gate, and the handoff's `commits: ['the commit sha you made']` asked the agent for something it could not obtain and the gate did not use. SCOPE WIDENED AT CLAIM (Law 1) by three files, all owned only by done tickets: packages/loop/src/handoff.ts + handoff.test.ts (the RETURN block is where the agent is told what commits[] holds \u2014 acceptance 4 lives there) and packages/harbormaster/src/agent-session/tools.ts (the commit tool's own description, the other place a model reads what the tool returns).",
+        "DONE 2026-09-23. CommitResult.sha (git rev-parse HEAD after the commit), returned by agent-session.commit; RETURN block and commit tool description tell the agent the SHA is in the tool result and never to read .git. Measured first: the close gate never reads manifest.commits. Linked-worktree red fixture (real git worktree add, .git a file) plus a read-tool assertion that the gitdir is still refused (sandbox not loosened). NOT MEASURED LIVE: whether a local model now reports on its own was not re-run on MTPLX/LM Studio in this session."
       ]
     },
     {
       "id": "W23-41",
       "role": "coding-agent",
       "phase": 23,
-      "status": "in_progress",
+      "status": "done",
       "stories": [
         "US-402"
       ],
@@ -16952,14 +16953,15 @@
         "W23-35'S OWN ACCEPTANCE NAMES THREE WAYS BACK WITHOUT A MANIFEST \u2014 'leash, tool budget, or a plain stop' \u2014 and an infra timeout is a fourth. The 2026-09-18 runs that motivated the ticket all hit the SESSION leash (maxSessionSeconds 5400), so the request timeout (requestTimeoutMs 900000) was never the path under test, and the fixtures could not have caught it: they inject a manifest-less session directly, never an infra failure.",
         "WHY DERIVING IS STILL RIGHT HERE, and the argument against it stated fairly: an endpoint failure means the harness does not know what the session was doing when it died, so treating it as a report would be wrong. But the derive path does not read the session \u2014 silentCompletion runs the ticket's criteria against the WORKTREE, and the close gate then re-derives everything from git. The evidence is the same evidence whatever killed the process.",
         "DO NOT WEAKEN THE FREE RETRY. W13-27 exists because two endpoint hiccups used to park a ticket whose work had never been judged. Deriving on infra failure must only ever ADD an outcome (the work was done, so land it); an infra failure whose criteria do not pass must keep costing nothing.",
-        "SCOPE WIDENED MID-WORK, 2026-09-23 (Law 1 \u2014 answered when found, which was after the claim, not at it): the fix took loop-land-session.ts from 398 to 461 lines, past the 400-line CODE_BOOK_PROTOCOL cap. New chapter packages/harbormaster/src/loop-land-session-derive.ts (unowned, new) holds derivedManifestNotice \u2014 moved verbatim plus its W23-41 infra line \u2014 and the hasCommitsSinceBase precheck. The decision itself stays in attemptOnce."
+        "SCOPE WIDENED MID-WORK, 2026-09-23 (Law 1 \u2014 answered when found, which was after the claim, not at it): the fix took loop-land-session.ts from 398 to 461 lines, past the 400-line CODE_BOOK_PROTOCOL cap. New chapter packages/harbormaster/src/loop-land-session-derive.ts (unowned, new) holds derivedManifestNotice \u2014 moved verbatim plus its W23-41 infra line \u2014 and the hasCommitsSinceBase precheck. The decision itself stays in attemptOnce.",
+        "DONE 2026-09-23. attemptOnce asks the derive question on infra failures too: no commits / derive declines -> byte-identical free retry (and no criteria run over an untouched worktree); gate accepts -> infraFailure cleared, lands; gate refuses -> refusal ledgered, infraFailure kept, still free. Red fixtures: the 2026-09-22 timeout shape lands in_review on attempt 1 with no second session; criterion-fails companion still takes the free retry; gate-refuses-after-infra keeps W13-27's accounting (MAX_FREE_INFRA_RETRIES retries, nothing landed)."
       ]
     },
     {
       "id": "W23-42",
       "role": "coding-agent",
       "phase": 23,
-      "status": "in_progress",
+      "status": "done",
       "stories": [
         "US-402",
         "US-202"
@@ -16992,7 +16994,8 @@
       "notes": [
         "FOUND 2026-09-23 in the v1 release review. `parseCliArgs` defaults `--verify-exit` to 0 (parse.test.ts:66) and `closeTicket` trusts its caller structurally (verbs.ts:143-148), so the CLI minted a close receipt for a verify that never ran, files that do not exist, and a commit that is not in the repo. Founder decision the same day: the receipt must never record caller-asserted evidence as verified.",
         "SAME CLASS, DIFFERENT DOOR: the HTTP verb route (`POST /api/v1/tickets/:id/close`, board-routes.ts fireVerb) takes `verify.exitCode` from the request body the same way. Filed as W23-43 rather than widened here \u2014 it needs the registry-resolved project root and its own route tests, and the founder scoped this fix to the CLI.",
-        "OVERLAP WITH W23-37, NOT THE SAME CODE: W23-37 is a pipeline-authored `test -s` verify that the close gate runs faithfully but that checks too little. This ticket is a verify that was never run at all. Different files, different defect."
+        "OVERLAP WITH W23-37, NOT THE SAME CODE: W23-37 is a pipeline-authored `test -s` verify that the close gate runs faithfully but that checks too little. This ticket is a verify that was never run at all. Different files, different defect.",
+        "DONE 2026-09-23. dokima close now MEASURES: the sandboxed reRunVerify (ticket's own verify when declared, SC-02; caller's --verify-cmd only otherwise, recorded as verifySource), classifyManifestFiles after verify, rev-parse --verify <sha>^{commit} per SHA. No repo -> commits recorded caller_asserted on the receipt's new optional evidence block and printed as such. --verify-exit is a named usage error. No-sandbox host refuses by name. RED: the 2026-09-23 repro closed with exit 0 before; 6 new run.test.ts fixtures failed before, pass after. The HTTP verb route's identical defect is W23-43 (not fixed here). Breaking CLI change: --verify-exit is gone."
       ]
     },
     {

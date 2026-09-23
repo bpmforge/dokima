@@ -11,7 +11,24 @@ name what a change means for that boundary, not just what moved.
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+
+- **`dokima close` measures its evidence instead of recording the caller's.**
+  It runs the verify command itself (sandboxed, the ticket's own `verify` when
+  it declares one), checks every `--files` path exists in the project, and
+  resolves every `--commits` SHA in the project's git repo; any failure refuses
+  the close. Without a git repo the commits are recorded on the receipt as
+  caller-asserted, never as verified. **Breaking:** `--verify-exit` is removed
+  and is now a usage error — the exit code is measured, never supplied.
+
+### Fixed
+
+- Autonomous sessions can report their own commits: the agent's `commit` tool
+  returns the new commit's `sha`, and the handoff says so (in a linked worktree
+  the agent cannot read `.git`, and was being asked to).
+- A session killed by a provider/request timeout after finishing its work is
+  now derived and landed through the ordinary close gate instead of retried;
+  an endpoint failure over unfinished work still retries for free.
 
 ## [1.0.1] — 2026-09-23
 
