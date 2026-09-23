@@ -2638,18 +2638,26 @@ read nowhere, so no production run uses the container profile) and W23-58 (an
 offline advisory snapshot and a lockfile matcher, which needs a founder call on
 the source and the dependency).
 
-**Nightly (P6-22 needs 10 green).** The torn-read fix (W23-46, 9be2927f)
-is in exactly one nightly run: workflow_dispatch 35902007196 on
-fix/v1-release-hardening @60c03301, green on Node 22 and Node 24. Every
-scheduled run through 2026-09-23 09:08Z ran on 1abc55b6, before the fix;
-09-22 and 09-23 failed and 09-21 passed. **Streak: 1**, and the first
-scheduled run on a main that has the fix is 2026-09-24 ~09:08Z.
+**Nightly (P6-22 needs 10 green nights). Streak: 0, and the fix is not yet
+confirmed.** Every scheduled run through 2026-09-23 09:08Z ran on main
+1abc55b6, which predates the torn-read fix (W23-46, 9be2927f). 09-22 (the
+guided sample) and 09-23 (W13-39 rejoin) failed; both are in the 404
+torn-read class W23-46 diagnosed. The one run that includes the fix is a
+workflow_dispatch on a branch (35902007196 @60c03301): green on Node 22 and
+Node 24, but it is not a scheduled night. The first scheduled run on a main
+that has the fix is 2026-09-24 ~09:08Z (main is 225f48be).
 
 **Founder:**
 
 - The unchanged-dependencies answer and the waiver key
   (`security.unauditedDependencies`) are new semantics. They apply only where
-  the audit cannot run.
+  the audit cannot run: W23-56 acceptance 1 was narrowed to local-only. Please
+  ratify.
+- W23-55 acceptance 1 (a mask-based key) was deliberately not met as written,
+  because masks collide. Please ratify the fingerprint key.
+- A real review now runs opengrep on the head and again on the base when the
+  head has findings. Each scan is about 5.5 s on this machine, mostly rule
+  loading.
 - W23-58 needs a decision on the snapshot source (OSV export or the npm bulk
   endpoint) and on a version-range dependency.
 - W23-57: the container profile is unwired.
