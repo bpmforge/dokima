@@ -34,33 +34,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   checkNodeSupported,
-  describeAbiMismatch,
+  nativeModuleProblem,
 } from '../apps/server/src/bootstrap/node-abi-guard.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 export function readEngines(pkgPath = path.join(root, 'package.json')) {
   return JSON.parse(readFileSync(pkgPath, 'utf8')).engines?.node;
-}
-
-/**
- * Load the native module and report an ABI mismatch by name, or null when it
- * loads. A failure that is not an ABI mismatch is rethrown untouched.
- *
- * @param {() => unknown} load opens the native module (injected for tests)
- * @param {string | undefined} engines
- * @param {string} [running]
- * @returns {string | null}
- */
-export function nativeModuleProblem(load, engines, running = process.versions.node) {
-  try {
-    load();
-    return null;
-  } catch (err) {
-    const refusal = describeAbiMismatch(err, { engines, running });
-    if (refusal === null) throw err;
-    return refusal;
-  }
 }
 
 function openBetterSqlite() {

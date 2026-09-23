@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { checkNodeSupported, describeAbiMismatch } from './node-abi-guard.mjs';
+import {
+  checkNodeSupported,
+  describeAbiMismatch,
+  nativeModuleProblem,
+} from './node-abi-guard.mjs';
 
 /** The message Node itself prints — reproduced verbatim from a real failure. */
 const REAL_ERROR = new Error(
@@ -133,5 +137,44 @@ describe('Node 22 AND Node 24 are supported (v1.0.1 founder decision)', () => {
     const msg = describeAbiMismatch(REAL_ERROR, { engines: BOTH, running: '26.0.0' });
     expect(msg).toContain('fnm use 24');
     expect(msg).not.toContain('rebuild better-sqlite3');
+  });
+});
+
+describe('nativeModuleProblem — the eager load at the entry (v1.0.1)', () => {
+  const abiError = () => {
+    throw REAL_ERROR;
+  };
+
+  it(
+    'RED FIXTURE: names a binary built under the OTHER supported line. The major ' +
+      'check passes on 24, better-sqlite3 loads lazily inside a command, and an ' +
+      'installed 1.0.1 printed the raw trace on `dokima backup` until this ran first',
+    () => {
+      const msg = nativeModuleProblem(abiError, '22.x || 24.x', '24.14.0');
+      expect(msg).toContain('rebuild better-sqlite3');
+      expect(msg).toContain('24.14.0');
+    },
+  );
+
+  it('says nothing when the module loads', () => {
+    expect(nativeModuleProblem(() => ({}), '22.x || 24.x', '24.14.0')).toBeNull();
+  });
+
+  it('rethrows anything that is not an ABI mismatch — the entry lets the command report it', () => {
+    const missing = () => {
+      throw new Error('Could not locate the bindings file.');
+    };
+    expect(() => nativeModuleProblem(missing, '22.x || 24.x', '22.23.1')).toThrow(
+      'bindings',
+    );
+  });
+
+  it('cli-entry runs the eager load BEFORE the bundle is imported', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync(new URL('./cli-entry.mjs', import.meta.url), 'utf8');
+    const probe = src.indexOf('nativeModuleProblem(');
+    const bundle = src.indexOf('await import(pathToFileURL(bundle)');
+    expect(probe).toBeGreaterThan(-1);
+    expect(bundle).toBeGreaterThan(probe);
   });
 });

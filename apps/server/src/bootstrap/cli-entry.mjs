@@ -19,9 +19,14 @@
  */
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { checkNodeSupported, describeAbiMismatch } from './node-abi-guard.mjs';
+import {
+  checkNodeSupported,
+  describeAbiMismatch,
+  nativeModuleProblem,
+} from './node-abi-guard.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const bundle = path.resolve(here, '..', '..', 'dist', 'main.js');
@@ -43,6 +48,25 @@ function supportedNodeRange() {
 const unsupported = checkNodeSupported(supportedNodeRange());
 if (unsupported) {
   console.error(unsupported);
+  process.exit(1);
+}
+
+// v1.0.1: two supported lines means a SUPPORTED Node can still hold a binary
+// built under the other one (installed on 22, run on 24). Load it now, while
+// the mismatch can still be named. Only an ABI mismatch refuses here; any
+// other load failure is left for the command that needs the module, so
+// `--help` never dies on, say, an install that skipped native builds.
+let abiProblem = null;
+try {
+  abiProblem = nativeModuleProblem(() => {
+    const Database = createRequire(import.meta.url)('better-sqlite3');
+    new Database(':memory:').close();
+  }, supportedNodeRange());
+} catch {
+  /* not an ABI mismatch — the command that opens a database reports it */
+}
+if (abiProblem) {
+  console.error(abiProblem);
   process.exit(1);
 }
 

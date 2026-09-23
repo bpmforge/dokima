@@ -151,3 +151,33 @@ export function describeAbiMismatch(err, ctx = {}) {
     ...fix,
   ].join('\n');
 }
+
+/**
+ * Load the native module NOW and name an ABI mismatch, or return null when it
+ * loads. A failure that is not an ABI mismatch is rethrown untouched.
+ *
+ * WHY THIS EXISTS (v1.0.1). With one supported line, `checkNodeSupported` was
+ * enough: any Node that passed it matched the binary. With two, it passes on
+ * 24 while the installed binary was built on 22 — the npx cache and a
+ * project's node_modules are shared across Node versions — and because
+ * better-sqlite3 loads lazily inside a command, the raw NODE_MODULE_VERSION
+ * trace reached the user again. Verified on the installed 1.0.1 tarball
+ * before this was wired: installed on 22, `dokima backup` on 24 printed the
+ * raw trace. Loading eagerly at the entry is the same lesson as the major
+ * check above, one level down.
+ *
+ * @param {() => unknown} load opens the native module (injected for tests)
+ * @param {string | undefined} engines
+ * @param {string} [running]
+ * @returns {string | null}
+ */
+export function nativeModuleProblem(load, engines, running = process.versions.node) {
+  try {
+    load();
+    return null;
+  } catch (err) {
+    const refusal = describeAbiMismatch(err, { engines, running });
+    if (refusal === null) throw err;
+    return refusal;
+  }
+}

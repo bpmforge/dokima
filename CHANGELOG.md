@@ -15,10 +15,13 @@ Nothing yet.
 
 ## [1.0.1] — 2026-09-23
 
-A packaging fix release. v1.0.0's tarball could not start; nothing in the
-trust boundary changed, but a gate the boundary relies on — "the CLI refuses
-an unsupported Node before anything native loads" — never ran for an installed
-user, because the module that implements it was not in the package.
+A packaging fix release that also closes one gate bypass. v1.0.0's tarball
+could not start, so the guard the boundary relies on — "the CLI refuses an
+unsupported Node before anything native loads" — never ran for an installed
+user: the module that implements it was not in the package. And on Node 24,
+newly supported here, the close gate's empty-run check was blind (below): a
+verify command that executed zero tests would have been recorded as a pass.
+Both are closed; no verb, receipt or event shape changed.
 
 ### Fixed
 
@@ -33,8 +36,13 @@ user, because the module that implements it was not in the package.
   piped (`ℹ tests 0`), and the empty-run detector only recognised TAP's
   `# tests 0` — so an acceptance criterion whose glob matched nothing exited
   zero and was recorded as green. Both shapes are now refused.
-- An ABI mismatch on a **supported** Node now says to rebuild better-sqlite3,
-  instead of telling someone who installed on 22 and moved to 24 to go back.
+- A better-sqlite3 binary built under the other supported Node (installed on
+  22, run on 24 — the npx cache and a project's `node_modules` are shared
+  across Node versions) printed the raw `NODE_MODULE_VERSION` trace on the
+  first command that opened a database. The CLI entry now loads the module
+  before the bundle and names the fix — rebuild, not "switch back to 22".
+  Other load failures are left to the command that needs the module, so
+  `--help` still works on an install without the native binary.
 
 ### Added
 

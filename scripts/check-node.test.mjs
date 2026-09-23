@@ -3,8 +3,11 @@
  * shell had a different Node than the one better-sqlite3 was built for.
  */
 import { describe, expect, it } from 'vitest';
-import { checkNodeSupported } from '../apps/server/src/bootstrap/node-abi-guard.mjs';
-import { nativeModuleProblem, readEngines } from './check-node.mjs';
+import {
+  checkNodeSupported,
+  nativeModuleProblem,
+} from '../apps/server/src/bootstrap/node-abi-guard.mjs';
+import { readEngines } from './check-node.mjs';
 
 describe('the test runner refuses the wrong Node (W13-08)', () => {
   it('reads the supported version from engines, not a literal that can drift', () => {
