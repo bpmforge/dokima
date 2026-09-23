@@ -51,6 +51,11 @@ name what a change means for that boundary, not just what moved.
   ticket's base commit, and only findings the change added are counted. The
   pre-existing count is still reported. If the base can't be scanned, every
   finding stands.
+- **The machine review covers the whole ticket.** It used to diff only the
+  ticket's last commit (`HEAD^..HEAD`), so a reviewer never saw the earlier
+  commits and the security baseline counted them as pre-existing. The review,
+  the baseline and the freshness check before acceptance now all use the commit
+  the ticket forked from. When that commit can't be found, no baseline runs.
 - **The reviewer is told that a scanner which did not run is missing
   coverage.** It is neither a clean result nor evidence against the change.
 - **Free infrastructure retries wait before re-running**: 5 s, then 15 s, then

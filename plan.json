@@ -17355,6 +17355,56 @@
       "stories": [
         "US-402"
       ]
+    },
+    {
+      "id": "W23-54",
+      "title": "under the opt-in container sandbox, tool-sast cannot run: only the worktree is mounted (the ruleset path is not) and the default image has no opengrep \u2014 and exit 127 reads as ERROR, not NOT RUN",
+      "phase": 23,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "depends_on": [],
+      "stories": [
+        "US-402"
+      ],
+      "write_scope": [
+        "packages/harbormaster/src/security-tool-runner.ts",
+        "packages/harbormaster/src/security-tool-adapters.ts",
+        "packages/harbormaster/src/security-tool-adapters.test.ts"
+      ],
+      "acceptance": [
+        "Under the container profile, tool-sast either runs (ruleset mounted read-only, engine available in the image) or reports unavailable naming the container profile as the reason",
+        "Red fixture: a runner answering exit 127 / \"command not found\" yields unavailable, never error"
+      ],
+      "points": 2,
+      "status": "todo",
+      "notes": [
+        "FILED 2026-09-23 during W23-51 close-out review (Law 1): sandbox/container.ts buildRunArgs mounts only `${cwd}:/work`; W23-51's smoke ran under the process (seatbelt) profile, which allows default reads. Not measured under a container runtime."
+      ]
+    },
+    {
+      "id": "W23-55",
+      "title": "tool-secrets has no base-vs-head comparison: a secret already committed at the ticket's base blocks machine acceptance of every ticket in that project",
+      "phase": 23,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "depends_on": [],
+      "stories": [
+        "US-402"
+      ],
+      "write_scope": [
+        "packages/harbormaster/src/security-tool-adapters.ts",
+        "packages/harbormaster/src/security-baseline.ts",
+        "packages/harbormaster/src/security-baseline.test.ts"
+      ],
+      "acceptance": [
+        "tool-secrets itemises its findings (a key per finding: rule + path + masked match) so the W23-51 baseline can compare head with base",
+        "Red fixture: a secret present at base and head is pre-existing (passed, counted); a secret the ticket adds is FINDINGS"
+      ],
+      "points": 2,
+      "status": "todo",
+      "notes": [
+        "FILED 2026-09-23 during W23-51 close-out (Law 1): W23-51 gave findingKeys to tool-sast and tool-deps only. The bundled secrets scanner reports '- ...' lines with no stable identity, so it is still counted whole."
+      ]
     }
   ]
 }

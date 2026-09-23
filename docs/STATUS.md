@@ -2557,16 +2557,18 @@ point (the merge-base with `resolveTicketBase`'s ref).
   takes in the UI.
 - Runs used `run start --approved-build --breakpoint never --berths 1`.
 
-| run                  | dist     | maker                             | reviewer                          | outcome                                                                                                                                                                                                                                                 |
-| -------------------- | -------- | --------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1 (V2-011 base64url) | 3d2ae70b | qwen3.8-27b Q4 on **MTPLX** :8088 | qwen/qwen3-coder-next (LM Studio) | **done by machine-accept**: 1 attempt, 13 turns, 18 min. Review CONFIRMED 10/10 on the second ask (the first was unparseable, on a pre-W23-49 dist). tool-sast passed (opengrep, rules sha256:ae855e95…), tool-deps passed with 7 pre-existing at base. |
-| 2 (V2-012 ct-equal)  | 5db8083a | qwen/qwen3-coder-next (LM Studio) | qwen3.8-27b on MTPLX              | **done by machine-accept**: 1 attempt, 9 turns, 70 s. CONFIRMED 8/10, same checks. The reviewer saw only the second commit, which is where W23-53 came from.                                                                                            |
-| 3 (V2-013 fromHex)   | 018a0c80 | qwen3.8-27b on MTPLX              | qwen/qwen3-coder-next             | **done by machine-accept**: 1 attempt, 7 turns, 86 s. CONFIRMED 10/10; reviewedBase is the fork point.                                                                                                                                                  |
+| run                  | dist     | maker                             | reviewer                          | outcome                                                                                                                                                                                                                                                                                                                                                                                                                |
+| -------------------- | -------- | --------------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 (V2-011 base64url) | 3d2ae70b | qwen3.8-27b Q4 on **MTPLX** :8088 | qwen/qwen3-coder-next (LM Studio) | **done by machine-accept**: 1 attempt, 13 turns, 18 min. Review CONFIRMED 10/10 on the second ask (the first was unparseable, on a pre-W23-49 dist). tool-sast passed (opengrep, rules sha256:ae855e95…), tool-deps passed with 7 pre-existing at base. The dist predates W23-53: reviewedBase was the ticket's own first commit, so the reviewer saw only the second commit and the baseline was measured against it. |
+| 2 (V2-012 ct-equal)  | 5db8083a | qwen/qwen3-coder-next (LM Studio) | qwen3.8-27b on MTPLX              | **done by machine-accept**: 1 attempt, 9 turns, 70 s. CONFIRMED 8/10, same checks. The reviewer saw only the second commit, which is where W23-53 came from.                                                                                                                                                                                                                                                           |
+| 3 (V2-013 fromHex)   | 018a0c80 | qwen3.8-27b on MTPLX              | qwen/qwen3-coder-next             | **done by machine-accept**: 1 attempt, 7 turns, 86 s. CONFIRMED 10/10; reviewedBase is the fork point. This was a single-commit ticket, so the fork point is also HEAD^; W23-53's multi-commit path is proven by fixture only.                                                                                                                                                                                         |
 
 No LM Studio `ping` fell inside any run window. MTPLX was started for these
 runs and stopped afterwards.
 
-**Recommended default local model for the v1 docs:** qwen3.8-27b served by
+**Proven by fixture only:** W23-49's raw-reply recording (the one live bounce was on a pre-W23-49 dist) and W23-53's multi-commit range.
+
+**Recommended default local model for the v1 docs** (the qwen3.8 used here is the MTPLX pack `qwen3.8-27b-uncensored-mtplx-q4-1`, not the stock `qwen/qwen3.8-27b`): qwen3.8-27b served by
 MTPLX as the maker, with qwen3-coder-next as the reviewer, or the other way
 round. Both pairings reached `done` unattended. The qwen3.8 maker on LM Studio
 failed this morning only because another client evicted it.
@@ -2575,7 +2577,25 @@ failed this morning only because another client evicted it.
 machine that is `export DOKIMA_SAST_RULES=~/Code/bpm-rulepacks/packs` or
 `ln -s ~/Code/bpm-rulepacks/packs ~/.dokima/rules/sast` (not done here).
 `dokima doctor` warns until one of them is set.
+Other items for the founder:
+
+- **Ruleset distribution.** The rulepacks are proprietary and not vendored, so
+  on any other install tool-sast reports NOT RUN and nothing can be
+  machine-accepted. Keeping the v1 unattended promise for other users needs a
+  ruleset decision, for example a public-teaser subset or a separate download.
+- **Local-only projects.** tool-deps is unavailable without a local advisory
+  snapshot, which also blocks machine acceptance. Vault ran network-allowed
+  because its settings have no `modelPolicy.localOnly` key.
+- **RepoPulse.** Its `t2/live.integration.test.ts` never skips, because it
+  always appends `localhost:1234`. It will keep loading `qwen3-coder-next` in
+  LM Studio whenever its suite runs, and needs a ticket on RepoPulse's board.
+
+Filed from the close-out (Law 1):
+
+- **W23-54**: under the container sandbox, only the worktree is mounted, so
+  tool-sast cannot run.
+- **W23-55**: tool-secrets has no base-vs-head comparison.
 
 Gate on Node 22: lint 0, typecheck 0, **5508 tests** (624 files, 3 skipped),
-**76 e2e**, 6 validators + temp-leaks clean. **Board: 545 done · 4 todo · 1
+**76 e2e**, 6 validators + temp-leaks clean. **Board: 545 done · 6 todo · 1
 blocked (W12-44).**
