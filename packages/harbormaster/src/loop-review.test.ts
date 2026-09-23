@@ -20,6 +20,8 @@ import { runReviewPass, type ReviewPassOptions } from './loop-review.js';
  * fixture command inside a real temp worktree — no network, no models.
  */
 
+import { currentTicketSource, ticketForkPoint } from './review-base.js';
+
 const NOW = () => '2026-08-20T00:00:00.000Z';
 const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => {
@@ -434,5 +436,67 @@ describe('W23-04: the build path runs the real registry, and the reviewer sees w
       (c) => c.checkId === 'tool-deps',
     )!;
     expect(deps.status).not.toBe('not_applicable');
+  });
+});
+
+describe('W23-53: the review is about the whole ticket, from the commit it forked from', () => {
+  it('RED FIXTURE: a two-commit ticket is reviewed over BOTH commits, and reviewedBase is the fork point — not HEAD^', async () => {
+    const { log, repoRoot } = await fixture('printf "1 tests passed\\n"');
+    const forkPoint = (await git(repoRoot, ['rev-parse', 'main'])).stdout.trim();
+    const worktree = path.join(repoRoot, '.dokima', 'worktrees', 'T-1');
+    await fs.mkdir(path.join(worktree, 'src'), { recursive: true });
+    await fs.writeFile(path.join(worktree, 'src', 'spec.txt'), 'second commit\n');
+    await git(worktree, ['add', '--', 'src/spec.txt']);
+    await git(worktree, ['commit', '-m', 'T-1: spec']);
+
+    const prompts: string[] = [];
+    await runReviewPass(
+      options(log, repoRoot, {
+        reviewChat: async (prompt: string) => {
+          prompts.push(prompt);
+          return '{"verdict":"CONFIRMED","score":8,"reasoning":"both files."}';
+        },
+      }),
+    );
+    const payload = events(log, 'review.verdict').at(-1)!.payload as Record<
+      string,
+      unknown
+    >;
+    expect(payload.reviewedBase).toBe(forkPoint);
+    // The FIRST commit's file — the one HEAD^ used to hide.
+    expect(prompts[0]).toContain('work.txt');
+    expect(prompts[0]).toContain('src/spec.txt');
+    // And the freshness check that gates a machine acceptance reads the SAME
+    // range: otherwise every multi-commit ticket would look stale.
+    const now = await currentTicketSource({
+      log,
+      repoRoot,
+      ticketId: 'T-1',
+      worktreePath: worktree,
+    });
+    expect(now.sourceDigest).toBe(payload.sourceDigest);
+  });
+
+  it('an unresolvable fork point is null — never HEAD^ — so no baseline runs over a guessed base', async () => {
+    const { log, repoRoot } = await fixture('true');
+    const ticket = getTicket(log, 'T-1')!;
+    const notARepo = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-review-norepo-'));
+    cleanups.push(() => fs.rm(notARepo, { recursive: true, force: true }));
+    expect(
+      await ticketForkPoint({
+        repoRoot: notARepo,
+        worktreePath: notARepo,
+        ticket,
+        tickets: [ticket],
+      }),
+    ).toBeNull();
+    expect(
+      await ticketForkPoint({
+        repoRoot,
+        worktreePath: path.join(repoRoot, '.dokima', 'worktrees', 'T-1'),
+        ticket,
+        tickets: [ticket],
+      }),
+    ).toBe((await git(repoRoot, ['rev-parse', 'main'])).stdout.trim());
   });
 });

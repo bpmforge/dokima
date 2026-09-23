@@ -49,6 +49,7 @@ import {
 } from './review-decision.js';
 import { askForVerdict, countsFrom, reviewPrompt } from './loop-review-prompt.js';
 import { collectReviewEvidence, evidenceStillCurrent } from './review-evidence.js';
+import { ticketForkPoint } from './review-base.js';
 // W21-75: the literal that used to sit further down was Dokima's own gate,
 // duplicated; the ticket's verify command is resolved in loop-gates.ts now.
 import { DEFAULT_VERIFY_COMMAND } from './loop-handoff.js';
@@ -223,10 +224,18 @@ async function reviewOne(
   // carried into the prompt as an explicit "you are not looking at the code"
   // and, below, makes CONFIRMED impossible — a review of a diff nobody showed
   // the reviewer is worse than no review, because it arrives with a verdict.
+  // W23-53: from the fork point, not HEAD^ — a multi-commit ticket is one change.
+  const forkPoint = await ticketForkPoint({
+    repoRoot: options.repoRoot,
+    worktreePath,
+    ticket,
+    tickets: listTickets(options.log),
+  });
   const evidenceInput = {
     ticketId: ticket.id,
     worktreePath,
     secretValues: options.secretValues ?? [],
+    ...(forkPoint ? { baseRef: forkPoint } : {}),
   };
   const evidence = await collectReviewEvidence(evidenceInput);
 
@@ -240,8 +249,9 @@ async function reviewOne(
     networkPolicy: options.networkPolicy ?? 'local-only',
     secretsValidatorPath: options.secretsValidatorPath ?? null,
     sastRules: options.sastRules ?? null,
-    // W23-51: findings already present where the ticket forked are not its own.
-    baseCommit: evidence.baseCommit,
+    // W23-51/53: findings already present where the ticket FORKED are not its
+    // own; an unknown fork point runs no baseline, so every finding stands.
+    baseCommit: forkPoint,
   });
 
   // One bounce allowed (R-B2: INCOMPLETE is bounced, not counted). A

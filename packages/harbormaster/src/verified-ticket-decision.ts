@@ -99,11 +99,14 @@ export async function currentSourceOf(
   ticketId: string,
   worktreePath: string,
   secretValues: readonly string[] = [],
+  /** W23-53: the fork point the review diffed from, so the two digests are about the same range. */
+  baseRef: string | null = null,
 ): Promise<CurrentSource> {
   const bundle = await collectReviewEvidence({
     ticketId,
     worktreePath,
     secretValues: [...secretValues],
+    ...(baseRef ? { baseRef } : {}),
   });
   return {
     headCommit: bundle.headCommit,

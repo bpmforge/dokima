@@ -14,7 +14,7 @@
  */
 
 import {
-  currentSourceOf,
+  currentTicketSource,
   verifyAndAcceptTicket,
   type LandLoopOptions,
   type VerifiedTicketOutcome,
@@ -65,8 +65,15 @@ export function createPostCloseVerification(
           });
           return outcome ?? null;
         },
+        // W23-53: over the same fork-point range the review diffed.
         currentSource: () =>
-          currentSourceOf(ticketId, worktreePath, options.secretValues ?? []),
+          currentTicketSource({
+            log: options.log,
+            repoRoot: options.landOptions().repoRoot,
+            ticketId,
+            worktreePath,
+            secretValues: options.secretValues ?? [],
+          }),
         ...(options.secretValues ? { secretValues: options.secretValues } : {}),
       });
       options.decided.push(outcome);

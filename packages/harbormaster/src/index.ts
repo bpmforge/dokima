@@ -283,6 +283,7 @@ export type {
 export { landClaimedTicket, processTicket } from './loop-land-ticket.js';
 /** W23-12 (AB-12): the post-close verify/review/accept operation, injected into the one-ticket engine. */
 export { currentSourceOf, verifyAndAcceptTicket } from './verified-ticket-decision.js';
+export { currentTicketSource } from './review-base.js';
 export type { VerifiedTicketOutcome } from './verified-ticket-decision.js';
 /** W23-11 (AB-11): the bounded repair loop — reject, remake, re-review, at most three rounds. */
 export { REPAIR_STOPPED_EVENT, runRepairRounds } from './build-repair-loop.js';
