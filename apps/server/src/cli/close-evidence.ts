@@ -26,6 +26,11 @@
  * outside git — but the receipt marks the commits `caller_asserted`, so it
  * never reads as verified.
  *
+ * TWO DOORS, ONE PATH (W23-43): `dokima close` and `POST
+ * /api/v1/tickets/:id/close` both close through `closeWithMeasuredEvidence`
+ * below. The HTTP route took `verify.exitCode` from the request body until
+ * then — the same caller-asserted receipt, one door over.
+ *
  * NOT THE FULL CLOSE GATE. `runCloseGate` also diffs against a fork point,
  * runs the validator pack and mints a signed receipt; it needs a ticket
  * worktree, a base ref, a content pack and a signing key the CLI does not
@@ -38,7 +43,16 @@ import {
   isSandboxProfileAvailable,
   reRunVerify,
 } from '@dokima/harbormaster';
-import type { CloseEvidence, Ticket, VerifyResult } from '@dokima/tickets';
+import type { EventLog } from '@dokima/events';
+import {
+  closeTicket,
+  isValidTransition,
+  listTickets,
+  TicketError,
+  type CloseEvidence,
+  type Ticket,
+  type VerifyResult,
+} from '@dokima/tickets';
 import { PROJECT_STATE_DIR } from './db.js';
 
 /** The close gate's own verify ceiling (DEFAULT_VERIFY_TIMEOUT_MS, loop-gates-types.ts). */
@@ -156,4 +170,65 @@ export async function measureCloseEvidence(
     verify: { command, exitCode: ran.exitCode },
     evidence: { verify: 'ran', verifySource, files: 'verified', commits },
   };
+}
+
+export interface MeasuredCloseRequest extends CloseClaim {
+  readonly ticketId: string;
+  readonly actorId: string;
+}
+
+/**
+ * THE ONE MEASURED CLOSE (W23-42 for the CLI, W23-43 for the HTTP verb route):
+ * both doors call this, so there is no second verifier to drift. A body's or a
+ * flag's exit code never reaches it — the caller supplies a COMMAND, and the
+ * receipt records what running it returned.
+ *
+ * CHEAP REFUSALS FIRST. A close this actor cannot make (wrong status, not the
+ * owner) or one with no files or no commits is refused by `closeTicket` itself
+ * BEFORE anything runs: nobody's verify command executes for a close that
+ * could never happen. That matters most on the board, where a drag onto In
+ * Review always fires an empty-bodied close — it must stay an instant 409, not
+ * a verify run of up to ten minutes. The refusal path passes a failing verify,
+ * so even a lifecycle check that somehow passed could not record unmeasured
+ * evidence.
+ */
+export async function closeWithMeasuredEvidence(
+  log: EventLog,
+  request: MeasuredCloseRequest,
+  root: string,
+  opts: { now?: () => string } = {},
+): Promise<Ticket> {
+  const base = {
+    ticketId: request.ticketId,
+    actorId: request.actorId,
+    files: [...request.files],
+    commits: [...request.commits],
+  };
+  const current = listTickets(log).find((t) => t.id === request.ticketId);
+  if (
+    !current ||
+    !isValidTransition('close', current.status) ||
+    current.ownerId !== request.actorId ||
+    base.files.length === 0 ||
+    base.commits.length === 0
+  ) {
+    return closeTicket(
+      log,
+      { ...base, verify: { command: request.verifyCommand, exitCode: 1 } },
+      opts,
+    );
+  }
+  const measured = await measureCloseEvidence(root, current, request);
+  if (!measured.ok) {
+    throw new TicketError(
+      'MANIFEST_INVALID',
+      request.ticketId,
+      `close refused: ${measured.reasons.join('; ')}`,
+    );
+  }
+  return closeTicket(
+    log,
+    { ...base, verify: measured.verify, evidence: measured.evidence },
+    opts,
+  );
 }
