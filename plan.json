@@ -17454,9 +17454,10 @@
         "Red fixtures: an unchanged-lockfile ticket under local-only is eligible; a changed-lockfile ticket is not (default) and is with \"allow\"; \"allow\" does not waive tool-deps FINDINGS"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
-        "FILED 2026-09-23 (Law 1) from the founder's v1 brief: \"a local-only project (no network) can't machine-accept because tool-deps needs an advisory snapshot\". Measured in source: security-checks.ts returns unavailable for local-only without `localAdvisoryDbPath`; no caller anywhere passes it; checksPermitAutomaticCompletion and verified-ticket-decision both treat unavailable as blocking. The offline advisory SNAPSHOT itself (fetch/import + a lockfile matcher that consumes it) is W23-58 \u2014 an importer nothing reads would be a dropped finding."
+        "FILED 2026-09-23 (Law 1) from the founder's v1 brief: \"a local-only project (no network) can't machine-accept because tool-deps needs an advisory snapshot\". Measured in source: security-checks.ts returns unavailable for local-only without `localAdvisoryDbPath`; no caller anywhere passes it; checksPermitAutomaticCompletion and verified-ticket-decision both treat unavailable as blocking. The offline advisory SNAPSHOT itself (fetch/import + a lockfile matcher that consumes it) is W23-58 \u2014 an importer nothing reads would be a dropped finding.",
+        "CLAIMED 2026-09-23 (fix/v1-review-gaps). DESIGN AT CLAIM, narrowing acceptance 1 before any edit: the unchanged-dependencies answer applies ONLY where the audit could not otherwise run (local-only, no advisory source). A network-allowed project keeps running npm audit with the W23-51 baseline, so its review still says how many advisories pre-exist \u2014 replacing that with NOT_APPLICABLE would hide a fact the reviewer has today. The measurement: every root manifest/lockfile (package.json, package-lock.json, npm-shrinkwrap.json, pnpm-lock.yaml, yarn.lock) in the worktree is byte-compared with `git show <fork point>:<file>` (absent on both sides = unchanged); any git failure is 'unknown' and falls through to NOT RUN. The waiver is carried on the evidence (`waived`), set in exactly one branch of runSecurityChecks, so no other status or check can carry it; loop-review marks a waived check not required, verified-ticket-decision accepts `unavailable` only with `waived` on tool-deps."
       ],
       "stories": [
         "US-402"
