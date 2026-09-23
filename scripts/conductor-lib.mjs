@@ -27,6 +27,7 @@ export {
   DEFAULT_CONFIG,
   validateModels,
   nodePinMismatch,
+  nodeRequirementMismatch,
   mergeConfig,
   loadConfigFile,
   alwaysOkPatterns,

@@ -88,12 +88,16 @@ export const DEFAULT_CONFIG = {
 export function validateModels(models) {
   const errors = [];
   if (models === null || typeof models !== 'object') {
-    return ["conductor.config.json's \"models\" key must be an object (or omitted to use the built-in default ladder)"];
+    return [
+      'conductor.config.json\'s "models" key must be an object (or omitted to use the built-in default ladder)',
+    ];
   }
   for (const role of ['maker', 'cheap', 'reviewer', 'security', 'escalate']) {
     const v = models[role];
     if (typeof v !== 'string' || v.trim() === '') {
-      errors.push(`models.${role} is required and must be a non-empty string (got ${JSON.stringify(v)})`);
+      errors.push(
+        `models.${role} is required and must be a non-empty string (got ${JSON.stringify(v)})`,
+      );
     }
   }
   return errors;
@@ -117,6 +121,38 @@ export function nodePinMismatch(nodeVersion, pinContents) {
   if (!want) return null;
   if (nodeVersion.startsWith(`v${want}.`)) return null;
   return `node ${nodeVersion} != v${want}.x`;
+}
+
+/**
+ * W23-47: the project's `engines.node` wins over its `.nvmrc` pin.
+ *
+ * `.nvmrc` holds ONE line — it is the default dev Node, not the supported
+ * set. Dokima has supported `22.x || 24.x` since v1.0.1 while `.nvmrc` stays
+ * 22, so a pin-only check refused every Node 24 shell. When the project
+ * declares `engines.node`, any major it names is accepted; the pin is the
+ * fallback for a project that declares none, with its old behaviour and
+ * message unchanged, and a project with neither is skipped.
+ *
+ * Majors are read the way the product's own bootstrap reads them
+ * (`supportedMajors` in node-abi-guard.mjs): every leading number in each
+ * `||` alternative. Re-derived here rather than imported because the
+ * conductor runs against OTHER repos, where that module does not exist.
+ */
+export function nodeRequirementMismatch(nodeVersion, { engines, pin } = {}) {
+  const declared = String(engines ?? '').trim();
+  if (declared) {
+    const majors = declared
+      .split('||')
+      .map((alt) => /\d+/.exec(alt)?.[0])
+      .filter(Boolean);
+    const running = /^v?(\d+)\./.exec(nodeVersion)?.[1];
+    if (majors.length > 0) {
+      return majors.includes(running)
+        ? null
+        : `node ${nodeVersion} is not a supported line (engines.node: ${declared})`;
+    }
+  }
+  return nodePinMismatch(nodeVersion, pin);
 }
 
 /** Shallow-merges a project's conductor.config.json over the defaults (same as the original `{ ...DEFAULT_CONFIG, ...override }`). */
@@ -162,4 +198,3 @@ export function alwaysOkPatterns(config) {
   const boardPath = config.boardPath ?? 'plan.json';
   return [...new Set([...(config.alwaysOk ?? []), boardPath])];
 }
-

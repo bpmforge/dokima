@@ -44,7 +44,12 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
-import { nodePinMismatch, wave, isInfraFailure, infraGap } from './conductor-lib.mjs';
+import {
+  nodeRequirementMismatch,
+  wave,
+  isInfraFailure,
+  infraGap,
+} from './conductor-lib.mjs';
 import {
   ROOT,
   CONFIG,
@@ -105,16 +110,27 @@ async function main() {
   // W9-12 fixed for models.json, found the same way, by an external import.
   // Resolved against ROOT, not cwd, so the check does not depend on where the
   // conductor was invoked from.
-  if (CONFIG.nvmrcPath) {
-    const pinFile = resolve(ROOT, CONFIG.nvmrcPath);
-    if (existsSync(pinFile)) {
-      const mismatch = nodePinMismatch(process.version, readFileSync(pinFile, 'utf8'));
-      if (mismatch) {
-        console.error(
-          `${mismatch} (pinned by ${CONFIG.nvmrcPath}) — fix PATH/fnm before running (W3-15)`,
-        );
-        process.exit(1);
-      }
+  // W23-47: the project's `engines.node` (package.json at ROOT) wins over the
+  // pin — `.nvmrc` names the default dev line, not the supported set, and a
+  // pin-only check refused every Node 24 shell although 22.x || 24.x is
+  // supported. A project with no engines.node keeps the pin check unchanged.
+  {
+    const pinFile = CONFIG.nvmrcPath ? resolve(ROOT, CONFIG.nvmrcPath) : null;
+    const pin = pinFile && existsSync(pinFile) ? readFileSync(pinFile, 'utf8') : null;
+    let engines;
+    try {
+      engines = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8')).engines
+        ?.node;
+    } catch {
+      engines = undefined; // no (or unreadable) package.json: the pin decides
+    }
+    const mismatch = nodeRequirementMismatch(process.version, { engines, pin });
+    if (mismatch) {
+      const source = engines
+        ? 'package.json engines.node'
+        : `pinned by ${CONFIG.nvmrcPath}`;
+      console.error(`${mismatch} (${source}) — fix PATH/fnm before running (W3-15)`);
+      process.exit(1);
     }
   }
   if (CONFIG.holdTickets?.length)
