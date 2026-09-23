@@ -35,11 +35,12 @@ const { reRunVerify } = await import('../loop-gates-verify.js');
 
 const dirs: string[] = [];
 afterEach(async () => {
-  setUnsandboxedVerifyWaiver(false);
-  delete process.env.DOKIMA_WAIVER_TEST_SECRET;
+  // Remove first: a throw below must never strand a temp dir (temp-leaks).
   await Promise.all(
     dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
   );
+  setUnsandboxedVerifyWaiver(false);
+  delete process.env.DOKIMA_WAIVER_TEST_SECRET;
 });
 
 async function cwd(): Promise<string> {
