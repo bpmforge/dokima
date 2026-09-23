@@ -17222,7 +17222,10 @@
       "lane": "orchestrator",
       "write_scope": [
         "packages/harbormaster/src/loop-land-infra.ts",
-        "packages/harbormaster/src/loop-land-infra.test.ts"
+        "packages/harbormaster/src/loop-land-infra.test.ts",
+        "packages/harbormaster/src/loop-land-ticket.ts",
+        "packages/harbormaster/src/loop-land.ts",
+        "packages/harbormaster/src/loop-land.test.ts"
       ],
       "depends_on": [],
       "acceptance": [
@@ -17231,10 +17234,11 @@
         "The free-retry count and the park-with-evidence behaviour are unchanged"
       ],
       "points": 2,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         "FOUND LIVE 2026-09-23 on the throwaway Vault autorun (LM Studio, qwen/qwen3.8-27b). Another client's request for qwen/qwen3-coder-next (a 'ping', max_tokens 8, seen 24 times in the day's LM Studio log; not in Dokima's src or bundle and not produced by the e2e or unit suites when each was run alone against the live log \u2014 unattributed) made LM Studio unload the maker mid-session ('Channel Error ... Model unloaded'), then 'Failed to load model ... Operation canceled' for ~1 s. Dokima's three free retries ran at 18:02:14.97, 15.12, 15.25Z (and again 18:06:22.18, 22.79, 23.39Z for PLAN-vault-002), all 400, and both tickets parked. The eviction is outside Dokima; spending the whole retry budget inside the reload window is not.",
-        "2026-09-23 run A (maker qwen/qwen3.8-27b, 17:54-18:41Z): 0 landed, 3 parked attempted_nothing (PLAN-vault-000a, -002, -002c). Each ticket start coincided with the unidentified 'ping' to qwen3-coder-next; LM Studio evicted the maker, Dokima's three free retries all 400'd inside one second, and the one real attempt left either read without writing or hit the 900 s request timeout (002c). With the maker set to the model the pinger loads (run C) a fresh ticket landed in 1 attempt."
+        "2026-09-23 run A (maker qwen/qwen3.8-27b, 17:54-18:41Z): 0 landed, 3 parked attempted_nothing (PLAN-vault-000a, -002, -002c). Each ticket start coincided with the unidentified 'ping' to qwen3-coder-next; LM Studio evicted the maker, Dokima's three free retries all 400'd inside one second, and the one real attempt left either read without writing or hit the 900 s request timeout (002c). With the maker set to the model the pinger loads (run C) a fresh ticket landed in 1 attempt.",
+        "CLAIMED 2026-09-23 (fix/v1-local-autorun). WIDENED at claim: the gate's `take` becomes async so it can wait (its one caller, loop-land-ticket.ts, adds an `await`), LandLoopOptions gains an injected `sleep` (loop-land.ts), and loop-land.test.ts's endpoint-failure fixtures inject a no-op sleep so the suite does not wait out real backoff. PINGER IDENTIFIED before any edit: the 'ping' (max_tokens 8, temperature 0.1, streamed) to qwen/qwen3-coder-next is RepoPulse's packages/analysis/src/t2/live.integration.test.ts warm-up (T2_DEFAULTS.warmup {pingPrompt:'ping', retries:2} = bursts of 3; RepoPulse .env LMSTUDIO_MODEL=qwen/qwen3-coder-next; localhost:1234 is always appended so the suite never skips), run by the concurrent RepoPulse agent all day (its board records the same 'Failed to load model qwen/qwen3-coder-next ... Operation canceled'). Not Dokima: Dokima's own warm-up is GET /v1/models only (oai-compat.ts health())."
       ],
       "stories": [
         "US-402"
