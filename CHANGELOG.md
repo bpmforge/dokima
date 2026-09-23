@@ -18,8 +18,23 @@ name what a change means for that boundary, not just what moved.
   it declares one), checks every `--files` path exists in the project, and
   resolves every `--commits` SHA in the project's git repo; any failure refuses
   the close. Without a git repo the commits are recorded on the receipt as
-  caller-asserted, never as verified. **Breaking:** `--verify-exit` is removed
-  and is now a usage error — the exit code is measured, never supplied.
+  caller-asserted, never as verified.
+- **The HTTP close verb measures the same way.** `POST
+/api/v1/tickets/:id/close` runs the verify, stats the files and resolves the
+  commits in the registered project, exactly as `dokima close` does; a
+  `verify.exitCode` in the request body is ignored, and the receipt carries the
+  same evidence block.
+
+### Removed
+
+- **Breaking CLI change: `dokima close --verify-exit` is gone.** The exit code
+  is measured, never supplied, so the flag is now a usage error that says what
+  to do instead: drop `--verify-exit` and keep passing `--verify-cmd <command>`
+  — close runs it and records what it returns, and when the ticket declares
+  its own `verify`, that runs in its place. No 1.x release carrying the flag
+  was ever published to npm (`npm view @bpmforge/dokima` is a 404; v1.0.0 is a
+  git tag only), so no installed CLI is affected; a script written against the
+  source checkout must drop the flag.
 
 ### Fixed
 

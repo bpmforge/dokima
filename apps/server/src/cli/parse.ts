@@ -248,6 +248,19 @@ export function parseCliArgs(argv: string[]): CliCommand {
       'usage: dokima close <ticketId> --actor <id> --files <a,b> --commits <c1,c2> ' +
         '--verify-cmd <cmd> [--db <path>]',
     );
+    // W23-42: the exit code is MEASURED — close runs the verify itself. The
+    // flag stays declared only so a caller still passing it is told why it
+    // went, rather than getting a bare "unknown option". W23-48: checked
+    // FIRST, so an old script that passed --verify-exit and no --verify-cmd
+    // hears about the replacement instead of "requires --verify-cmd".
+    if (values['verify-exit'] !== undefined) {
+      throw new CliUsageError(
+        '--verify-exit is no longer accepted: close runs the verify command itself ' +
+          'and records the exit code it actually returns. Drop --verify-exit and ' +
+          "pass --verify-cmd <command> instead — the ticket's own verify runs in " +
+          'its place when the ticket declares one.',
+      );
+    }
     if (!values.actor) throw new CliUsageError('close requires --actor <actorId>');
     if (!values.files)
       throw new CliUsageError('close requires --files <comma-separated paths>');
@@ -255,15 +268,6 @@ export function parseCliArgs(argv: string[]): CliCommand {
       throw new CliUsageError('close requires --commits <comma-separated shas>');
     if (!values['verify-cmd'])
       throw new CliUsageError('close requires --verify-cmd <command string>');
-    // W23-42: the exit code is MEASURED — close runs the verify itself. The
-    // flag stays declared only so a caller still passing it is told why it
-    // went, rather than getting a bare "unknown option".
-    if (values['verify-exit'] !== undefined) {
-      throw new CliUsageError(
-        '--verify-exit is no longer accepted: close runs the verify command itself ' +
-          'and records the exit code it actually returns',
-      );
-    }
     return {
       kind: 'close',
       ticketId,
