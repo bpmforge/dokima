@@ -14,6 +14,17 @@ export interface CommitResult {
   violations: ScopeViolation[];
   /** W21-60: the named paths had no changes to stage — a refusal, not a scope problem. */
   nothingStaged?: boolean;
+  /**
+   * W23-40: the commit this call just made, when `committed` is true.
+   *
+   * Captured HERE because this is the one place that knows it without reading
+   * git metadata. An agent in a LINKED worktree cannot: its `.git` is a file
+   * pointing outside the worktree root, which the session sandbox refuses —
+   * correctly (SC-18). Live 2026-09-22: the model committed the right fix, was
+   * told to report "the commit sha you made", had no way to obtain it, and
+   * deliberated until the request timeout fired.
+   */
+  sha?: string;
 }
 
 export async function stagePaths(handle: WorktreeHandle, paths: string[]): Promise<void> {
@@ -66,5 +77,6 @@ export async function commitWithScopeCheck(
     return { committed: false, violations: [], nothingStaged: true };
   }
   await git(handle.path, ['commit', '-m', opts.message]);
-  return { committed: true, violations: [] };
+  const { stdout: sha } = await git(handle.path, ['rev-parse', 'HEAD']);
+  return { committed: true, violations: [], sha: sha.trim() };
 }

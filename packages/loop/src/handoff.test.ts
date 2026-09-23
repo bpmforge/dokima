@@ -133,7 +133,15 @@ describe('the handoff states the manifest contract (W13-09)', () => {
       'result, evidence)" was the whole instruction',
     () => {
       const rendered = renderHandoff(handoff);
-      for (const field of ['ticket', 'files', 'commits', 'evidence', 'verify', 'command', 'exit']) {
+      for (const field of [
+        'ticket',
+        'files',
+        'commits',
+        'evidence',
+        'verify',
+        'command',
+        'exit',
+      ]) {
         expect(rendered, `contract does not mention "${field}"`).toContain(field);
       }
       expect(rendered).toMatch(/JSON/);
@@ -152,6 +160,17 @@ describe('the handoff states the manifest contract (W13-09)', () => {
       expect(manifest).not.toBeNull();
       expect(manifest!.ticket).toBe('T-1');
       expect(manifest!.verify.command).toBe('node src/check.mjs');
+    },
+  );
+
+  it(
+    'W23-40: says WHERE the commit SHA comes from — the commit tool result — so an ' +
+      'agent in a linked worktree does not go looking in git metadata it may not read',
+    () => {
+      const rendered = renderHandoff(handoff);
+      expect(rendered).toMatch(/commit tool (call )?returns[^\n]*`sha`/);
+      expect(rendered).toMatch(/never read `?\.git`?/i);
+      expect(rendered).not.toContain('the commit sha you made');
     },
   );
 
@@ -201,7 +220,7 @@ describe('the handoff says what the harness already did (W21-22)', () => {
 
   it('the environment line is redacted like every other field', () => {
     const text = renderHandoff(
-      { ...base, environment: 'installed with token sk-abcdefghijklmnopqrstuvwxyz012345' },
+      { ...base, environment: 'installed with key sk-abcdefghijklmnopqrstuvwxyz012345' },
       { secretValues: ['sk-abcdefghijklmnopqrstuvwxyz012345'] },
     );
     expect(text).not.toContain('sk-abcdefghijklmnopqrstuvwxyz012345');
