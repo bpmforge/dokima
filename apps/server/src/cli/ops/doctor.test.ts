@@ -8,6 +8,17 @@ import type { CliIO } from '../../bootstrap/cli.js';
 import { resolveProjectPaths } from '../../bootstrap/config.js';
 import { defaultFirstPartyPackSource } from '../../bootstrap/packs-update.js';
 import { runDoctor, runDoctorCommand } from './doctor.js';
+import { checkSast, type SastProbe } from './doctor-sast.js';
+
+const SAST_READY: SastProbe = async () => ({
+  opengrepInstalled: true,
+  rules: {
+    root: '/rules/packs',
+    configPaths: ['/rules/packs/owasp'],
+    digest: `sha256:${'a'.repeat(64)}`,
+    ruleFileCount: 3,
+  },
+});
 
 describe('runDoctor', () => {
   const scratchDirs: string[] = [];
@@ -39,6 +50,7 @@ describe('runDoctor', () => {
       resolveCredentialStore: fakeStore(),
       loadConfiguredProviders: vi.fn().mockResolvedValue([]),
       packSource: realPackSource,
+      sastProbe: SAST_READY,
     });
 
     expect(report.ok).toBe(true);
@@ -367,9 +379,48 @@ describe('runDoctorCommand', () => {
       resolveCredentialStore: () => store,
       loadConfiguredProviders: vi.fn().mockResolvedValue([]),
       packSource: defaultFirstPartyPackSource(),
+      sastProbe: SAST_READY,
     });
 
     expect(code).toBe(0);
     expect(io.stdout).toHaveBeenCalledWith(expect.stringContaining('doctor: OK'));
+  });
+});
+
+describe('sast (W23-51)', () => {
+  const io = (env: NodeJS.ProcessEnv = {}): CliIO => ({
+    stdout: vi.fn(),
+    stderr: vi.fn(),
+    cwd: '/tmp',
+    env,
+  });
+
+  it('RED FIXTURE: a host without opengrep is a WARNING that names the official installer', async () => {
+    const check = await checkSast(io(), {
+      sastProbe: async () => ({
+        opengrepInstalled: false,
+        rules: (await SAST_READY({})).rules,
+      }),
+    });
+    expect(check.status).toBe('warn');
+    expect(check.detail).toMatch(/opengrep is not installed/);
+    expect(check.detail).toContain('opengrep/opengrep/main/install.sh');
+    expect(check.detail).toMatch(/NOT RUN/);
+  });
+
+  it('a host with no pinned ruleset is a WARNING naming where it looked and DOKIMA_SAST_RULES', async () => {
+    const check = await checkSast(io({ DOKIMA_SAST_RULES: '/nowhere/packs' }), {
+      sastProbe: async () => ({ opengrepInstalled: true, rules: null }),
+    });
+    expect(check.status).toBe('warn');
+    expect(check.detail).toContain('/nowhere/packs');
+    expect(check.detail).toMatch(/DOKIMA_SAST_RULES/);
+    expect(check.detail).toMatch(/Registry rules are never used/);
+  });
+
+  it('ready: names the rule count, the root and the digest prefix', async () => {
+    const check = await checkSast(io(), { sastProbe: SAST_READY });
+    expect(check).toMatchObject({ name: 'sast', status: 'ok' });
+    expect(check.detail).toMatch(/3 rule file\(s\) from \/rules\/packs \(sha256:aaaa/);
   });
 });

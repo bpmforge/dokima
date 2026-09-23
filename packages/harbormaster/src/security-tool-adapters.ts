@@ -10,48 +10,67 @@
  *
  * Every executable and every argument here is a constant. Nothing a model
  * emits reaches a command line — the runner substitutes exactly two
- * placeholders, `{cwd}` and `{validatorPath}`, both runtime-owned paths.
+ * placeholders, `{cwd}` and `{validatorPath}`, both runtime-owned paths, and
+ * expands `{sastConfig}` into the pinned ruleset's `--config` paths (W23-51).
  */
 
 import { createHash } from 'node:crypto';
 import type { SecurityToolAdapter } from './security-checks.js';
+import { depsFindingKeys, sastFindingKeys } from './security-baseline.js';
 
 export const digestOfText = (text: string): string =>
   `sha256:${createHash('sha256').update(text).digest('hex')}`;
 
-/** Semgrep: 0 clean, 1 findings, anything else is the tool failing, not the code passing. */
+/**
+ * Opengrep over the founder's own pinned rule packs (W23-51). 0 clean, 1
+ * findings (`--error`), anything else is the tool failing, not the code passing.
+ *
+ * WHAT THIS REPLACED: `semgrep --config auto ... --metrics=off`. `--config auto`
+ * pulls Semgrep's registry rules — licensed for internal use only, and the
+ * founder's decision is that Dokima never runs them — and current semgrep
+ * refuses that pair outright ("Cannot create auto config when metrics are
+ * off"), so the check errored on every review on every host. `{sastConfig}`
+ * expands to one `--config <dir>` per pinned pack (`sast-rules.ts`); with no
+ * ruleset the runner reports NOT RUN before this command is ever built.
+ * Opengrep sends no metrics and has no metrics flag; `--disable-version-check`
+ * keeps it off the network entirely, which is what lets a local-only project
+ * run it.
+ */
 const SAST: SecurityToolAdapter = {
   checkId: 'tool-sast',
-  executable: 'semgrep',
-  args: ['--config', 'auto', '--json', '--quiet', '--metrics=off', '--error', '.'],
-  // TRUE, AND THE ARGUMENTS ARE WHY. `--config auto` fetches its ruleset from
-  // Semgrep's registry, so declaring this check network-free would have let
-  // the policy allow it under local-only and then watched it fail inside a
-  // sandbox that correctly denied the network — an ERROR whose cause lived in
-  // a field that disagreed with the command beside it. Declaring it honestly
-  // means a local-only project sees UNAVAILABLE with a reason, which is the
-  // true state until a pinned local ruleset ships.
-  requiresNetwork: true,
+  executable: 'opengrep',
+  args: [
+    'scan',
+    '{sastConfig}',
+    '--json',
+    '--quiet',
+    '--disable-version-check',
+    '--error',
+    '.',
+  ],
+  requiresNetwork: false,
+  needsRules: true,
+  findingKeys: (run) => sastFindingKeys(run.stdout),
   applicable: () => ({ applicable: true, reason: null }),
   interpret: (run) => {
     if (run.timedOut) {
       return {
         status: 'error',
-        reason: 'semgrep did not finish inside its deadline',
+        reason: 'opengrep did not finish inside its deadline',
         findingCount: 0,
       };
     }
     if (run.exitCode === null) {
       return {
         status: 'unavailable',
-        reason: 'semgrep is not installed on this host',
+        reason: `opengrep could not be started on this host, so SAST did not run${run.stderr ? `: ${run.stderr.slice(0, 200)}` : ''}`,
         findingCount: 0,
       };
     }
     if (run.exitCode !== 0 && run.exitCode !== 1) {
       return {
         status: 'error',
-        reason: `semgrep exited ${run.exitCode} before scanning: ${run.stderr.slice(0, 200)}`,
+        reason: `opengrep exited ${run.exitCode} before scanning: ${run.stderr.slice(0, 200)}`,
         findingCount: 0,
       };
     }
@@ -63,7 +82,7 @@ const SAST: SecurityToolAdapter = {
       // calls that a clean scan. It is a scanner whose result nobody can read.
       return {
         status: 'error',
-        reason: 'semgrep output was not valid JSON',
+        reason: 'opengrep output was not valid JSON',
         findingCount: 0,
       };
     }
@@ -115,6 +134,7 @@ const DEPS: SecurityToolAdapter = {
   executable: 'npm',
   args: ['audit', '--json'],
   requiresNetwork: true,
+  findingKeys: (run) => depsFindingKeys(run.stdout),
   applicable: (profile) =>
     profile.hasNodeManifest && profile.hasLockfile
       ? { applicable: true, reason: null }

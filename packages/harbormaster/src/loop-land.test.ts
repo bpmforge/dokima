@@ -110,6 +110,8 @@ function baseOptions(fixture: Fixture, spawn: SpawnSession): LandLoopOptions {
     pushToRemotes: unusedPushToRemotes,
     buildHandoff: defaultHandoffBuilder(),
     now: () => '2026-07-16T00:00:00.000Z',
+    // W23-50: free infra retries back off for seconds; the fixtures do not wait.
+    sleep: async () => {},
   };
 }
 

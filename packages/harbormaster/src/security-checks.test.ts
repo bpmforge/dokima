@@ -64,6 +64,12 @@ function harness(
     profile: NODE_PROJECT,
     networkPolicy: 'network-allowed',
     secretsValidatorPath: '/opt/dokima/secrets-scan.sh',
+    sastRules: {
+      root: '/opt/rules',
+      configPaths: ['/opt/rules/owasp', '/opt/rules/secrets'],
+      digest: 'sha256:rules',
+      ruleFileCount: 2,
+    },
     runTool: async (adapter) => responses[adapter.checkId] ?? ok(),
     isInstalled: () => true,
     ...over,
@@ -156,12 +162,12 @@ describe('the registry runs real tools and reads their own exit codes', () => {
 
   it('a missing executable is UNAVAILABLE and names itself — never NOT_APPLICABLE', async () => {
     const checks = await runSecurityChecks(
-      harness({}, { isInstalled: (exe) => exe !== 'semgrep' }),
+      harness({}, { isInstalled: (exe) => exe !== 'opengrep' }),
     );
     const sast = byId(checks, 'tool-sast');
     expect(sast.status).toBe('unavailable');
-    expect(sast.reason).toMatch(/semgrep is not installed/);
-    // The distinction the plan insists on: a missing Semgrep is not a project
+    expect(sast.reason).toMatch(/opengrep is not installed/);
+    // The distinction the plan insists on: a missing scanner is not a project
     // that does not need SAST.
     expect(sast.status).not.toBe('not_applicable');
   });
@@ -269,12 +275,16 @@ describe('the command line is the adapter’s, and it is recorded', () => {
     expect(seen[1]).toEqual(['/opt/dokima/secrets-scan.sh', '/tmp/some/worktree']);
     // Nothing else was templated: a placeholder nobody defined stays literal
     // rather than becoming an empty string in a command line.
+    // W23-51: `{sastConfig}` expands to the pinned packs and nothing else.
     expect(seen[0]).toEqual([
+      'scan',
       '--config',
-      'auto',
+      '/opt/rules/owasp',
+      '--config',
+      '/opt/rules/secrets',
       '--json',
       '--quiet',
-      '--metrics=off',
+      '--disable-version-check',
       '--error',
       '.',
     ]);

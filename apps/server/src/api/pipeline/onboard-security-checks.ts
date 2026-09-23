@@ -22,6 +22,7 @@ import { appendEvent, type EventLog } from '@dokima/events';
 import {
   checksPermitAutomaticCompletion,
   executableIsInstalled,
+  resolveSastRules,
   runSecurityChecks,
   sandboxedToolRunner,
   type CheckEvidence,
@@ -131,6 +132,8 @@ export async function runOnboardSecurityChecks(
     profile: await profileOf(projectPath),
     networkPolicy: await networkPolicyOf(projectPath),
     secretsValidatorPath: await bundledSecretsScanner(),
+    // W23-51: Opengrep over the pinned ruleset — never registry rules.
+    sastRules: await resolveSastRules(process.env),
     runTool: sandboxedToolRunner(),
     isInstalled: executableIsInstalled,
   });

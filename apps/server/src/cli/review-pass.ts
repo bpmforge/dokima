@@ -12,6 +12,7 @@
 
 import { ROLE_CODE_REVIEWER } from '@dokima/gateway';
 import {
+  resolveSastRules,
   reviewTicketDecisions,
   type ReviewDecision,
   type ReviewOutcome,
@@ -94,9 +95,11 @@ export async function executeReviewPass(options: ExecuteReviewPassOptions): Prom
    * was permanently unavailable. Found by driving the whole workflow through
    * the real entrance rather than through injected seams.
    */
-  const [secretsValidatorPath, networkPolicy] = await Promise.all([
+  const [secretsValidatorPath, networkPolicy, sastRules] = await Promise.all([
     bundledSecretsScanner(),
     networkPolicyOf(options.repoRoot),
+    // W23-51: opengrep's pinned ruleset (DOKIMA_SAST_RULES or ~/.dokima/rules/sast).
+    resolveSastRules(process.env),
   ]);
 
   const results = await reviewTicketDecisions({
@@ -110,6 +113,7 @@ export async function executeReviewPass(options: ExecuteReviewPassOptions): Prom
     reviewChat: chat ?? (async () => ''),
     secretValues: options.secretValues,
     secretsValidatorPath,
+    sastRules,
     networkPolicy,
     // W15-02: the maker's track record biases borderline calls toward a
     // person, never toward acceptance (FR-L3 asymmetry).

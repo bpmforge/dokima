@@ -2488,3 +2488,114 @@ produced one when run alone. The unit suite DID make a real LM Studio call —
 Gate on Node 22: lint 0, typecheck 0, **5458 tests** (619 files, 2 skipped),
 **76 e2e**, 6 validators + temp-leaks clean. **Board: 541 done · 7 todo · 1
 blocked (W12-44).**
+
+## 2026-09-23 (evening) — local-model autorun reaches `done` (`fix/v1-local-autorun`)
+
+**W23-51 done: SAST runs on Opengrep with the founder's rules.** `tool-sast`
+runs `opengrep scan --config <pack>… --json --quiet --disable-version-check
+--error .`. It needs no network and never touches registry rules or metrics.
+The rules come from `DOKIMA_SAST_RULES` or `~/.dokima/rules/sast`. For a
+bpm-rulepacks `packs/` directory, only `owasp`, `secrets` and `framework` are
+used. The rules are not vendored because they are proprietary; each verdict
+records a content digest of the rules instead. With no ruleset or no
+`opengrep`, the check reports NOT RUN (unavailable). That still blocks machine
+acceptance and never counts as a pass. The reviewer prompt now states that a
+NOT RUN check is neither a clean result nor evidence against the change, and
+`doctor` has a `sast` check.
+
+Findings are compared against the ticket's base: when a check reports
+findings, it re-runs over a `git archive` of the fork point and only the
+head's multiset surplus counts. If the base can't be produced or scanned,
+every finding stands.
+
+RED: 21 new tests fail on the old sources, including the semgrep-refusal
+fixture and the 14-pre-existing-deps fixture. The negative fixtures (an
+introduced dependency, an introduced SAST finding, a duplicated vulnerable
+line) stay FINDINGS. An opt-in real smoke ran opengrep through the sandbox with
+the network denied and found a planted command injection.
+
+**W23-50 done: free infra retries back off.** The waits are 5 s, 15 s and
+45 s, capped at 60 s. When the provider says a model is loading or was
+unloaded, they start at 15 s. Each wait is recorded as `waitMs` before it
+begins. The number of retries is unchanged. RED: "expected 0 to be greater
+than 1000".
+
+**The pinger, identified.** The `ping` requests (`max_tokens` 8,
+`temperature` 0.1, streamed) to `qwen/qwen3-coder-next` came from **RepoPulse's
+`packages/analysis/src/t2/live.integration.test.ts`**, not from Dokima:
+
+- Its warm-up is `T2_DEFAULTS.warmup {pingPrompt:'ping', retries:2}`, which
+  produces bursts of three.
+- RepoPulse's `.env` sets `LMSTUDIO_MODEL=qwen/qwen3-coder-next`.
+- `localhost:1234` is always appended to its host list, so the suite never
+  skips.
+- The concurrent RepoPulse agent was running its gates all day. Its own board
+  records the same "Failed to load model qwen/qwen3-coder-next … Operation
+  canceled".
+
+Dokima's own warm-up is `GET /v1/models` only. At 14:02 local the log shows
+the pings and Dokima's retries interleaved, with each load cancelling the
+other. Serving the maker on MTPLX sidesteps LM Studio evictions entirely.
+
+**W23-49 done.** `review.bounced` now carries `detail` and a bounded `raw`
+reply. `diagnoseVerdict` accepts a `<think>` block containing braces, fenced
+JSON, a lower-case verdict and a numeric-string score. A bounce is still never
+an approval.
+
+**W23-53 filed and done (found live).** The review used to diff `HEAD^..HEAD`:
+V2-012's reviewedBase was the ticket's own first commit. The review, the
+security baseline and the acceptance freshness digest now all use the fork
+point (the merge-base with `resolveTicketBase`'s ref).
+
+**Live, end to end.** Setup:
+
+- Throwaway project: a fresh `git clone` of a copy of Vault at PLAN-vault-000's
+  head, with an empty `state.db`, a throwaway `DOKIMA_HOME` and
+  `--db`/`--project vault2-throwaway`. Nothing resolved to the real Vault;
+  `~/Dokima/vault` mtimes are unchanged.
+- The approval was recorded with `recordApprovedBuild`, the step a person
+  takes in the UI.
+- Runs used `run start --approved-build --breakpoint never --berths 1`.
+
+| run                  | dist     | maker                             | reviewer                          | outcome                                                                                                                                                                                                                                                                                                                                                                                                                |
+| -------------------- | -------- | --------------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 (V2-011 base64url) | 3d2ae70b | qwen3.8-27b Q4 on **MTPLX** :8088 | qwen/qwen3-coder-next (LM Studio) | **done by machine-accept**: 1 attempt, 13 turns, 18 min. Review CONFIRMED 10/10 on the second ask (the first was unparseable, on a pre-W23-49 dist). tool-sast passed (opengrep, rules sha256:ae855e95…), tool-deps passed with 7 pre-existing at base. The dist predates W23-53: reviewedBase was the ticket's own first commit, so the reviewer saw only the second commit and the baseline was measured against it. |
+| 2 (V2-012 ct-equal)  | 5db8083a | qwen/qwen3-coder-next (LM Studio) | qwen3.8-27b on MTPLX              | **done by machine-accept**: 1 attempt, 9 turns, 70 s. CONFIRMED 8/10, same checks. The reviewer saw only the second commit, which is where W23-53 came from.                                                                                                                                                                                                                                                           |
+| 3 (V2-013 fromHex)   | 018a0c80 | qwen3.8-27b on MTPLX              | qwen/qwen3-coder-next             | **done by machine-accept**: 1 attempt, 7 turns, 86 s. CONFIRMED 10/10; reviewedBase is the fork point. This was a single-commit ticket, so the fork point is also HEAD^; W23-53's multi-commit path is proven by fixture only.                                                                                                                                                                                         |
+
+No LM Studio `ping` fell inside any run window. MTPLX was started for these
+runs and stopped afterwards.
+
+**Proven by fixture only:** W23-49's raw-reply recording (the one live bounce was on a pre-W23-49 dist) and W23-53's multi-commit range.
+
+**Recommended default local model for the v1 docs** (the qwen3.8 used here is the MTPLX pack `qwen3.8-27b-uncensored-mtplx-q4-1`, not the stock `qwen/qwen3.8-27b`): qwen3.8-27b served by
+MTPLX as the maker, with qwen3-coder-next as the reviewer, or the other way
+round. Both pairings reached `done` unattended. The qwen3.8 maker on LM Studio
+failed this morning only because another client evicted it.
+
+**Founder:** machine acceptance needs `opengrep` plus a ruleset. On this
+machine that is `export DOKIMA_SAST_RULES=~/Code/bpm-rulepacks/packs` or
+`ln -s ~/Code/bpm-rulepacks/packs ~/.dokima/rules/sast` (not done here).
+`dokima doctor` warns until one of them is set.
+Other items for the founder:
+
+- **Ruleset distribution.** The rulepacks are proprietary and not vendored, so
+  on any other install tool-sast reports NOT RUN and nothing can be
+  machine-accepted. Keeping the v1 unattended promise for other users needs a
+  ruleset decision, for example a public-teaser subset or a separate download.
+- **Local-only projects.** tool-deps is unavailable without a local advisory
+  snapshot, which also blocks machine acceptance. Vault ran network-allowed
+  because its settings have no `modelPolicy.localOnly` key.
+- **RepoPulse.** Its `t2/live.integration.test.ts` never skips, because it
+  always appends `localhost:1234`. It will keep loading `qwen3-coder-next` in
+  LM Studio whenever its suite runs, and needs a ticket on RepoPulse's board.
+
+Filed from the close-out (Law 1):
+
+- **W23-54**: under the container sandbox, only the worktree is mounted, so
+  tool-sast cannot run.
+- **W23-55**: tool-secrets has no base-vs-head comparison.
+
+Gate on Node 22: lint 0, typecheck 0, **5508 tests** (624 files, 3 skipped),
+**76 e2e**, 6 validators + temp-leaks clean. **Board: 545 done · 6 todo · 1
+blocked (W12-44).**
