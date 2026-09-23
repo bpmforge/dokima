@@ -1,5 +1,6 @@
 /**
- * `dokima doctor` (DEPLOYMENT.md §8): port free, DB integrity
+ * `dokima doctor` (DEPLOYMENT.md §8): port free, a real database opens
+ * (W23-45: the native module and the migrations, in a temp dir), DB integrity
  * (`PRAGMA integrity_check` + audit tail check), keychain reachable,
  * provider reachability, pack signatures, worktree orphans. Each check is
  * independent and reported individually — one check's failure never hides
@@ -7,7 +8,9 @@
  */
 
 import { promises as fs } from 'node:fs';
-import { openEventLogReader, type EventLog } from '@dokima/events';
+import os from 'node:os';
+import path from 'node:path';
+import { openEventLog, openEventLogReader, type EventLog } from '@dokima/events';
 import { type CredentialStore, resolveCredentialStore } from '@dokima/shared';
 import { listTickets } from '@dokima/tickets';
 import { isBaseProbeWorktree } from '@dokima/harbormaster';
@@ -15,6 +18,7 @@ import { auditTailCheck } from '../../bootstrap/audit-tail.js';
 import { type CliIO, resolvePort } from '../../bootstrap/cli.js';
 import { resolveProjectPaths, type ProjectPaths } from '../../bootstrap/config.js';
 import { detectRunningCore } from '../../bootstrap/launch.js';
+import { describeAbiMismatch } from '../../bootstrap/node-abi-guard.mjs';
 import {
   defaultFirstPartyPackSource,
   verifyPack,
@@ -43,6 +47,8 @@ export interface DoctorDeps {
   buildProvider?: typeof buildProvider;
   verifyPack?: typeof verifyPack;
   packSource?: { manifestPath: string; contentDir: string; publicKeyPath: string };
+  /** W23-45: opens the throwaway probe database (injected for tests). */
+  openProbeDb?: (dbPath: string) => { close(): void };
 }
 
 async function fileExists(filePath: string): Promise<boolean> {
@@ -103,6 +109,53 @@ async function checkDbIntegrity(paths: ProjectPaths): Promise<DoctorCheck> {
     return { name: 'db-integrity', status: 'fail', detail: (err as Error).message };
   } finally {
     db.close();
+  }
+}
+
+/**
+ * W23-45: the one check that proves the product can store anything.
+ *
+ * better-sqlite3 loads its native binding lazily, inside `new Database`, and
+ * the CLI entry deliberately lets a non-ABI load failure through so `--help`
+ * still works on a broken install. So nothing had ever opened a database by
+ * the time doctor ran, and on a fresh home `db-integrity` returns "no state.db
+ * yet" without opening one either. LIVE: the 1.0.1 tarball installed with
+ * `--ignore-scripts` has no binary at all, and doctor printed `doctor: OK`.
+ *
+ * This opens a real database with the product's own `openEventLog` — the
+ * native module AND the migrations — in a temp directory it always removes,
+ * never in the project.
+ */
+function describeNativeDbFailure(err: unknown): string {
+  const abi = describeAbiMismatch(err);
+  if (abi !== null) return abi;
+  const message = err instanceof Error ? err.message : String(err);
+  if (/Could not locate the bindings file|better_sqlite3\.node/.test(message)) {
+    return (
+      "better-sqlite3's native binary is missing — the install skipped its build " +
+      'step, which is what npm does with ignore-scripts=true. Reinstall with scripts ' +
+      'enabled (npm install -g @bpmforge/dokima --ignore-scripts=false), or run ' +
+      '`npm rebuild better-sqlite3 --ignore-scripts=false` in the directory Dokima ' +
+      'is installed in (`pnpm rebuild better-sqlite3` in a source checkout).'
+    );
+  }
+  return `could not open a throwaway database: ${message.split('\n')[0]}`;
+}
+
+async function checkNativeDb(deps: DoctorDeps): Promise<DoctorCheck> {
+  const open = deps.openProbeDb ?? openEventLog;
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-doctor-'));
+  try {
+    open(path.join(dir, 'probe.db')).close();
+    return {
+      name: 'native-db',
+      status: 'ok',
+      detail: 'better-sqlite3 loaded; a throwaway database was opened and migrated',
+    };
+  } catch (err) {
+    return { name: 'native-db', status: 'fail', detail: describeNativeDbFailure(err) };
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
   }
 }
 
@@ -267,7 +320,9 @@ async function checkWorktreeOrphans(paths: ProjectPaths): Promise<DoctorCheck> {
   if (orphans.length > 0) {
     const parts: string[] = [];
     if (ticketOrphans.length > 0) {
-      parts.push(`orphaned worktree dir(s) with no in_progress ticket: ${ticketOrphans.join(', ')}`);
+      parts.push(
+        `orphaned worktree dir(s) with no in_progress ticket: ${ticketOrphans.join(', ')}`,
+      );
     }
     if (staleProbes.length > 0) {
       // Named as what it is, with what it means: a probe outlives its gate run
@@ -290,6 +345,7 @@ export async function runDoctor(io: CliIO, deps: DoctorDeps = {}): Promise<Docto
   const paths = resolveProjectPaths(io.cwd);
   const checks = await Promise.all([
     checkPort(io, deps),
+    checkNativeDb(deps),
     checkDbIntegrity(paths),
     checkKeychain(io, deps),
     checkProviders(io, deps),
