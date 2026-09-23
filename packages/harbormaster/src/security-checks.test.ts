@@ -114,7 +114,9 @@ describe('the registry runs real tools and reads their own exit codes', () => {
         'tool-sast': ok({ exitCode: 1, stdout: '{"results":[{"a":1},{"b":2}]}' }),
         'tool-secrets': ok({
           exitCode: 1,
-          stdout: ' - found something\n - and another\n',
+          // The scanner's real stdout (W23-55): one JSON envelope from _lib.sh.
+          stdout:
+            '{"validator":"secrets-scan","gaps":2,"exit":1,"items":[{"category":"github-token","detail":"a.ts:1 \u2014 ghp_...REDACTED(40 chars)"},{"category":"slack-token","detail":"b.ts:2 \u2014 xoxb...REDACTED(30 chars)"}]}',
         }),
         'tool-deps': ok({
           exitCode: 1,

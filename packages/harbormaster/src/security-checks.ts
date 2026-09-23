@@ -101,8 +101,13 @@ export interface SecurityToolAdapter {
   /**
    * W23-51: one identity per finding, so head can be compared with base.
    * Null when the output cannot be read, which keeps the head's findings.
+   * W23-55: `root` is the tree that run scanned (the worktree, or the base's
+   * archive), for an adapter whose output alone cannot identify a finding.
    */
-  findingKeys?(run: ToolRunResult): readonly string[] | null;
+  findingKeys?(
+    run: ToolRunResult,
+    root: string,
+  ): readonly string[] | null | Promise<readonly string[] | null>;
   /** True when this project's shape makes the check meaningless (NOT_APPLICABLE with a reason). */
   applicable(profile: ProjectProfile): {
     readonly applicable: boolean;

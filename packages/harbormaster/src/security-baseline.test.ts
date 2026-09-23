@@ -19,6 +19,7 @@ import {
   introducedFindings,
   removeBaselineCheckout,
   sastFindingKeys,
+  secretsFindingKeys,
 } from './security-baseline.js';
 import {
   checksPermitAutomaticCompletion,
@@ -300,5 +301,219 @@ describe('archiveCheckout', () => {
     await expect(fs.access(dir!)).rejects.toThrow();
 
     expect(await archiveCheckout(repo, 'no-such-ref')).toBeNull();
+  });
+});
+
+/**
+ * W23-55 — tool-secrets joins the baseline. Before this, a secret already
+ * committed at the ticket's base blocked machine acceptance of EVERY ticket in
+ * that project, because the secrets scanner's findings had no identity to
+ * compare.
+ *
+ * The fixtures run the REAL bundled scanner (content/validators/secrets-scan.sh)
+ * over real trees, so the parser is measured against the scanner's actual
+ * output shape, not a transcription of it. The load-bearing negative is the
+ * REPLACEMENT: the scanner masks every AWS key to `AKIA...REDACTED(20 chars)`,
+ * so a key that only compared masks would pass a newly committed secret as
+ * pre-existing.
+ */
+describe('W23-55: tool-secrets is compared with the base by fingerprint', () => {
+  const SCANNER = path.resolve(
+    path.dirname(new URL(import.meta.url).pathname),
+    '../../../content/validators/secrets-scan.sh',
+  );
+  // Assembled at runtime so this test file is not itself a finding.
+  const aws = (tail: string) => `AKIA${tail.padEnd(16, 'Q').slice(0, 16)}`;
+  const KEY_A = aws('AAAABBBBCCCCDDDD');
+  const KEY_B = aws('ZZZZYYYYXXXXWWWW');
+  const GH = `ghp_${'a1B2c3D4e5F6g7H8i9J0k1L2m3N4'}`;
+
+  async function tree(files: Record<string, string>): Promise<string> {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-secrets-tree-'));
+    dirs.push(dir);
+    for (const [name, body] of Object.entries(files)) {
+      await fs.mkdir(path.dirname(path.join(dir, name)), { recursive: true });
+      await fs.writeFile(path.join(dir, name), body);
+    }
+    return dir;
+  }
+
+  /** The real scanner, unsandboxed: these trees are this test's own files. */
+  const realScanner: RunSecurityChecksOptions['runTool'] = async (
+    adapter,
+    args,
+    opts,
+  ) => {
+    if (adapter.checkId !== 'tool-secrets') return run({ stdout: '{"results":[]}' });
+    try {
+      const { stdout, stderr } = await execFileAsync(adapter.executable, [...args], {
+        cwd: opts.cwd,
+        env: { ...process.env, EXPERTS_TELEMETRY: '0' },
+      });
+      return run({ stdout, stderr });
+    } catch (err) {
+      const e = err as { code?: number; stdout?: string; stderr?: string };
+      return run({
+        exitCode: e.code ?? null,
+        stdout: e.stdout ?? '',
+        stderr: e.stderr ?? '',
+      });
+    }
+  };
+
+  async function secretsCheck(head: string, base: string | null) {
+    const checks = await runSecurityChecks({
+      cwd: head,
+      sourceDigest: 'sha256:head',
+      profile: {
+        hasNodeManifest: false,
+        hasLockfile: false,
+        hasInfrastructureAsCode: false,
+      },
+      networkPolicy: 'local-only',
+      secretsValidatorPath: SCANNER,
+      sastRules: {
+        root: '/r',
+        configPaths: ['/r/owasp'],
+        digest: 'sha256:r',
+        ruleFileCount: 1,
+      },
+      baseline: {
+        ref: '0ac6e267f6d1e22674b14dbc1090dbc3f6895cdb',
+        checkout: async () => base,
+      },
+      runTool: realScanner,
+      isInstalled: () => true,
+    });
+    return byId(checks, 'tool-secrets');
+  }
+
+  it('RED: a secret already committed at base (and moved down a line) is pre-existing — the ticket passes, and the count is said', async () => {
+    const base = await tree({ 'src/config.js': `const k = "${KEY_A}";\n` });
+    const head = await tree({
+      'src/config.js': `// a comment the ticket added\nconst k = "${KEY_A}";\n`,
+      'src/new.js': 'export const ok = 1;\n',
+    });
+    const secrets = await secretsCheck(head, base);
+    expect(secrets.status).toBe('passed');
+    expect(secrets.preexistingCount).toBe(1);
+    expect(secrets.reason).toMatch(/1 finding\(s\) already present at base/);
+  });
+
+  it('NEGATIVE: a secret the ticket adds is FINDINGS, beside a pre-existing one', async () => {
+    const base = await tree({ 'src/config.js': `const k = "${KEY_A}";\n` });
+    const head = await tree({
+      'src/config.js': `const k = "${KEY_A}";\n`,
+      'src/leak.js': `const t = "${GH}";\n`,
+    });
+    const secrets = await secretsCheck(head, base);
+    expect(secrets).toMatchObject({
+      status: 'findings',
+      findingCount: 1,
+      preexistingCount: 1,
+    });
+  });
+
+  it('NEGATIVE: a secret REPLACED by a different one of the same shape in the same file is introduced (the masks are identical)', async () => {
+    const base = await tree({ 'src/config.js': `const k = "${KEY_A}";\n` });
+    const head = await tree({ 'src/config.js': `const k = "${KEY_B}";\n` });
+    const secrets = await secretsCheck(head, base);
+    expect(secrets).toMatchObject({ status: 'findings', findingCount: 1 });
+  });
+
+  it('NEGATIVE: a second key added to a file that already had one is introduced', async () => {
+    const base = await tree({ 'src/config.js': `const a = "${KEY_A}";\n` });
+    const head = await tree({
+      'src/config.js': `const a = "${KEY_A}";\nconst b = "${KEY_B}";\n`,
+    });
+    const secrets = await secretsCheck(head, base);
+    expect(secrets).toMatchObject({
+      status: 'findings',
+      findingCount: 1,
+      preexistingCount: 1,
+    });
+  });
+
+  it('counts every item the scanner reports (its stdout is a JSON envelope, not "- " lines)', async () => {
+    const head = await tree({
+      'a.js': `x("${KEY_A}");\ny("${KEY_B}");\nz("${GH}");\n`,
+    });
+    const secrets = await secretsCheck(head, null);
+    expect(secrets).toMatchObject({ status: 'findings', findingCount: 3 });
+  });
+
+  it('no secret value, mask or fingerprint reaches the evidence', async () => {
+    const base = await tree({ 'src/config.js': `const k = "${KEY_A}";\n` });
+    const head = await tree({ 'src/config.js': `const k = "${KEY_B}";\n` });
+    const secrets = await secretsCheck(head, base);
+    const text = JSON.stringify(secrets);
+    for (const leak of [KEY_A, KEY_B, 'AKIA', 'REDACTED', 'ZZZZ']) {
+      expect(text).not.toContain(leak);
+    }
+    // The only hex in the reason is the 12-character base ref it names.
+    expect(secrets.reason ?? '').not.toMatch(/[0-9a-f]{16,}/);
+  });
+
+  it('fails closed: a flagged path that is a symlink out of the tree is not read, and the head findings stand', async () => {
+    const outside = await tree({ 'real.js': `const k = "${KEY_A}";\n` });
+    const base = await tree({ 'src/config.js': `const k = "${KEY_A}";\n` });
+    const head = await tree({});
+    await fs.mkdir(path.join(head, 'src'));
+    await fs.symlink(path.join(outside, 'real.js'), path.join(head, 'src/config.js'));
+    const keys = await secretsFindingKeys(
+      JSON.stringify({
+        items: [
+          {
+            category: 'aws-access-key-id',
+            detail: 'src/config.js:1 — AKIA...REDACTED(20 chars)',
+          },
+        ],
+      }),
+      head,
+    );
+    expect(keys).toBeNull();
+    // And through the runner: the base comparison is refused, not faked.
+    const direct = await secretsFindingKeys(
+      JSON.stringify({
+        items: [
+          {
+            category: 'aws-access-key-id',
+            detail: '../escape.js:1 — AKIA...REDACTED(20 chars)',
+          },
+        ],
+      }),
+      base,
+    );
+    expect(direct).toBeNull();
+  });
+
+  it('every category the scanner reports can be fingerprinted (drift in the scanner is caught here)', async () => {
+    const script = await fs.readFile(SCANNER, 'utf8');
+    const categories = [...script.matchAll(/^\s+"([a-z-]+)\|/gm)].map((m) => m[1]!);
+    // One live-shaped value per category, assembled so this file is not a finding.
+    const samples: Record<string, string> = {
+      'github-token': GH,
+      'aws-access-key-id': KEY_A,
+      'openai-style-key': `sk-${'Ab3'.repeat(7)}`,
+      'slack-token': `xoxb-${'1234567890'}-abc`,
+      'pem-private-key': [
+        '-----BEGIN RSA',
+        'PRIVATE KEY-----\nMIIB\n-----END RSA',
+        'PRIVATE KEY-----',
+      ].join(' '),
+      'db-connection-credentials': `${'postgres'}://app:${'pw'}@db.local/x`,
+    };
+    expect(Object.keys(samples).sort()).toEqual([...categories].sort());
+    const head = await tree({ 'all.txt': `${Object.values(samples).join('\n')}\n` });
+    const { stdout } = await realScanner(
+      { checkId: 'tool-secrets', executable: 'bash' } as never,
+      [SCANNER, head],
+      { cwd: head, allowNetwork: false, timeoutMs: 10_000 },
+    );
+    const items = (JSON.parse(stdout) as { items: unknown[] }).items;
+    expect(items).toHaveLength(categories.length);
+    const keys = await secretsFindingKeys(stdout, head);
+    expect(keys).toHaveLength(categories.length);
+    expect(new Set(keys!.map((k) => k.split('|')[0])).size).toBe(categories.length);
   });
 });

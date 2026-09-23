@@ -17406,10 +17406,11 @@
         "findingCount is the number of items the scanner reported (its stdout is a JSON envelope; the old count of \"- \" lines could never match it and was always 1)"
       ],
       "points": 2,
-      "status": "in_progress",
+      "status": "done",
       "notes": [
         "FILED 2026-09-23 during W23-51 close-out (Law 1): W23-51 gave findingKeys to tool-sast and tool-deps only. The bundled secrets scanner reports '- ...' lines with no stable identity, so it is still counted whole.",
-        "CLAIMED 2026-09-23 (fix/v1-review-gaps). WIDENED at claim, before any edit: the adapter interface (security-checks.ts) gives findingKeys the scanned root, because a real per-secret identity needs the flagged line re-read and re-matched in the core \u2014 the manifest-pinned content/validators/secrets-scan.sh prints only `AKIA...REDACTED(20 chars)`, identical for every AWS key, so a category|path|mask key would pass a replaced secret as pre-existing. security-tool-adapters.test.ts and security-checks.test.ts are the existing tests of the files changed, owned by no open ticket. MEASURED before claim: the scanner's stdout is `{\"validator\":\"secrets-scan\",\"gaps\":3,\"exit\":1,\"items\":[{\"category\":\"aws-access-key-id\",\"detail\":\"c.js:1 \u2014 AKIA...REDACTED(20 chars)\"},...]}`, so the adapter's `^\\s*-\\s` line count was 0 and findingCount was always max(0,1) = 1."
+        "CLAIMED 2026-09-23 (fix/v1-review-gaps). WIDENED at claim, before any edit: the adapter interface (security-checks.ts) gives findingKeys the scanned root, because a real per-secret identity needs the flagged line re-read and re-matched in the core \u2014 the manifest-pinned content/validators/secrets-scan.sh prints only `AKIA...REDACTED(20 chars)`, identical for every AWS key, so a category|path|mask key would pass a replaced secret as pre-existing. security-tool-adapters.test.ts and security-checks.test.ts are the existing tests of the files changed, owned by no open ticket. MEASURED before claim: the scanner's stdout is `{\"validator\":\"secrets-scan\",\"gaps\":3,\"exit\":1,\"items\":[{\"category\":\"aws-access-key-id\",\"detail\":\"c.js:1 \u2014 AKIA...REDACTED(20 chars)\"},...]}`, so the adapter's `^\\s*-\\s` line count was 0 and findingCount was always max(0,1) = 1.",
+        "DONE 2026-09-23 (fix/v1-review-gaps). tool-secrets gains findingKeys: category | path | sha256(match)[:32], computed in memory by secretsFindingKeys (security-baseline.ts), which re-reads the flagged line from the tree that was scanned (worktree, or the base's git-archive), re-matches the category's pattern and hashes it; a PEM block hashes through its END line. No line number (a moved secret is the same secret). A path that does not realpath to a regular file inside the scanned root, an unknown category, or a line that no longer matches returns null -> the head's findings stand. findingCount is now the envelope's items (was always 1). The key never leaves memory: reasons carry counts only. RED (old sources, new tests): 6 failed \u2014 pre-existing secret 'expected findings to be passed'; added-beside-pre-existing and second-key-in-same-file 'expected {...} to match object {status: findings, ...}' (no preexistingCount); count 'findingCount 1 vs 3'; 'secretsFindingKeys is not a function'. The REPLACEMENT negative (same mask, different key) is green both sides by design \u2014 it is the fixture that rejects a mask-based key. Tests run the REAL content/validators/secrets-scan.sh, and one plants a value per category to catch drift in the manifest-pinned scanner. Gate (Node 22): lint 0, typecheck 0, 5517 tests (625 files, 3 skipped) in 60 s, 76 e2e, 6 validators + temp-leaks clean. Suite first went red on this machine for an unrelated reason \u2014 W23-59, filed and fixed in this branch."
       ]
     },
     {
@@ -17509,6 +17510,30 @@
       "stories": [
         "US-402"
       ]
+    },
+    {
+      "id": "W23-59",
+      "title": "the test suite runs the developer's real SAST ruleset: resolveSastRules reads HOME/.dokima/rules/sast, which the suite never pins, so every onboard/review test spawns a real opengrep scan (~5.5 s each) and the gate times out",
+      "phase": 23,
+      "module": "quality",
+      "lane": "quality",
+      "write_scope": [
+        "vitest.network-guard.ts",
+        "packages/harbormaster/src/sast-rules-isolation.test.ts"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "Every vitest worker resolves NO SAST ruleset unless the test supplies its own (or the opt-in DOKIMA_TEST_REAL_SCANNERS=1 smoke is asked for): DOKIMA_SAST_RULES is pinned to a path that does not exist, beside the existing machine-must-not-leak guards",
+        "Red evidence: on a machine with ~/.dokima/rules/sast present, resolveSastRules(process.env) inside the suite returns a ruleset before and null after",
+        "The full gate returns to its pre-symlink runtime on this machine"
+      ],
+      "points": 1,
+      "status": "done",
+      "notes": [
+        "FOUND LIVE 2026-09-23 on fix/v1-review-gaps, the day the founder linked ~/.dokima/rules/sast -> ~/Code/bpm-rulepacks/packs: a full `pnpm test` went from 180 s to >600 s with 103 failures (every one a timeout: approved-build-e2e 250-350 s, runLandLoop/rung seams ~92 s, onboard routes 15 s). `ps` showed 11 orphaned `opengrep-cli --legacy scan --config /Users/bmatthews/.dokima/rules/sast/owasp ...` processes at ~97% CPU for 14-15 minutes, each with its cwd in a dokima-cli-test-* / dokima-onboard-run-test-* / dokima-onboard-route-project-* temp dir \u2014 scans started by the suite and orphaned when vitest terminated the timed-out worker. One real scan of a one-file tree with these rules measured 5.5 s wall (rule loading). Same shape as W10-71 (DOKIMA_HOME) and W23-52 (a CLI spawn reaching LM Studio): the machine leaking into the suite. CLAIMED at filing.",
+        "DONE 2026-09-23 (fix/v1-review-gaps). vitest.network-guard.ts (every package's setup file) pins DOKIMA_SAST_RULES to /nonexistent/dokima-test-suite/no-sast-rules unless DOKIMA_TEST_REAL_SCANNERS=1; CLI spawns inherit it. RED on this machine: sast-rules-isolation.test.ts 'expected undefined to be truthy' and, with the env assertion removed, 'expected { ...(4) } to be null' (the founder's real 3-pack ruleset resolved). After: the full suite ran in 60 s with no opengrep process started. Gate (Node 22): lint 0, typecheck 0, 5517 tests (625 files, 3 skipped) in 60 s, 76 e2e, 6 validators + temp-leaks clean. The 11 orphaned scans from the broken run were killed by hand and the 7 temp dirs they re-created (.dokima/telemetry.jsonl written after their worker's cleanup) removed by exact path."
+      ],
+      "stories": []
     }
   ]
 }

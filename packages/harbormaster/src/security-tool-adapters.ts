@@ -16,7 +16,11 @@
 
 import { createHash } from 'node:crypto';
 import type { SecurityToolAdapter } from './security-checks.js';
-import { depsFindingKeys, sastFindingKeys } from './security-baseline.js';
+import {
+  depsFindingKeys,
+  sastFindingKeys,
+  secretsFindingKeys,
+} from './security-baseline.js';
 
 export const digestOfText = (text: string): string =>
   `sha256:${createHash('sha256').update(text).digest('hex')}`;
@@ -102,19 +106,36 @@ const SAST: SecurityToolAdapter = {
  */
 export const SECRETS_CHECK_ID = 'tool-secrets';
 
+function itemCount(stdout: string): number {
+  try {
+    const items = (JSON.parse(stdout) as { items?: unknown }).items;
+    return Array.isArray(items) ? items.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
 const SECRETS: SecurityToolAdapter = {
   checkId: 'tool-secrets',
   executable: 'bash',
   args: ['{validatorPath}', '{cwd}'],
   requiresNetwork: false,
+  // W23-55: fingerprinted in memory from the scanned tree, so the W23-51
+  // baseline can tell a secret committed at base from one this change adds.
+  findingKeys: (run, root) => secretsFindingKeys(run.stdout, root),
   applicable: () => ({ applicable: true, reason: null }),
   interpret: (run) => {
     if (run.timedOut)
       return { status: 'error', reason: 'the secrets scan timed out', findingCount: 0 };
     if (run.exitCode === 0) return { status: 'passed', reason: null, findingCount: 0 };
     if (run.exitCode === 1) {
-      const count = run.stdout.split('\n').filter((l) => /^\s*-\s/.test(l)).length;
-      return { status: 'findings', reason: null, findingCount: Math.max(count, 1) };
+      // Its stdout is one JSON envelope (`_lib.sh` validator_exit): count the
+      // items. The old count of "- " lines never matched it and was always 1.
+      return {
+        status: 'findings',
+        reason: null,
+        findingCount: Math.max(itemCount(run.stdout), 1),
+      };
     }
     return {
       status: 'error',
