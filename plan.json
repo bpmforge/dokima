@@ -17324,6 +17324,31 @@
         "DONE 2026-09-23. The spawn gets DOKIMA_HOME under the test's own stub dir (removed in afterAll). RED: the old file alone made GET /v1/models + POST /v1/chat/completions to LM Studio; fixed, 0 requests, and a full pnpm test made 0 LM Studio requests. Gate: lint 0, typecheck 0, 5458 tests (619 files, 2 skipped), 76 e2e (unchanged surface), 6 validators + temp-leaks clean."
       ],
       "stories": []
+    },
+    {
+      "id": "W23-53",
+      "title": "the machine review diffs only the ticket's LAST commit: HEAD^ is taken as the base, so a multi-commit ticket's reviewer never sees its earlier commits and the security baseline counts them as pre-existing",
+      "phase": 23,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/loop-review.ts",
+        "packages/harbormaster/src/loop-review.test.ts"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "The review's base is the commit the ticket's branch forked from (merge-base of the worktree HEAD and the ticket's resolved base ref), not HEAD^",
+        "Red fixture: a ticket with two commits is reviewed over both \u2014 the first commit's file is in the reviewer's diff and review.verdict.reviewedBase is the fork point",
+        "When the fork point cannot be resolved, the security baseline is not run (findings stand) rather than falling back to HEAD^"
+      ],
+      "points": 2,
+      "status": "in_progress",
+      "notes": [
+        "FOUND LIVE 2026-09-23 on the throwaway Vault autorun, reading the V2-012 review.verdict: reviewedBase b8447911 is the ticket's OWN first commit ('Add constantTimeEqual function'), reviewedHead ca4dfb7 its second ('Add tests'). loop-review.ts never passes baseRef to collectReviewEvidence, which then uses HEAD^ \u2014 so the reviewer saw only the spec file, and W23-51's base-vs-head baseline compared against the ticket's first commit, which would have counted a finding introduced there as pre-existing. Same on V2-011. W23-51 acceptance 3 (findings at the ticket's BASE) is not honestly met for multi-commit tickets until this lands. CLAIMED at filing (fix/v1-local-autorun)."
+      ],
+      "stories": [
+        "US-402"
+      ]
     }
   ]
 }
