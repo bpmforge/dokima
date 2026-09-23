@@ -38,6 +38,20 @@
  */
 import { afterEach, beforeEach } from 'vitest';
 
+/**
+ * W23-59: the developer's SAST ruleset is the machine too. `resolveSastRules`
+ * falls back to HOME/.dokima/rules/sast, and on the day a real ruleset was
+ * linked there every onboard/review test began spawning a real opengrep scan
+ * (~5.5 s each): the suite went from 180 s to over ten minutes with 103
+ * timeouts, and orphaned scans kept a core busy each after their workers died.
+ * Pinned to a path that does not exist, so a test that wants rules supplies
+ * its own. The opt-in real-scanner smoke (DOKIMA_TEST_REAL_SCANNERS=1) keeps
+ * what the developer set.
+ */
+if (process.env.DOKIMA_TEST_REAL_SCANNERS !== '1') {
+  process.env.DOKIMA_SAST_RULES = '/nonexistent/dokima-test-suite/no-sast-rules';
+}
+
 const realFetch = globalThis.fetch;
 
 /** The local model daemons the product defaults to. Not test-startable. */

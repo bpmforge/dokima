@@ -16,10 +16,38 @@
 
 import { createHash } from 'node:crypto';
 import type { SecurityToolAdapter } from './security-checks.js';
-import { depsFindingKeys, sastFindingKeys } from './security-baseline.js';
+import {
+  depsFindingKeys,
+  sastFindingKeys,
+  secretsFindingKeys,
+} from './security-baseline.js';
 
 export const digestOfText = (text: string): string =>
   `sha256:${createHash('sha256').update(text).digest('hex')}`;
+
+/**
+ * W23-54: the tool was never started. `sh -c` answers a missing command with
+ * exit 127 ("opengrep: not found") — under the container profile the default
+ * image has no opengrep, and on the host an executable can vanish between the
+ * install probe and the run. That is NOT RUN, never an error about the code
+ * and never — as `npm audit`'s empty stdout parsed to — a pass.
+ */
+function notStarted(
+  run: { readonly exitCode: number | null; readonly stderr: string },
+  tool: string,
+): { status: 'unavailable'; reason: string; findingCount: 0 } | null {
+  const missing =
+    run.exitCode === 127 ||
+    (run.exitCode !== 0 &&
+      /command not found|: not found\b|executable file not found/i.test(run.stderr));
+  return missing
+    ? {
+        status: 'unavailable',
+        reason: `${tool} could not be started, so it did not run: ${run.stderr.trim().slice(0, 240)}`,
+        findingCount: 0,
+      }
+    : null;
+}
 
 /**
  * Opengrep over the founder's own pinned rule packs (W23-51). 0 clean, 1
@@ -67,6 +95,8 @@ const SAST: SecurityToolAdapter = {
         findingCount: 0,
       };
     }
+    const sastMissing = notStarted(run, 'opengrep');
+    if (sastMissing) return sastMissing;
     if (run.exitCode !== 0 && run.exitCode !== 1) {
       return {
         status: 'error',
@@ -102,19 +132,38 @@ const SAST: SecurityToolAdapter = {
  */
 export const SECRETS_CHECK_ID = 'tool-secrets';
 
+function itemCount(stdout: string): number {
+  try {
+    const items = (JSON.parse(stdout) as { items?: unknown }).items;
+    return Array.isArray(items) ? items.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
 const SECRETS: SecurityToolAdapter = {
   checkId: 'tool-secrets',
   executable: 'bash',
   args: ['{validatorPath}', '{cwd}'],
   requiresNetwork: false,
+  // W23-55: fingerprinted in memory from the scanned tree, so the W23-51
+  // baseline can tell a secret committed at base from one this change adds.
+  findingKeys: (run, root) => secretsFindingKeys(run.stdout, root),
   applicable: () => ({ applicable: true, reason: null }),
   interpret: (run) => {
     if (run.timedOut)
       return { status: 'error', reason: 'the secrets scan timed out', findingCount: 0 };
+    const secretsMissing = notStarted(run, 'the secrets scanner');
+    if (secretsMissing) return secretsMissing;
     if (run.exitCode === 0) return { status: 'passed', reason: null, findingCount: 0 };
     if (run.exitCode === 1) {
-      const count = run.stdout.split('\n').filter((l) => /^\s*-\s/.test(l)).length;
-      return { status: 'findings', reason: null, findingCount: Math.max(count, 1) };
+      // Its stdout is one JSON envelope (`_lib.sh` validator_exit): count the
+      // items. The old count of "- " lines never matched it and was always 1.
+      return {
+        status: 'findings',
+        reason: null,
+        findingCount: Math.max(itemCount(run.stdout), 1),
+      };
     }
     return {
       status: 'error',
@@ -147,6 +196,8 @@ const DEPS: SecurityToolAdapter = {
   interpret: (run) => {
     if (run.timedOut)
       return { status: 'error', reason: 'npm audit timed out', findingCount: 0 };
+    const npmMissing = notStarted(run, 'npm audit');
+    if (npmMissing) return npmMissing;
     let parsed: {
       metadata?: { vulnerabilities?: Record<string, number> };
       error?: unknown;

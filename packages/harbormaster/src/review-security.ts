@@ -23,7 +23,9 @@ import {
   type CheckEvidence,
   type NetworkPolicy,
   type ProjectProfile,
+  type UnauditedDependenciesPolicy,
 } from './security-checks.js';
+import { dependenciesUnchangedSince } from './review-deps.js';
 import { archiveCheckout, removeBaselineCheckout } from './security-baseline.js';
 import type { SastRuleset } from './sast-rules.js';
 
@@ -42,6 +44,8 @@ export interface TicketSecurityChecksInput {
    * recorded) keeps every finding on the head.
    */
   readonly baseCommit?: string | null;
+  /** W23-56: the project's policy, read by the caller from the repository root. */
+  readonly unauditedDependencies?: UnauditedDependenciesPolicy;
 }
 
 export interface TicketSecurityChecks {
@@ -69,17 +73,22 @@ const exists = async (candidate: string): Promise<boolean> => {
  * guess, wearing a runtime-derived reason. Applicability is a fact about the
  * tree, so it is read from the tree.
  */
-async function profileOf(worktreePath: string): Promise<ProjectProfile> {
-  const [manifest, npmLock, pnpmLock, yarnLock] = await Promise.all([
+async function profileOf(
+  worktreePath: string,
+  baseCommit: string | null,
+): Promise<ProjectProfile> {
+  const [manifest, npmLock, pnpmLock, yarnLock, unchanged] = await Promise.all([
     exists(path.join(worktreePath, 'package.json')),
     exists(path.join(worktreePath, 'package-lock.json')),
     exists(path.join(worktreePath, 'pnpm-lock.yaml')),
     exists(path.join(worktreePath, 'yarn.lock')),
+    baseCommit ? dependenciesUnchangedSince(worktreePath, baseCommit) : null,
   ]);
   return {
     hasNodeManifest: manifest,
     hasLockfile: npmLock || pnpmLock || yarnLock,
     hasInfrastructureAsCode: false,
+    dependenciesUnchangedSinceBase: unchanged,
   };
 }
 
@@ -95,8 +104,9 @@ export async function collectTicketSecurityChecks(
     evidence = await runSecurityChecks({
       cwd: input.worktreePath,
       sourceDigest: input.sourceDigest,
-      profile: await profileOf(input.worktreePath),
+      profile: await profileOf(input.worktreePath, baseCommit),
       networkPolicy: input.networkPolicy,
+      unauditedDependencies: input.unauditedDependencies ?? 'block',
       secretsValidatorPath: input.secretsValidatorPath ?? null,
       sastRules: input.sastRules ?? null,
       baseline: baseCommit
@@ -134,7 +144,11 @@ export function securityChecksSection(checks: TicketSecurityChecks): string {
   if (checks.evidence.length === 0) return 'Objective security checks: none configured.';
   const notRun = (c: CheckEvidence) => c.status === 'error' || c.status === 'unavailable';
   const rows = checks.evidence.map((c) => {
-    const label = notRun(c) ? 'NOT RUN' : c.status.toUpperCase();
+    const label = notRun(c)
+      ? c.waived
+        ? 'NOT RUN (waived)'
+        : 'NOT RUN'
+      : c.status.toUpperCase();
     const detail = c.reason
       ? ` — ${c.reason}`
       : c.findingCount > 0
@@ -182,5 +196,6 @@ export function securityChecksPayload(
       ? {}
       : { preexistingCount: c.preexistingCount, baselineRef: c.baselineRef ?? null }),
     ...(c.ruleDigest ? { ruleDigest: c.ruleDigest } : {}),
+    ...(c.waived ? { waived: c.waived } : {}),
   }));
 }

@@ -17369,16 +17369,24 @@
       "write_scope": [
         "packages/harbormaster/src/security-tool-runner.ts",
         "packages/harbormaster/src/security-tool-adapters.ts",
-        "packages/harbormaster/src/security-tool-adapters.test.ts"
+        "packages/harbormaster/src/security-tool-adapters.test.ts",
+        "packages/harbormaster/src/security-tool-runner.test.ts",
+        "packages/harbormaster/src/security-checks.ts",
+        "packages/harbormaster/src/security-baseline.ts",
+        "packages/harbormaster/src/sandbox/types.ts",
+        "packages/harbormaster/src/sandbox/container.ts",
+        "packages/harbormaster/src/sandbox/container.test.ts"
       ],
       "acceptance": [
         "Under the container profile, tool-sast either runs (ruleset mounted read-only, engine available in the image) or reports unavailable naming the container profile as the reason",
         "Red fixture: a runner answering exit 127 / \"command not found\" yields unavailable, never error"
       ],
       "points": 2,
-      "status": "todo",
+      "status": "done",
       "notes": [
-        "FILED 2026-09-23 during W23-51 close-out review (Law 1): sandbox/container.ts buildRunArgs mounts only `${cwd}:/work`; W23-51's smoke ran under the process (seatbelt) profile, which allows default reads. Not measured under a container runtime."
+        "FILED 2026-09-23 during W23-51 close-out review (Law 1): sandbox/container.ts buildRunArgs mounts only `${cwd}:/work`; W23-51's smoke ran under the process (seatbelt) profile, which allows default reads. Not measured under a container runtime.",
+        "CLAIMED 2026-09-23 (fix/v1-review-gaps). WIDENED at claim, before any edit: the runner must be told which runtime-owned paths a tool's command line names (runTool opts gain readOnlyPaths, filled in security-checks.ts and the baseline re-run in security-baseline.ts), and the container sandbox must be able to mount them read-only (sandbox/types.ts SandboxRunOptions.readOnlyMounts, container.ts buildRunArgs, container.test.ts). security-tool-runner.test.ts is new. DECIDED at claim for tool-secrets, which breaks the same way: its `{cwd}` argument is the host worktree path, which does not exist inside the container (the worktree is at /work) \u2014 the runner rewrites that one argument to /work, and the scanner's directory is mounted read-only like the rules. ALSO FOUND at claim: tool-deps reads an npm that was not found (exit 127, empty stdout) as PASSED (`JSON.parse('{}')` has no advisories) \u2014 a false pass; the 127 guard covers all three adapters. PREMISE NOTE: no production caller selects the container profile today \u2014 that is W23-57; this ticket makes the security tools correct when it is selected.",
+        "DONE 2026-09-23 (fix/v1-review-gaps). sandboxedToolRunner({profile, container, run}) \u2014 default 'process', unchanged for every existing caller. Under 'container' it mounts each runtime-owned path the command line names (runtimePathsOf: the pinned rule packs; the secrets scanner's directory) READ-ONLY at that same path, sourced from its realpath (the founder's ~/.dokima/rules/sast is a symlink), rewrites the worktree argument to /work, and on exit 127 appends '(container profile: the image X has no Y)'. container.ts buildRunArgs takes readOnlyMounts (-v src:tgt:ro, refusing a ':' or ',' in either path). All three adapters read exit 127 / 'not found' as UNAVAILABLE ('could not be started, so it did not run'); tool-deps previously read it as PASSED. RED (old sources): 9 failed \u2014 sast and secrets 'expected error to be unavailable', deps 'expected passed to be unavailable', runner 'Cannot read properties of undefined (reading profile)', 'expected null to be 127', 'buildRunArgs is not a function'. REAL podman smoke (applehv VM, not in the suite): node:22-alpine -> tool-sast unavailable 'sh: opengrep: not found (container profile: the image node:22-alpine has no opengrep)', tool-secrets unavailable (no bash in alpine); node:20-bookworm -> tool-secrets FINDINGS 1 on a planted key through the read-only-mounted scanner and /work. No image here ships opengrep, so SAST under the container profile is honestly NOT RUN until a project pins an image that has it; selection of the profile at all is W23-57. Gate: lint 0, typecheck 0, 5527 tests (626 files, 3 skipped), 76 e2e, 6 validators + temp-leaks clean."
       ]
     },
     {
@@ -17394,17 +17402,153 @@
       "write_scope": [
         "packages/harbormaster/src/security-tool-adapters.ts",
         "packages/harbormaster/src/security-baseline.ts",
-        "packages/harbormaster/src/security-baseline.test.ts"
+        "packages/harbormaster/src/security-baseline.test.ts",
+        "packages/harbormaster/src/security-checks.ts",
+        "packages/harbormaster/src/security-tool-adapters.test.ts",
+        "packages/harbormaster/src/security-checks.test.ts"
       ],
       "acceptance": [
         "tool-secrets itemises its findings (a key per finding: rule + path + masked match) so the W23-51 baseline can compare head with base",
-        "Red fixture: a secret present at base and head is pre-existing (passed, counted); a secret the ticket adds is FINDINGS"
+        "Red fixture: a secret present at base and head is pre-existing (passed, counted); a secret the ticket adds is FINDINGS",
+        "The key is a fingerprint of the secret itself, computed in memory by the core from the flagged file and line (the scanner masks every AWS key to the same text, and masks the file's FIRST match, not the flagged line's) \u2014 so a secret REPLACED by a different secret of the same shape in the same file is introduced, not pre-existing; neither the value, its mask, nor its fingerprint reaches a reason, a payload or a log",
+        "findingCount is the number of items the scanner reported (its stdout is a JSON envelope; the old count of \"- \" lines could never match it and was always 1)"
       ],
       "points": 2,
+      "status": "done",
+      "notes": [
+        "FILED 2026-09-23 during W23-51 close-out (Law 1): W23-51 gave findingKeys to tool-sast and tool-deps only. The bundled secrets scanner reports '- ...' lines with no stable identity, so it is still counted whole.",
+        "CLAIMED 2026-09-23 (fix/v1-review-gaps). WIDENED at claim, before any edit: the adapter interface (security-checks.ts) gives findingKeys the scanned root, because a real per-secret identity needs the flagged line re-read and re-matched in the core \u2014 the manifest-pinned content/validators/secrets-scan.sh prints only `AKIA...REDACTED(20 chars)`, identical for every AWS key, so a category|path|mask key would pass a replaced secret as pre-existing. security-tool-adapters.test.ts and security-checks.test.ts are the existing tests of the files changed, owned by no open ticket. MEASURED before claim: the scanner's stdout is `{\"validator\":\"secrets-scan\",\"gaps\":3,\"exit\":1,\"items\":[{\"category\":\"aws-access-key-id\",\"detail\":\"c.js:1 \u2014 AKIA...REDACTED(20 chars)\"},...]}`, so the adapter's `^\\s*-\\s` line count was 0 and findingCount was always max(0,1) = 1.",
+        "DONE 2026-09-23 (fix/v1-review-gaps). tool-secrets gains findingKeys: category | path | sha256(match)[:32], computed in memory by secretsFindingKeys (security-baseline.ts), which re-reads the flagged line from the tree that was scanned (worktree, or the base's git-archive), re-matches the category's pattern and hashes it; a PEM block hashes through its END line. No line number (a moved secret is the same secret). A path that does not realpath to a regular file inside the scanned root, an unknown category, or a line that no longer matches returns null -> the head's findings stand. findingCount is now the envelope's items (was always 1). The key never leaves memory: reasons carry counts only. RED (old sources, new tests): 6 failed \u2014 pre-existing secret 'expected findings to be passed'; added-beside-pre-existing and second-key-in-same-file 'expected {...} to match object {status: findings, ...}' (no preexistingCount); count 'findingCount 1 vs 3'; 'secretsFindingKeys is not a function'. The REPLACEMENT negative (same mask, different key) is green both sides by design \u2014 it is the fixture that rejects a mask-based key. Tests run the REAL content/validators/secrets-scan.sh, and one plants a value per category to catch drift in the manifest-pinned scanner. Gate (Node 22): lint 0, typecheck 0, 5517 tests (625 files, 3 skipped) in 60 s, 76 e2e, 6 validators + temp-leaks clean. Suite first went red on this machine for an unrelated reason \u2014 W23-59, filed and fixed in this branch.",
+        "ACCEPTANCE 1 DELIBERATELY NOT MET AS WRITTEN (for the founder to ratify): it asks for a key of 'rule + path + masked match'. Measured: every AWS key masks identically and the mask is of the file's first match, so that key would pass a replaced secret as pre-existing. The shipped key is category + path + an in-memory fingerprint of the value (acceptance 3, added at claim)."
+      ]
+    },
+    {
+      "id": "W23-56",
+      "title": "a local-only project can never machine-accept a ticket: tool-deps needs an advisory database it may not reach, reports NOT RUN, and NOT RUN blocks \u2014 even for a ticket that changed no dependency",
+      "phase": 23,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/security-checks.ts",
+        "packages/harbormaster/src/security-checks.test.ts",
+        "packages/harbormaster/src/security-tool-adapters.ts",
+        "packages/harbormaster/src/review-security.ts",
+        "packages/harbormaster/src/review-security.test.ts",
+        "packages/harbormaster/src/loop-review.ts",
+        "packages/harbormaster/src/verified-ticket-decision.ts",
+        "packages/harbormaster/src/verified-ticket-decision.test.ts",
+        "apps/server/src/cli/review-pass.ts",
+        "apps/server/src/api/pipeline/onboard-security-checks.ts",
+        "apps/server/src/cli/ops/doctor.ts",
+        "apps/server/src/cli/ops/doctor-sast.ts",
+        "apps/server/src/cli/ops/doctor.test.ts",
+        "packages/harbormaster/src/review-deps.ts",
+        "packages/harbormaster/src/index.ts"
+      ],
+      "depends_on": [
+        "W23-55"
+      ],
+      "acceptance": [
+        "Under local-only (no advisory source, where npm audit cannot run), a reviewed ticket whose change (fork point to worktree) leaves every root manifest and lockfile byte-identical gets tool-deps NOT_APPLICABLE with that measured reason \u2014 its dependency set is the base's, so it cannot have introduced an advisory (W23-51 counts only introduced findings). A network-allowed project keeps running npm audit with the baseline. An unresolvable fork point or an unreadable base falls through to the ordinary check, never to a pass",
+        "A ticket that DID change dependencies, under local-only with no advisory data, still reports tool-deps NOT RUN (unavailable) with a named reason; the project setting `security.unauditedDependencies` in the PROJECT ROOT's .dokima/settings.json decides whether that blocks machine acceptance \u2014 default \"block\"; \"allow\" waives exactly tool-deps + unavailable (never findings, never error, never another check) and the waiver is recorded in the verdict payload and the decision",
+        "The setting is read from the repository root, never from the ticket worktree, so a maker cannot waive its own check",
+        "The dead `localAdvisoryDbPath` option is removed: nothing passed it, and if anything had, npm audit would have run with the network denied and reported \"could not reach\" \u2014 it claimed snapshot support that does not exist",
+        "`dokima doctor` reports the dependency-audit coverage for the project (network policy, the waiver) and names the fix",
+        "Red fixtures: an unchanged-lockfile ticket under local-only is eligible; a changed-lockfile ticket is not (default) and is with \"allow\"; \"allow\" does not waive tool-deps FINDINGS"
+      ],
+      "points": 3,
+      "status": "done",
+      "notes": [
+        "FILED 2026-09-23 (Law 1) from the founder's v1 brief: \"a local-only project (no network) can't machine-accept because tool-deps needs an advisory snapshot\". Measured in source: security-checks.ts returns unavailable for local-only without `localAdvisoryDbPath`; no caller anywhere passes it; checksPermitAutomaticCompletion and verified-ticket-decision both treat unavailable as blocking. The offline advisory SNAPSHOT itself (fetch/import + a lockfile matcher that consumes it) is W23-58 \u2014 an importer nothing reads would be a dropped finding.",
+        "CLAIMED 2026-09-23 (fix/v1-review-gaps). DESIGN AT CLAIM, narrowing acceptance 1 before any edit: the unchanged-dependencies answer applies ONLY where the audit could not otherwise run (local-only, no advisory source). A network-allowed project keeps running npm audit with the W23-51 baseline, so its review still says how many advisories pre-exist \u2014 replacing that with NOT_APPLICABLE would hide a fact the reviewer has today. The measurement: every root manifest/lockfile (package.json, package-lock.json, npm-shrinkwrap.json, pnpm-lock.yaml, yarn.lock) in the worktree is byte-compared with `git show <fork point>:<file>` (absent on both sides = unchanged); any git failure is 'unknown' and falls through to NOT RUN. The waiver is carried on the evidence (`waived`), set in exactly one branch of runSecurityChecks, so no other status or check can carry it; loop-review marks a waived check not required, verified-ticket-decision accepts `unavailable` only with `waived` on tool-deps.",
+        "WIDENED mid-ticket 2026-09-23, when found: security-checks.ts went to 421 lines, so the policy (localOnlyAudit, isWaivedNotRun, UnauditedDependenciesPolicy, UNAUDITED_DEPENDENCIES_SETTING) lives in the new chapter review-deps.ts beside dependenciesUnchangedSince, re-exported by security-checks.ts; the barrel (index.ts, now exactly 400) exports the setting key and the type for apps/server. doctor.test.ts's 'every check green on a fresh project' now expects dependency-audit WARN: a fresh project has made no network choice, reads as local-only, and cannot audit dependencies \u2014 OK there would be the dishonest answer.",
+        "DONE 2026-09-23 (fix/v1-review-gaps). Under local-only, tool-deps is NOT_APPLICABLE when every root manifest/lockfile (package.json, package-lock.json, npm-shrinkwrap.json, pnpm-lock.yaml, yarn.lock) is byte-identical to `git show <fork point>:<file>` (review-deps.ts; any git failure = unknown = NOT RUN). Otherwise NOT RUN; `security.unauditedDependencies: \"allow\"` in the repo root's .dokima/settings.json (read by review-pass/onboard from repoRoot, never the worktree) adds `waived` to that one evidence row, set in exactly one branch; checksPermitAutomaticCompletion, loop-review's required flag and verified-ticket-decision all honour it only via isWaivedNotRun (tool-deps + unavailable + waived string). The reviewer sees 'NOT RUN (waived)'; the verdict payload carries `waived`. localAdvisoryDbPath removed (nothing passed it; its test asserted a network flag on a snapshot that did not exist). Network-allowed projects are unchanged (npm audit + W23-51 baseline). `dokima doctor` gains dependency-audit: OK when network-allowed, WARN under local-only naming both settings (block default) or the waiver in force. RED (old sources, new tests): 'expected unavailable to be not_applicable' (unchanged lockfile), '.toMatch() expects to receive a string, but got undefined' (no waiver), decision 'expected false to be true' (waived tool-deps blocked acceptance), 'checkDependencyAudit is not a function' x4; NEGATIVES green both sides: changed lockfile blocks by default, unknown/unresolvable fork point never reads unchanged, findings not waivable, a waived flag on tool-sast is ignored. Offline advisory snapshot = W23-58. Gate: lint 0, typecheck 0, 5539 tests (626 files, 3 skipped), 76 e2e, 6 validators + temp-leaks clean.",
+        "ACCEPTANCE 1 NARROWED 2026-09-23 at close, and recorded here and in acceptance rather than only in the claim note: the unchanged-dependencies answer is local-only-scoped (claim note gives the reason \u2014 a network-allowed review keeps its pre-existing advisory count). For the founder to ratify. Eligibility readers checked by grep: verified-ticket-decision (-> approved-build-accept's requiredChecksAllPassed), loop-review's decideReview required flag, checksPermitAutomaticCompletion (review + onboard); build-repair only lists NOT RUN checks as infrastructure beside the decision's eligibility."
+      ],
+      "stories": [
+        "US-402"
+      ]
+    },
+    {
+      "id": "W23-57",
+      "title": "the `sandbox: container` project setting (DEPLOYMENT.md \u00a75) is read nowhere: no production caller passes a sandbox profile, so every verify, gate and security scan runs under the process profile whatever the project chose",
+      "phase": 23,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "apps/server/src/cli/sandbox-preflight.ts",
+        "packages/harbormaster/src/sandbox/index.ts",
+        "packages/harbormaster/src/sandbox/index.test.ts"
+      ],
+      "depends_on": [
+        "W23-54"
+      ],
+      "acceptance": [
+        "A project whose settings choose the container profile has its sandboxed runs (verify, close gate, security tools) executed under it, and the receipt names the profile",
+        "A project that chose it on a host with no container runtime fails closed with the reason, never a silent process-profile run",
+        "Red fixture: settings `sandbox: container` reaches runSandboxed as profile \"container\""
+      ],
+      "points": 3,
       "status": "todo",
       "notes": [
-        "FILED 2026-09-23 during W23-51 close-out (Law 1): W23-51 gave findingKeys to tool-sast and tool-deps only. The bundled secrets scanner reports '- ...' lines with no stable identity, so it is still counted whole."
+        "FILED 2026-09-23 (Law 1) while claiming W23-54: `grep -rn \"profile: 'container'\"` over apps/ and packages/ finds no production caller; runSandboxed defaults to \"process\"; sandboxedToolRunner passes no profile. W23-54 makes the SECURITY TOOLS correct under the container profile when it is selected; this ticket is the selection."
+      ],
+      "stories": [
+        "US-402"
       ]
+    },
+    {
+      "id": "W23-58",
+      "title": "no offline advisory data: a local-only project that changes dependencies can only waive tool-deps, never run it \u2014 fetch/import an OSV snapshot and audit the lockfile against it locally",
+      "phase": 23,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/security-tool-adapters.ts",
+        "apps/server/src/cli/ops/doctor.ts",
+        "docs/TECH_STACK.md"
+      ],
+      "depends_on": [
+        "W23-56"
+      ],
+      "acceptance": [
+        "A CLI/doctor path fetches (on a networked host) or imports (from a file the user carried over) an advisory snapshot \u2014 the OSV npm export \u2014 into ~/.dokima, recording its source, date and digest",
+        "Under local-only, tool-deps audits the lockfile against that snapshot with no network, and its evidence names the snapshot's date and digest (a stale snapshot is visible, not implied current)",
+        "A version-range matcher is a declared, pinned dependency recorded in TECH_STACK (Law 2), not hand-rolled",
+        "Red fixture: a lockfile pinning a version inside an OSV affected range is FINDINGS offline; one outside it passes"
+      ],
+      "points": 5,
+      "status": "todo",
+      "notes": [
+        "FILED 2026-09-23 (Law 1) from the founder's v1 brief, split from W23-56 at design: a captured `npm audit --json` only matches an unchanged lockfile, which W23-56 already answers without any advisory data, so a useful snapshot is a full advisory export plus a local matcher \u2014 a feature, not a switch. Needs the founder's call on the source (OSV export vs npm bulk endpoint) and on the dependency."
+      ],
+      "stories": [
+        "US-402"
+      ]
+    },
+    {
+      "id": "W23-59",
+      "title": "the test suite runs the developer's real SAST ruleset: resolveSastRules reads HOME/.dokima/rules/sast, which the suite never pins, so every onboard/review test spawns a real opengrep scan (~5.5 s each) and the gate times out",
+      "phase": 23,
+      "module": "quality",
+      "lane": "quality",
+      "write_scope": [
+        "vitest.network-guard.ts",
+        "packages/harbormaster/src/sast-rules-isolation.test.ts"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "Every vitest worker resolves NO SAST ruleset unless the test supplies its own (or the opt-in DOKIMA_TEST_REAL_SCANNERS=1 smoke is asked for): DOKIMA_SAST_RULES is pinned to a path that does not exist, beside the existing machine-must-not-leak guards",
+        "Red evidence: on a machine with ~/.dokima/rules/sast present, resolveSastRules(process.env) inside the suite returns a ruleset before and null after",
+        "The full gate returns to its pre-symlink runtime on this machine"
+      ],
+      "points": 1,
+      "status": "done",
+      "notes": [
+        "FOUND LIVE 2026-09-23 on fix/v1-review-gaps, the day the founder linked ~/.dokima/rules/sast -> ~/Code/bpm-rulepacks/packs: a full `pnpm test` went from 180 s to >600 s with 103 failures (every one a timeout: approved-build-e2e 250-350 s, runLandLoop/rung seams ~92 s, onboard routes 15 s). `ps` showed 11 orphaned `opengrep-cli --legacy scan --config /Users/bmatthews/.dokima/rules/sast/owasp ...` processes at ~97% CPU for 14-15 minutes, each with its cwd in a dokima-cli-test-* / dokima-onboard-run-test-* / dokima-onboard-route-project-* temp dir \u2014 scans started by the suite and orphaned when vitest terminated the timed-out worker. One real scan of a one-file tree with these rules measured 5.5 s wall (rule loading). Same shape as W10-71 (DOKIMA_HOME) and W23-52 (a CLI spawn reaching LM Studio): the machine leaking into the suite. CLAIMED at filing.",
+        "DONE 2026-09-23 (fix/v1-review-gaps). vitest.network-guard.ts (every package's setup file) pins DOKIMA_SAST_RULES to /nonexistent/dokima-test-suite/no-sast-rules unless DOKIMA_TEST_REAL_SCANNERS=1; CLI spawns inherit it. RED on this machine: sast-rules-isolation.test.ts 'expected undefined to be truthy' and, with the env assertion removed, 'expected { ...(4) } to be null' (the founder's real 3-pack ruleset resolved). After: the full suite ran in 60 s with no opengrep process started. Gate (Node 22): lint 0, typecheck 0, 5517 tests (625 files, 3 skipped) in 60 s, 76 e2e, 6 validators + temp-leaks clean. The 11 orphaned scans from the broken run were killed by hand and the 7 temp dirs they re-created (.dokima/telemetry.jsonl written after their worker's cleanup) removed by exact path."
+      ],
+      "stories": []
     }
   ]
 }

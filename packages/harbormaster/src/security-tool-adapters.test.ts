@@ -209,3 +209,48 @@ realSast('opt-in: opengrep over the pinned rules, sandboxed', () => {
     }
   }, 120_000);
 });
+
+/**
+ * W23-54 — a scanner the sandbox could not start is NOT RUN, never an error
+ * and never a pass. Under the container profile the default image
+ * (node:22-slim) has no opengrep, and `sh -c` answers a missing command with
+ * exit 127 and "not found"; the process profile answers the same for an
+ * executable that vanished between the install probe and the run.
+ */
+describe('W23-54: a scanner that could not be started is NOT RUN', () => {
+  const notFound = run({
+    exitCode: 127,
+    stderr:
+      'sh: 1: opengrep: not found\n(container profile: image node:22-slim has no opengrep)',
+  });
+  it.each(['tool-sast', 'tool-secrets', 'tool-deps'])(
+    'RED: %s answering exit 127 / "not found" is unavailable, never error or passed',
+    async (checkId) => {
+      const checks = await runSecurityChecks(
+        options({
+          networkPolicy: 'network-allowed',
+          profile: {
+            hasNodeManifest: true,
+            hasLockfile: true,
+            hasInfrastructureAsCode: false,
+          },
+          runTool: async (adapter) =>
+            adapter.checkId === checkId ? notFound : run({ stdout: '{"results":[]}' }),
+        }),
+      );
+      const check = checks.find((c) => c.checkId === checkId)!;
+      expect(check.status).toBe('unavailable');
+      expect(check.reason).toMatch(/could not be started|not found/);
+    },
+  );
+
+  it('the container profile is named in the reason when that is why', async () => {
+    const checks = await runSecurityChecks(
+      options({
+        runTool: async (adapter) =>
+          adapter.checkId === 'tool-sast' ? notFound : run({ stdout: '{"results":[]}' }),
+      }),
+    );
+    expect(sast(checks).reason).toMatch(/container profile/);
+  });
+});

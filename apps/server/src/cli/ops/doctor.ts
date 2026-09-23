@@ -25,7 +25,7 @@ import {
   type PackManifest,
 } from '../../bootstrap/packs-update.js';
 import { buildProvider, loadConfiguredProviders } from './providers-core.js';
-import { checkSast, type SastProbe } from './doctor-sast.js';
+import { checkDependencyAudit, checkSast, type SastProbe } from './doctor-sast.js';
 
 export type DoctorCheckStatus = 'ok' | 'warn' | 'fail';
 
@@ -355,6 +355,7 @@ export async function runDoctor(io: CliIO, deps: DoctorDeps = {}): Promise<Docto
     checkPackSignatures(deps),
     checkWorktreeOrphans(paths),
     checkSast(io, deps),
+    checkDependencyAudit(io),
   ]);
   return { checks, ok: checks.every((c) => c.status !== 'fail') };
 }

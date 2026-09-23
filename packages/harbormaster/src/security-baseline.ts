@@ -20,6 +20,7 @@
  */
 
 import { execFile, spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -84,6 +85,90 @@ export function depsFindingKeys(stdout: string): readonly string[] | null {
   return Object.entries(parsed.vulnerabilities)
     .filter(([, v]) => v?.severity !== 'info')
     .map(([name, v]) => `${name}|${v?.severity ?? ''}|${v?.range ?? ''}`);
+}
+
+/**
+ * W23-55: the bundled scanner's categories, as line-level patterns mirroring
+ * `content/validators/secrets-scan.sh` (a test holds the two category sets
+ * equal). Used ONLY to re-find the flagged value in memory; the value itself
+ * never leaves this function.
+ */
+const SECRET_LINE_PATTERNS: Readonly<Record<string, RegExp>> = {
+  'github-token': /gh[pousr]_[A-Za-z0-9]{20,}/g,
+  'aws-access-key-id': /AKIA[0-9A-Z]{16}/g,
+  'openai-style-key': /sk-[A-Za-z0-9_-]{16,}/g,
+  'slack-token': /xox[baprs]-[A-Za-z0-9-]{10,}/g,
+  'pem-private-key': /-----BEGIN [A-Z ]*PRIVATE KEY-----/g,
+  'db-connection-credentials':
+    /(postgres(ql)?|mysql|mongodb(\+srv)?):\/\/[^:@\s]+:[^@\s]+@/g,
+};
+
+/**
+ * Reads `rel` under `root` only if it RESOLVES to a regular file inside it —
+ * the worktree is untrusted, and a symlinked file or directory could otherwise
+ * point the core at anything on the host.
+ */
+async function readInside(root: string, rel: string): Promise<string | null> {
+  try {
+    const realRoot = await fs.realpath(root);
+    const real = await fs.realpath(path.resolve(root, rel));
+    const within = path.relative(realRoot, real);
+    if (within === '' || within.startsWith('..') || path.isAbsolute(within)) return null;
+    const stat = await fs.stat(real);
+    return stat.isFile() ? await fs.readFile(real, 'utf8') : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Identity of a secrets-scanner finding: category + file + a FINGERPRINT of
+ * the secret itself (W23-55). The scanner prints only a mask, and its mask is
+ * no identity: every AWS key masks to `AKIA...REDACTED(20 chars)`, and it
+ * masks the file's first match rather than the flagged line's — so a key built
+ * from the mask would call a replaced secret "pre-existing" and let a newly
+ * committed one through. The core therefore re-reads the flagged line from the
+ * tree that was scanned, re-matches the category, and hashes the match in
+ * memory. A PEM block is hashed through its END line (every header is alike).
+ * No line number (a moved secret is the same secret). Anything it cannot
+ * re-find returns null, which keeps the head's findings standing.
+ */
+export async function secretsFindingKeys(
+  stdout: string,
+  root: string,
+): Promise<readonly string[] | null> {
+  let parsed: { items?: { category?: string; detail?: string }[] };
+  try {
+    parsed = JSON.parse(stdout || '{}') as typeof parsed;
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(parsed.items)) return null;
+  const files = new Map<string, Promise<string | null>>();
+  const keys: string[] = [];
+  for (const item of parsed.items) {
+    const pattern = SECRET_LINE_PATTERNS[item.category ?? ''];
+    const at = /^(.+):(\d+) \u2014 /.exec(item.detail ?? '');
+    if (!pattern || !at) return null;
+    const [, rel = '', lineNo = '0'] = at;
+    if (!files.has(rel)) files.set(rel, readInside(root, rel));
+    const text = await files.get(rel)!;
+    if (text === null) return null;
+    const lines = text.split('\n');
+    const index = Number(lineNo) - 1;
+    const matches = (lines[index] ?? '').match(pattern);
+    if (!matches) return null;
+    let material = matches.join('\0');
+    if (item.category === 'pem-private-key') {
+      const end = lines.findIndex(
+        (l, i) => i >= index && /-----END [A-Z ]*PRIVATE KEY-----/.test(l),
+      );
+      material = lines.slice(index, end < 0 ? undefined : end + 1).join('\n');
+    }
+    const print = createHash('sha256').update(material).digest('hex').slice(0, 32);
+    keys.push(`${item.category}|${rel}|${print}`);
+  }
+  return keys;
 }
 
 /** Multiset difference: what head has more of than base. */
@@ -169,6 +254,22 @@ export function expandArgs(
   );
 }
 
+/**
+ * W23-54: the runtime-owned host paths an adapter's command line names — the
+ * pinned rule packs, the bundled scanner's directory (it sources `_lib.sh`
+ * beside itself). A container runner mounts exactly these, read-only.
+ */
+export function runtimePathsOf(
+  adapter: SecurityToolAdapter,
+  options: RunSecurityChecksOptions,
+): readonly string[] {
+  if (adapter.args.includes('{sastConfig}')) return options.sastRules?.configPaths ?? [];
+  if (adapter.args.includes('{validatorPath}') && options.secretsValidatorPath) {
+    return [path.dirname(options.secretsValidatorPath)];
+  }
+  return [];
+}
+
 type Interpreted = {
   readonly status: CheckStatus;
   readonly reason: string | null;
@@ -198,7 +299,7 @@ export async function compareWithBaseline(
     reason: `${head.findingCount} finding(s); not compared with base ${ref.slice(0, 12)} — ${why}`,
     baselineRef: null,
   });
-  const headKeys = adapter.findingKeys(headRun);
+  const headKeys = await adapter.findingKeys(headRun, options.cwd);
   if (!headKeys) return kept('the head output could not be itemised');
   const baseDir = await options.baseline.checkout();
   if (!baseDir) return kept('the base could not be checked out');
@@ -206,13 +307,14 @@ export async function compareWithBaseline(
     cwd: baseDir,
     allowNetwork: adapter.requiresNetwork && options.networkPolicy === 'network-allowed',
     timeoutMs,
+    readOnlyPaths: runtimePathsOf(adapter, options),
   });
   const base = adapter.interpret(baseRun);
   const baseKeys =
     base.status === 'passed'
       ? []
       : base.status === 'findings'
-        ? adapter.findingKeys(baseRun)
+        ? await adapter.findingKeys(baseRun, baseDir)
         : null;
   if (!baseKeys) return kept(`the base scan was ${base.status}`);
   const { introduced, preexisting } = introducedFindings(headKeys, baseKeys);

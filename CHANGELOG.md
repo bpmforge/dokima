@@ -67,6 +67,23 @@ name what a change means for that boundary, not just what moved.
   reason it was refused. A `<think>` block before the JSON, a lower-case
   verdict, and a numeric-string score are now accepted. A refused reply still
   never counts as an approval.
+- **A secret already committed at a ticket's base no longer blocks every
+  ticket.** `tool-secrets` joins the base-vs-head comparison. Each finding is
+  identified by a fingerprint of the secret itself, computed in memory from
+  the flagged line, so a replaced secret still counts as new. The value, its
+  mask and its fingerprint are never written to evidence or logs.
+- **A local-only project can accept tickets without a person.** With no
+  network, `npm audit` has no advisory data. A ticket that leaves every
+  dependency manifest and lockfile byte-identical to its base now reports
+  `tool-deps` as not applicable. A ticket that changes them still reports
+  NOT RUN, which blocks by default. A project can accept those changes without
+  an audit by setting `"security.unauditedDependencies": "allow"` in its root
+  `.dokima/settings.json`. The waiver covers only that check, is never read
+  from the ticket's worktree, and is recorded with the verdict. `dokima doctor`
+  has a new `dependency-audit` check that reports which case applies.
+- **Security tools under the container sandbox profile** mount the pinned
+  ruleset and the bundled secrets scanner read-only. A tool the image doesn't
+  have now reports NOT RUN and names the profile and image.
 
 ### Removed
 
@@ -81,6 +98,13 @@ name what a change means for that boundary, not just what moved.
 
 ### Fixed
 
+- A scanner that could not be started (exit 127, "not found") reports NOT RUN.
+  Before, `npm audit` in that state read as a clean pass, and the others read
+  as errors.
+- The secrets check counts every finding. It had always reported 1.
+- The test suite no longer uses the developer's own SAST ruleset. With
+  `~/.dokima/rules/sast` present, every onboard and review test ran a real
+  Opengrep scan, and the suite timed out.
 - A pipeline run's progress record and the fleet registry are written
   atomically, so a status poll can no longer catch either mid-write and report
   a live run as missing (404) or the registry as corrupt.

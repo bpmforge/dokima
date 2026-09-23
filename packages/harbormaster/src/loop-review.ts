@@ -42,6 +42,7 @@ import {
 } from './review-security.js';
 import { reviewCommentBody } from './loop-review-report.js';
 import type { SastRuleset } from './sast-rules.js';
+import { isWaivedNotRun, type UnauditedDependenciesPolicy } from './security-checks.js';
 import {
   decideReview,
   ensureReviewerIdentity,
@@ -91,13 +92,10 @@ export interface ReviewPassOptions {
   readonly secretsValidatorPath?: string | null;
   /** W23-51: the pinned SAST ruleset, resolved by apps/server (`resolveSastRules`). Absent, SAST is NOT RUN. */
   readonly sastRules?: SastRuleset | null;
-  /**
-   * W23-16: the project's own network policy, from the settings file the
-   * onboard path reads. Hardcoded local-only here, and `tool-sast` needs the
-   * network for its ruleset — so SAST was permanently UNAVAILABLE and no
-   * ticket could ever be machine-accepted. Default stays local-only.
-   */
+  /** W23-16: the project's own network policy (settings file); default local-only. */
   readonly networkPolicy?: 'local-only' | 'network-allowed';
+  /** W23-56: the project's waiver for a dependency audit that cannot run; default block. */
+  readonly unauditedDependencies?: UnauditedDependenciesPolicy;
   /**
    * W23-10: review only these tickets. A run that lands three tickets must not
    * also re-review a ticket someone parked last week merely because it is
@@ -249,6 +247,7 @@ async function reviewOne(
     networkPolicy: options.networkPolicy ?? 'local-only',
     secretsValidatorPath: options.secretsValidatorPath ?? null,
     sastRules: options.sastRules ?? null,
+    unauditedDependencies: options.unauditedDependencies ?? 'block',
     // W23-51/53: findings already present where the ticket FORKED are not its
     // own; an unknown fork point runs no baseline, so every finding stands.
     baseCommit: forkPoint,
@@ -376,7 +375,7 @@ async function reviewOne(
     checks: security.evidence.map((check) => ({
       checkId: check.checkId,
       status: check.status,
-      required: true,
+      required: !isWaivedNotRun(check),
     })),
     makerModel: options.makerModel,
     makerModels,

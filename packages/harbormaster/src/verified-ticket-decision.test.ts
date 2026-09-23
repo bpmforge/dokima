@@ -161,6 +161,23 @@ describe('a review that is red, stale or missing blocks the chain — and only t
       'accept-required-check-failed',
     ],
     [
+      'W23-56: a dependency audit that did not run, with no waiver',
+      {
+        securityChecks: [
+          { checkId: 'tool-sast', status: 'passed' },
+          { checkId: 'tool-deps', status: 'unavailable' },
+        ],
+      },
+      'accept-required-check-failed',
+    ],
+    [
+      'W23-56: a waiver on any check but tool-deps',
+      {
+        securityChecks: [{ checkId: 'tool-sast', status: 'unavailable', waived: 'x' }],
+      },
+      'accept-required-check-failed',
+    ],
+    [
       'a review of source that has since moved',
       { sourceDigest: 'sha256:something-else' },
       'accept-stale-review',
@@ -248,6 +265,30 @@ describe('a review that is red, stale or missing blocks the chain — and only t
         sourceDigest: 'sha256:T-1',
       });
       expect(facts.verdict).toBe('inconclusive');
+    } finally {
+      log.close();
+    }
+  });
+});
+
+describe('W23-56: a project that chose to accept without a dependency audit', () => {
+  it('RED: a tool-deps NOT RUN the project waived does not block the machine acceptance', async () => {
+    const log = board();
+    try {
+      land(log, 'T-1', 'head-T-1');
+      verdict(log, 'T-1', {
+        securityChecks: [
+          { checkId: 'tool-sast', status: 'passed' },
+          {
+            checkId: 'tool-deps',
+            status: 'unavailable',
+            waived: 'security.unauditedDependencies is "allow" in this project',
+          },
+        ],
+      });
+      const outcome = await decide(log, 'T-1', 'head-T-1');
+      expect(outcome.accepted).toBe(true);
+      expect(outcome.ruleId).toBe('machine-accept');
     } finally {
       log.close();
     }

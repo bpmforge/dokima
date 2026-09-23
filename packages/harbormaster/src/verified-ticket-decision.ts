@@ -42,6 +42,7 @@ import type { AutonomyMode } from './autonomy.js';
 import { ensureReviewerIdentity } from './review-decision.js';
 import type { RepairTicketOutcome } from './build-repair-loop.js';
 import { agentHeadCommit, collectReviewEvidence } from './review-evidence.js';
+import { isWaivedNotRun } from './security-checks.js';
 
 /** Recorded for every post-close decision, accepted or not — the audit row a Decide card reads. */
 export const VERIFIED_DECISION_EVENT = 'build.accept.decided';
@@ -171,7 +172,13 @@ export function reviewFactsFor(
       // been looked at).
       requiredChecksAllPassed = checks.every((c) => {
         const status = (c as { status?: unknown }).status;
-        return status === 'passed' || status === 'not_applicable';
+        // W23-56: plus the one recorded waiver — a dependency audit the
+        // project chose to accept without, never any other check or status.
+        return (
+          status === 'passed' ||
+          status === 'not_applicable' ||
+          isWaivedNotRun(c as { checkId: string; status: string; waived?: unknown })
+        );
       });
       invalidated = false;
     } else if (

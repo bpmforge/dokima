@@ -2599,3 +2599,69 @@ Filed from the close-out (Law 1):
 Gate on Node 22: lint 0, typecheck 0, **5508 tests** (624 files, 3 skipped),
 **76 e2e**, 6 validators + temp-leaks clean. **Board: 545 done · 6 todo · 1
 blocked (W12-44).**
+
+## 2026-09-23 (night) — v1 review gaps (`fix/v1-review-gaps`)
+
+**W23-55 done.** `tool-secrets` now uses the W23-51 base-vs-head comparison.
+The scanner's mask can't identify a secret, because every AWS key masks to
+`AKIA...REDACTED(20 chars)`. So the core re-reads the flagged line and hashes
+the match in memory; the key is `category|path|fingerprint`. A secret that was
+already at base passes and is counted. An added or replaced secret is
+FINDINGS. The finding count, which was always 1, now counts the scanner's
+items.
+
+**W23-54 done.** `sandboxedToolRunner` takes an optional profile. Under
+`container`, it mounts the rule packs and the scanner directory read-only at
+the paths the command line uses (from their real paths), and it maps the
+worktree argument to `/work`. On exit 127 it names the profile and the image.
+All three adapters now read exit 127 as NOT RUN; `npm audit` used to read it as
+PASSED. A real podman smoke run: node:22-alpine gives SAST NOT RUN, naming the
+container profile; node:20-bookworm finds a planted secret through the
+mounted scanner. No local image ships opengrep.
+
+**W23-56 done.** Under local-only, `tool-deps` is NOT_APPLICABLE when every
+root manifest and lockfile matches the fork point byte for byte. Otherwise it
+is NOT RUN. `security.unauditedDependencies: "allow"`, read from the repo
+root, waives exactly that case; the default is block. `dokima doctor` has a
+`dependency-audit` check. The unused `localAdvisoryDbPath` is removed.
+Network-allowed projects are unchanged.
+
+**W23-59 filed and done (found live).** Once the founder linked
+`~/.dokima/rules/sast`, the full suite ran for more than 600 s with 103
+timeouts. Every test that reached the security checks ran a real Opengrep scan
+(~5.5 s), and 11 orphaned scans kept a CPU core busy each. The shared vitest
+guard now points `DOKIMA_SAST_RULES` at a path that does not exist; the suite
+takes 60 s.
+
+**Filed (Law 1):** W23-57 (the `sandbox: container` setting is documented but
+read nowhere, so no production run uses the container profile) and W23-58 (an
+offline advisory snapshot and a lockfile matcher, which needs a founder call on
+the source and the dependency).
+
+**Nightly (P6-22 needs 10 green nights). Streak: 0, and the fix is not yet
+confirmed.** Every scheduled run through 2026-09-23 09:08Z ran on main
+1abc55b6, which predates the torn-read fix (W23-46, 9be2927f). 09-22 (the
+guided sample) and 09-23 (W13-39 rejoin) failed; both are in the 404
+torn-read class W23-46 diagnosed. The one run that includes the fix is a
+workflow_dispatch on a branch (35902007196 @60c03301): green on Node 22 and
+Node 24, but it is not a scheduled night. The first scheduled run on a main
+that has the fix is 2026-09-24 ~09:08Z (main is 225f48be).
+
+**Founder:**
+
+- The unchanged-dependencies answer and the waiver key
+  (`security.unauditedDependencies`) are new semantics. They apply only where
+  the audit cannot run: W23-56 acceptance 1 was narrowed to local-only. Please
+  ratify.
+- W23-55 acceptance 1 (a mask-based key) was deliberately not met as written,
+  because masks collide. Please ratify the fingerprint key.
+- A real review now runs opengrep on the head and again on the base when the
+  head has findings. Each scan is about 5.5 s on this machine, mostly rule
+  loading.
+- W23-58 needs a decision on the snapshot source (OSV export or the npm bulk
+  endpoint) and on a version-range dependency.
+- W23-57: the container profile is unwired.
+
+Gate on Node 22: lint 0, typecheck 0, **5539 tests** (626 files, 3 skipped),
+**76 e2e**, 6 validators + temp-leaks clean. **Board: 549 done · 6 todo · 1
+blocked (W12-44).**

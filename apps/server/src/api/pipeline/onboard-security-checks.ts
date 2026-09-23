@@ -28,6 +28,8 @@ import {
   type CheckEvidence,
   type NetworkPolicy,
   type ProjectProfile,
+  type UnauditedDependenciesPolicy,
+  UNAUDITED_DEPENDENCIES_SETTING,
 } from '@dokima/harbormaster';
 import { resolveAsset } from '@dokima/shared';
 import { OPERATOR_ACTOR_ID } from '../server/board-actor.js';
@@ -112,6 +114,27 @@ export async function networkPolicyOf(projectPath: string): Promise<NetworkPolic
   }
 }
 
+/**
+ * W23-56: whether a dependency audit that cannot run (local-only, no advisory
+ * data) blocks an automatic acceptance. Read from the PROJECT ROOT's settings
+ * — never from a ticket worktree, where the maker could write its own waiver.
+ * Anything but an explicit "allow" is "block", matching SAST.
+ */
+export async function unauditedDependenciesOf(
+  projectPath: string,
+): Promise<UnauditedDependenciesPolicy> {
+  try {
+    const raw = await readFile(
+      path.join(projectPath, '.dokima', 'settings.json'),
+      'utf8',
+    );
+    const settings = JSON.parse(raw) as Record<string, unknown>;
+    return settings[UNAUDITED_DEPENDENCIES_SETTING] === 'allow' ? 'allow' : 'block';
+  } catch {
+    return 'block';
+  }
+}
+
 export interface OnboardSecurityChecksResult {
   readonly evidence: readonly CheckEvidence[];
   readonly eligible: boolean;
@@ -131,6 +154,7 @@ export async function runOnboardSecurityChecks(
     sourceDigest: `onboard:${runId}`,
     profile: await profileOf(projectPath),
     networkPolicy: await networkPolicyOf(projectPath),
+    unauditedDependencies: await unauditedDependenciesOf(projectPath),
     secretsValidatorPath: await bundledSecretsScanner(),
     // W23-51: Opengrep over the pinned ruleset — never registry rules.
     sastRules: await resolveSastRules(process.env),

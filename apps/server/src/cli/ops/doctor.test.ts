@@ -8,7 +8,7 @@ import type { CliIO } from '../../bootstrap/cli.js';
 import { resolveProjectPaths } from '../../bootstrap/config.js';
 import { defaultFirstPartyPackSource } from '../../bootstrap/packs-update.js';
 import { runDoctor, runDoctorCommand } from './doctor.js';
-import { checkSast, type SastProbe } from './doctor-sast.js';
+import { checkDependencyAudit, checkSast, type SastProbe } from './doctor-sast.js';
 
 const SAST_READY: SastProbe = async () => ({
   opengrepInstalled: true,
@@ -54,8 +54,15 @@ describe('runDoctor', () => {
     });
 
     expect(report.ok).toBe(true);
-    expect(report.checks.every((c) => c.status === 'ok')).toBe(true);
+    // W23-56: a fresh project has made no network choice, which reads as
+    // local-only — so its dependency audit is honestly a WARNING, not OK.
+    expect(
+      report.checks
+        .filter((c) => c.name !== 'dependency-audit')
+        .every((c) => c.status === 'ok'),
+    ).toBe(true);
     const find = (name: string) => report.checks.find((c) => c.name === name);
+    expect(find('dependency-audit')?.status).toBe('warn');
     expect(find('port')?.status).toBe('ok');
     expect(find('db-integrity')).toEqual({
       name: 'db-integrity',
@@ -422,5 +429,65 @@ describe('sast (W23-51)', () => {
     const check = await checkSast(io(), { sastProbe: SAST_READY });
     expect(check).toMatchObject({ name: 'sast', status: 'ok' });
     expect(check.detail).toMatch(/3 rule file\(s\) from \/rules\/packs \(sha256:aaaa/);
+  });
+});
+
+/**
+ * W23-56 — doctor says what the dependency audit can do for THIS project.
+ * A local-only project cannot run `npm audit`; before this nothing told the
+ * user so until a ticket sat in review with tool-deps NOT RUN.
+ */
+describe('dependency-audit (W23-56)', () => {
+  const dirs: string[] = [];
+  afterEach(async () => {
+    await Promise.all(
+      dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
+    );
+  });
+
+  async function project(settings: Record<string, unknown> | null): Promise<CliIO> {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'sw-doctor-deps-'));
+    dirs.push(cwd);
+    if (settings) {
+      await fs.mkdir(path.join(cwd, '.dokima'));
+      await fs.writeFile(
+        path.join(cwd, '.dokima', 'settings.json'),
+        JSON.stringify(settings),
+      );
+    }
+    return { stdout: vi.fn(), stderr: vi.fn(), cwd, env: {} };
+  }
+
+  it('RED: local-only with the default policy is a WARNING that names both ways out', async () => {
+    const check = await checkDependencyAudit(
+      await project({ 'modelPolicy.localOnly': true }),
+    );
+    expect(check).toMatchObject({ name: 'dependency-audit', status: 'warn' });
+    expect(check.detail).toMatch(/local-only/);
+    expect(check.detail).toMatch(/changes? (its|a) dependenc/);
+    expect(check.detail).toMatch(/security\.unauditedDependencies/);
+    expect(check.detail).toMatch(/modelPolicy\.localOnly/);
+  });
+
+  it('local-only with "allow" is a WARNING that says changes are accepted without an audit', async () => {
+    const check = await checkDependencyAudit(
+      await project({
+        'modelPolicy.localOnly': true,
+        'security.unauditedDependencies': 'allow',
+      }),
+    );
+    expect(check.status).toBe('warn');
+    expect(check.detail).toMatch(/accepted without a dependency audit/);
+  });
+
+  it('a network-allowed project is OK: npm audit reaches its registry', async () => {
+    const check = await checkDependencyAudit(
+      await project({ 'modelPolicy.localOnly': false }),
+    );
+    expect(check).toMatchObject({ name: 'dependency-audit', status: 'ok' });
+  });
+
+  it('no settings file reads as local-only (the conservative first-run answer), not as OK', async () => {
+    expect((await checkDependencyAudit(await project(null))).status).toBe('warn');
   });
 });

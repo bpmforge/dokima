@@ -33,6 +33,19 @@ export interface SandboxRunOptions {
   /** Extra env merged over the safe baseline — never the parent's ambient env (SC-06/SC-07). */
   readonly env?: Readonly<Record<string, string>>;
   readonly container?: SandboxContainerOptions;
+  /**
+   * W23-54: runtime-owned host paths a command names (a pinned ruleset, the
+   * bundled scanner), mounted READ-ONLY at `target` under the container
+   * profile. The process profile reads the host directly and ignores this.
+   */
+  readonly readOnlyMounts?: readonly ReadOnlyMount[];
+}
+
+export interface ReadOnlyMount {
+  /** The real host path (symlinks resolved — a bind mount of a link is the link). */
+  readonly source: string;
+  /** Where the command line expects it inside the container. */
+  readonly target: string;
 }
 
 export interface SandboxRunResult {

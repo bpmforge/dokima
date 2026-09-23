@@ -26,6 +26,7 @@ import { targetToConfig } from '../api/pipeline/gateway-model-port/config.js';
 import {
   bundledSecretsScanner,
   networkPolicyOf,
+  unauditedDependenciesOf,
 } from '../api/pipeline/onboard-security-checks.js';
 
 const REVIEW_MAX_TOKENS = 2_000;
@@ -95,12 +96,16 @@ export async function executeReviewPass(options: ExecuteReviewPassOptions): Prom
    * was permanently unavailable. Found by driving the whole workflow through
    * the real entrance rather than through injected seams.
    */
-  const [secretsValidatorPath, networkPolicy, sastRules] = await Promise.all([
-    bundledSecretsScanner(),
-    networkPolicyOf(options.repoRoot),
-    // W23-51: opengrep's pinned ruleset (DOKIMA_SAST_RULES or ~/.dokima/rules/sast).
-    resolveSastRules(process.env),
-  ]);
+  const [secretsValidatorPath, networkPolicy, sastRules, unauditedDependencies] =
+    await Promise.all([
+      bundledSecretsScanner(),
+      networkPolicyOf(options.repoRoot),
+      // W23-51: opengrep's pinned ruleset (DOKIMA_SAST_RULES or ~/.dokima/rules/sast).
+      resolveSastRules(process.env),
+      // W23-56: the project's waiver for a dependency audit that cannot run —
+      // from the repository root, never from the worktree under review.
+      unauditedDependenciesOf(options.repoRoot),
+    ]);
 
   const results = await reviewTicketDecisions({
     log: options.log,
@@ -115,6 +120,7 @@ export async function executeReviewPass(options: ExecuteReviewPassOptions): Prom
     secretsValidatorPath,
     sastRules,
     networkPolicy,
+    unauditedDependencies,
     // W15-02: the maker's track record biases borderline calls toward a
     // person, never toward acceptance (FR-L3 asymmetry).
     makerCalibration: () =>
