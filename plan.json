@@ -17248,7 +17248,21 @@
       "lane": "orchestrator",
       "write_scope": [
         "packages/harbormaster/src/security-tool-adapters.ts",
-        "packages/harbormaster/src/security-tool-adapters.test.ts"
+        "packages/harbormaster/src/security-tool-adapters.test.ts",
+        "packages/harbormaster/src/security-checks.ts",
+        "packages/harbormaster/src/security-checks.test.ts",
+        "packages/harbormaster/src/sast-rules.ts",
+        "packages/harbormaster/src/sast-rules.test.ts",
+        "packages/harbormaster/src/security-baseline.ts",
+        "packages/harbormaster/src/security-baseline.test.ts",
+        "packages/harbormaster/src/review-security.ts",
+        "packages/harbormaster/src/review-security.test.ts",
+        "packages/harbormaster/src/loop-review.ts",
+        "packages/harbormaster/src/index.ts",
+        "apps/server/src/cli/review-pass.ts",
+        "apps/server/src/api/pipeline/onboard-security-checks.ts",
+        "apps/server/src/cli/ops/doctor.ts",
+        "apps/server/src/cli/ops/doctor.test.ts"
       ],
       "depends_on": [],
       "acceptance": [
@@ -17257,10 +17271,11 @@
         "tool-deps findings that already exist at the ticket's base are distinguishable in the review from findings the ticket introduced"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         "FOUND LIVE 2026-09-23 on the throwaway Vault autorun: PLAN-vault-010 landed (gate receipt 0815ef9e) and the review came back CONTRADICTED 4/10, ESCALATE_TO_HUMAN, because tool-sast errored \u2014 'semgrep exited 2 before scanning: [ERROR]: Cannot create auto config when metrics are off' \u2014 and tool-deps reported 14 findings in dependencies the ticket did not touch. The adapter's args are ['--config','auto',...,'--metrics=off']; current semgrep refuses that pair, so the check cannot pass on any host. Needs a founder call (send metrics, pin a local ruleset, or switch to opengrep, which is installed here) before it is a code change.",
-        "Scoped 2026-09-23: measured with semgrep 1.175.0 (Homebrew) on this host; opengrep 1.25.0 is also installed. 'cannot pass on any host' holds for semgrep versions that refuse auto config with metrics off. V1 BLOCKER CANDIDATE for the unattended local promise: while tool-sast errors, every machine review escalates, so an approved-build run cannot auto-accept."
+        "Scoped 2026-09-23: measured with semgrep 1.175.0 (Homebrew) on this host; opengrep 1.25.0 is also installed. 'cannot pass on any host' holds for semgrep versions that refuse auto config with metrics off. V1 BLOCKER CANDIDATE for the unattended local promise: while tool-sast errors, every machine review escalates, so an approved-build run cannot auto-accept.",
+        "CLAIMED 2026-09-23 (fix/v1-local-autorun) with the founder call recorded: SAST runs on Opengrep with the founder's own rulepacks (bpm-rulepacks), never registry/--config auto rules and never metrics. WIDENED at claim, before any edit: the runner (security-checks.ts) expands the ruleset paths and runs the base-vs-head baseline; review-security.ts/loop-review.ts carry the ticket base and render a scanner that did not run as NOT RUN; review-pass.ts and onboard-security-checks.ts resolve the ruleset; doctor.ts reports opengrep + ruleset with the install fix; new sast-rules.ts / security-baseline.ts hold the resolver and the finding comparison. The rules are NOT vendored into the FSL package (proprietary): the ruleset is located by DOKIMA_SAST_RULES or ~/.dokima/rules/sast and pinned by content digest in the evidence."
       ],
       "stories": [
         "US-402"
