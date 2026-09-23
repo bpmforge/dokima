@@ -42,6 +42,7 @@ import {
   classifyManifestFiles,
   isSandboxProfileAvailable,
   reRunVerify,
+  setUnsandboxedVerifyWaiver,
 } from '@dokima/harbormaster';
 import type { EventLog } from '@dokima/events';
 import {
@@ -54,6 +55,7 @@ import {
   type VerifyResult,
 } from '@dokima/tickets';
 import { PROJECT_STATE_DIR } from './db.js';
+import { unsandboxedWaiverRequested } from './sandbox-preflight.js';
 
 /** The close gate's own verify ceiling (DEFAULT_VERIFY_TIMEOUT_MS, loop-gates-types.ts). */
 const CLOSE_VERIFY_TIMEOUT_MS = 10 * 60 * 1000;
@@ -63,6 +65,11 @@ export interface CloseClaim {
   readonly commits: readonly string[];
   /** The caller's `--verify-cmd` — run only when the ticket declares no verify of its own. */
   readonly verifyCommand: string;
+  /**
+   * W23-44: DOKIMA_ALLOW_UNSANDBOXED_VERIFY is set. Consulted only on a host
+   * that cannot isolate, and recorded on the receipt as `sandbox: 'waived'`.
+   */
+  readonly unsandboxedWaiver?: boolean;
 }
 
 export type MeasuredClose =
@@ -120,14 +127,25 @@ export async function measureCloseEvidence(
   // SC-07 fails closed, exactly as a build run does (sandbox-preflight.ts):
   // verify is untrusted code, and running it unsandboxed would be a green the
   // receipt did not earn.
-  if (!isSandboxProfileAvailable('process')) {
-    return {
-      ok: false,
-      reasons: [
-        'this host cannot sandbox a verify run (sandbox-exec on macOS, unshare on ' +
-          'Linux), and close runs verify rather than taking its exit code on trust',
-      ],
-    };
+  //
+  // W23-44: unless the waiver is set — the SAME waiver a build run honours.
+  // `dokima close` is the documented human exit from a local-model park, so
+  // refusing it where a build run would proceed left the human no way out on
+  // exactly the host the waiver exists for. The receipt says so.
+  const isolated = isSandboxProfileAvailable('process');
+  if (!isolated) {
+    if (!claim.unsandboxedWaiver) {
+      return {
+        ok: false,
+        reasons: [
+          'this host cannot sandbox a verify run (sandbox-exec on macOS, unshare on ' +
+            'Linux), and close runs verify rather than taking its exit code on trust; ' +
+            'set DOKIMA_ALLOW_UNSANDBOXED_VERIFY=1 to run it without isolation, ' +
+            'recorded on the receipt',
+        ],
+      };
+    }
+    setUnsandboxedVerifyWaiver(true);
   }
   const verifySource = ticket.verify ? 'ticket' : 'caller';
   const command = ticket.verify ?? claim.verifyCommand;
@@ -168,7 +186,13 @@ export async function measureCloseEvidence(
   return {
     ok: true,
     verify: { command, exitCode: ran.exitCode },
-    evidence: { verify: 'ran', verifySource, files: 'verified', commits },
+    evidence: {
+      verify: 'ran',
+      verifySource,
+      files: 'verified',
+      commits,
+      sandbox: isolated ? 'isolated' : 'waived',
+    },
   };
 }
 
@@ -218,7 +242,10 @@ export async function closeWithMeasuredEvidence(
       opts,
     );
   }
-  const measured = await measureCloseEvidence(root, current, request);
+  const measured = await measureCloseEvidence(root, current, {
+    ...request,
+    unsandboxedWaiver: request.unsandboxedWaiver ?? unsandboxedWaiverRequested(),
+  });
   if (!measured.ok) {
     throw new TicketError(
       'MANIFEST_INVALID',

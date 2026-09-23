@@ -16,7 +16,10 @@
  * ticket — the same shape as the signing-key and vault refusals beside it.
  */
 import { appendEvent, type EventLog } from '@dokima/events';
-import { isSandboxProfileAvailable } from '@dokima/harbormaster';
+import {
+  isSandboxProfileAvailable,
+  setUnsandboxedVerifyWaiver,
+} from '@dokima/harbormaster';
 import type { RunCliIO } from './run-types.js';
 
 /**
@@ -32,13 +35,14 @@ export function assertSandboxOrWaiver(
 ): boolean {
   if (isSandboxProfileAvailable('process')) return true;
 
-  if (!process.env.DOKIMA_ALLOW_UNSANDBOXED_VERIFY) {
+  if (!unsandboxedWaiverRequested()) {
     io.stderr(
       `${runId} refused: this host cannot sandbox a verify run, and SC-07 ` +
         `requires one — verify commands and validator packs are untrusted code. ` +
         `Install the platform mechanism (sandbox-exec on macOS, unshare on ` +
         `Linux), or set DOKIMA_ALLOW_UNSANDBOXED_VERIFY=1 to accept running ` +
-        `them with your full environment and network. Nothing was claimed.`,
+        `them with network access and no isolation (the environment is still ` +
+        `cleaned). Nothing was claimed.`,
     );
     return false;
   }
@@ -49,9 +53,23 @@ export function assertSandboxOrWaiver(
     runId,
     payload: { reason: 'no sandbox profile available on this host' },
   });
+  // W23-44: and switch it on where the runs happen. Until then this function
+  // recorded a waiver that no verify ever received — each one threw.
+  setUnsandboxedVerifyWaiver(true);
   io.stderr(
     `${runId}: running verify UNSANDBOXED — this host has no isolation ` +
       `mechanism and DOKIMA_ALLOW_UNSANDBOXED_VERIFY is set. Recorded.`,
   );
   return true;
+}
+
+/**
+ * W23-44: the one place the waiver variable is read. Build runs, `dokima
+ * close` and the HTTP close all ask here, so the three doors cannot disagree
+ * about whether it is set.
+ */
+export function unsandboxedWaiverRequested(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return Boolean(env.DOKIMA_ALLOW_UNSANDBOXED_VERIFY);
 }

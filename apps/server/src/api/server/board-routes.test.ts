@@ -522,6 +522,7 @@ describe('POST /tickets/:id/close measures its evidence (W23-43)', () => {
       verifySource: 'caller',
       files: 'verified',
       commits: 'verified',
+      sandbox: 'isolated',
     });
   });
 });

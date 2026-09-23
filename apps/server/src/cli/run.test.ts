@@ -658,6 +658,7 @@ describe('W23-42: close runs verify, stats files and resolves commits itself', (
       verifySource: 'caller',
       files: 'verified',
       commits: 'verified',
+      sandbox: 'isolated',
     });
   });
 
