@@ -17369,16 +17369,23 @@
       "write_scope": [
         "packages/harbormaster/src/security-tool-runner.ts",
         "packages/harbormaster/src/security-tool-adapters.ts",
-        "packages/harbormaster/src/security-tool-adapters.test.ts"
+        "packages/harbormaster/src/security-tool-adapters.test.ts",
+        "packages/harbormaster/src/security-tool-runner.test.ts",
+        "packages/harbormaster/src/security-checks.ts",
+        "packages/harbormaster/src/security-baseline.ts",
+        "packages/harbormaster/src/sandbox/types.ts",
+        "packages/harbormaster/src/sandbox/container.ts",
+        "packages/harbormaster/src/sandbox/container.test.ts"
       ],
       "acceptance": [
         "Under the container profile, tool-sast either runs (ruleset mounted read-only, engine available in the image) or reports unavailable naming the container profile as the reason",
         "Red fixture: a runner answering exit 127 / \"command not found\" yields unavailable, never error"
       ],
       "points": 2,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
-        "FILED 2026-09-23 during W23-51 close-out review (Law 1): sandbox/container.ts buildRunArgs mounts only `${cwd}:/work`; W23-51's smoke ran under the process (seatbelt) profile, which allows default reads. Not measured under a container runtime."
+        "FILED 2026-09-23 during W23-51 close-out review (Law 1): sandbox/container.ts buildRunArgs mounts only `${cwd}:/work`; W23-51's smoke ran under the process (seatbelt) profile, which allows default reads. Not measured under a container runtime.",
+        "CLAIMED 2026-09-23 (fix/v1-review-gaps). WIDENED at claim, before any edit: the runner must be told which runtime-owned paths a tool's command line names (runTool opts gain readOnlyPaths, filled in security-checks.ts and the baseline re-run in security-baseline.ts), and the container sandbox must be able to mount them read-only (sandbox/types.ts SandboxRunOptions.readOnlyMounts, container.ts buildRunArgs, container.test.ts). security-tool-runner.test.ts is new. DECIDED at claim for tool-secrets, which breaks the same way: its `{cwd}` argument is the host worktree path, which does not exist inside the container (the worktree is at /work) \u2014 the runner rewrites that one argument to /work, and the scanner's directory is mounted read-only like the rules. ALSO FOUND at claim: tool-deps reads an npm that was not found (exit 127, empty stdout) as PASSED (`JSON.parse('{}')` has no advisories) \u2014 a false pass; the 127 guard covers all three adapters. PREMISE NOTE: no production caller selects the container profile today \u2014 that is W23-57; this ticket makes the security tools correct when it is selected."
       ]
     },
     {
