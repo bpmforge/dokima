@@ -16953,7 +16953,7 @@
       "id": "W23-42",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [
         "US-402",
         "US-202"
