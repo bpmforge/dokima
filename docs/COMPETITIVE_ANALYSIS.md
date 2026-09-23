@@ -8,35 +8,35 @@ claim needing that pass, not an assertion.
 
 ## The five stacks we compete with
 
-| # | Stack | What it is | Representative products |
-|---|---|---|---|
-| 1 | Tracker + forge + AI extension assemblage | Status quo: Jira/Linear for tickets, GitHub for code, Copilot/assistants bolted on | Jira + GitHub + Copilot; Linear (with agent integrations) |
-| 2 | Autonomous cloud agents | "Hire an AI engineer" — remote sandboxes, agent plans and executes, you review PRs | Devin (Cognition), Factory |
-| 3 | OSS agent platforms | Self-hostable agent runtimes/research harnesses executing coding tasks | OpenHands (ex-OpenDevin), SWE-agent |
-| 4 | IDE / terminal agents | Agent lives inside an editor or CLI session, human drives | Cursor, Claude Code, GitHub Copilot coding agent |
-| 5 | Provider-agnostic OSS terminal agent | Open-source agentic CLI, bring-your-own model incl. local | opencode |
+| #   | Stack                                     | What it is                                                                         | Representative products                                   |
+| --- | ----------------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| 1   | Tracker + forge + AI extension assemblage | Status quo: Jira/Linear for tickets, GitHub for code, Copilot/assistants bolted on | Jira + GitHub + Copilot; Linear (with agent integrations) |
+| 2   | Autonomous cloud agents                   | "Hire an AI engineer" — remote sandboxes, agent plans and executes, you review PRs | Devin (Cognition), Factory                                |
+| 3   | OSS agent platforms                       | Self-hostable agent runtimes/research harnesses executing coding tasks             | OpenHands (ex-OpenDevin), SWE-agent                       |
+| 4   | IDE / terminal agents                     | Agent lives inside an editor or CLI session, human drives                          | Cursor, Claude Code, GitHub Copilot coding agent          |
+| 5   | Provider-agnostic OSS terminal agent      | Open-source agentic CLI, bring-your-own model incl. local                          | opencode                                                  |
 
 ## Landscape table
 
-| Tool | Full SDLC program (idea→launch) | Trust model | Model economics | Local-first / self-host | Native board |
-|---|---|---|---|---|---|
-| Jira/Linear + Copilot stack | No — tracking and coding are separate tools, humans glue them | Human process; AI work self-reported | Per-seat SaaS + per-seat AI (`UNVERIFIED` current pricing) | Jira DC self-host exists; Linear SaaS-only (`UNVERIFIED`); Copilot is cloud | Yes (the tracker), but disconnected from execution |
-| Devin | No — task/issue-level autonomy, not a guided program | Trust-the-agent: plans + session views, self-reported completion | Frontier-only compute, usage-priced (`UNVERIFIED` current plans) | No — cloud sandbox (`UNVERIFIED` any on-prem offering) | Sessions/tasks list, not a contract board |
-| Factory | Partial — enterprise "droids" for dev/review/incident workflows | Enterprise controls; verification depth `UNVERIFIED` | Enterprise sales-gated (`UNVERIFIED`) | `UNVERIFIED` (cloud-first) | Integrates existing trackers rather than owning one |
-| OpenHands | No — executes tasks; no PM phases, gates, or program | Sandboxed execution; completion largely agent-asserted | BYO model incl. local endpoints | Yes — OSS, runs locally/Docker | No native ticket engine (`UNVERIFIED` recent additions) |
-| SWE-agent | No — research harness for issue→patch | Benchmark-oracle oriented (SWE-bench), not product gates | BYO model | Yes — OSS | No |
-| Cursor | No — editing sessions, human-paced | Human reviews in-editor; no receipts | Subscription + frontier usage (`UNVERIFIED` current tiers) | Local editor, cloud models; local-model support `UNVERIFIED` | No |
-| Claude Code | No — agentic sessions + subagents, human-driven; SDLC discipline only if user supplies it | Permission prompts + human review; completion self-reported | Anthropic API/subscription pricing | Local CLI, cloud models | No |
-| GitHub Copilot coding agent | No — assigned-issue → PR automation | PR review is the gate; in-run claims self-reported | Copilot subscription (`UNVERIFIED` metering) | No — GitHub Actions cloud | GitHub Issues/Projects, no execution invariants |
-| opencode | Partial — with expert-pack content it runs SDLC-style flows | Session-level; gates live in content/validators, not a runtime holding them | BYO model incl. LM Studio/Ollama — closest to our economics | Yes — OSS terminal app | No — files/forge issues, no lifecycle-verb engine |
-| **Dokima** | **Yes — phases 0–5, PM interview, decision slates, blueprint stage** | **Platform holds gates; receipts; maker≠verifier mechanical (C-2/C-3/C-4)** | **Cheapest-first ladder R0–R4, per-ticket, ledgered; budget breakers** | **Yes — local-first, SQLite, offline vs local models (C-1)** | **Yes — event-sourced board with enforced verbs (D-004)** |
+| Tool                        | Full SDLC program (idea→launch)                                                           | Trust model                                                                 | Model economics                                                        | Local-first / self-host                                                     | Native board                                              |
+| --------------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Jira/Linear + Copilot stack | No — tracking and coding are separate tools, humans glue them                             | Human process; AI work self-reported                                        | Per-seat SaaS + per-seat AI (`UNVERIFIED` current pricing)             | Jira DC self-host exists; Linear SaaS-only (`UNVERIFIED`); Copilot is cloud | Yes (the tracker), but disconnected from execution        |
+| Devin                       | No — task/issue-level autonomy, not a guided program                                      | Trust-the-agent: plans + session views, self-reported completion            | Frontier-only compute, usage-priced (`UNVERIFIED` current plans)       | No — cloud sandbox (`UNVERIFIED` any on-prem offering)                      | Sessions/tasks list, not a contract board                 |
+| Factory                     | Partial — enterprise "droids" for dev/review/incident workflows                           | Enterprise controls; verification depth `UNVERIFIED`                        | Enterprise sales-gated (`UNVERIFIED`)                                  | `UNVERIFIED` (cloud-first)                                                  | Integrates existing trackers rather than owning one       |
+| OpenHands                   | No — executes tasks; no PM phases, gates, or program                                      | Sandboxed execution; completion largely agent-asserted                      | BYO model incl. local endpoints                                        | Yes — OSS, runs locally/Docker                                              | No native ticket engine (`UNVERIFIED` recent additions)   |
+| SWE-agent                   | No — research harness for issue→patch                                                     | Benchmark-oracle oriented (SWE-bench), not product gates                    | BYO model                                                              | Yes — OSS                                                                   | No                                                        |
+| Cursor                      | No — editing sessions, human-paced                                                        | Human reviews in-editor; no receipts                                        | Subscription + frontier usage (`UNVERIFIED` current tiers)             | Local editor, cloud models; local-model support `UNVERIFIED`                | No                                                        |
+| Claude Code                 | No — agentic sessions + subagents, human-driven; SDLC discipline only if user supplies it | Permission prompts + human review; completion self-reported                 | Anthropic API/subscription pricing                                     | Local CLI, cloud models                                                     | No                                                        |
+| GitHub Copilot coding agent | No — assigned-issue → PR automation                                                       | PR review is the gate; in-run claims self-reported                          | Copilot subscription (`UNVERIFIED` metering)                           | No — GitHub Actions cloud                                                   | GitHub Issues/Projects, no execution invariants           |
+| opencode                    | Partial — with expert-pack content it runs SDLC-style flows                               | Session-level; gates live in content/validators, not a runtime holding them | BYO model incl. LM Studio/Ollama — closest to our economics            | Yes — OSS terminal app                                                      | No — files/forge issues, no lifecycle-verb engine         |
+| **Dokima**                  | **Yes — phases 0–5, PM interview, decision slates, blueprint stage**                      | **Platform holds gates; receipts; maker≠verifier mechanical (C-2/C-3/C-4)** | **Cheapest-first ladder R0–R4, per-ticket, ledgered; budget breakers** | **Yes — local-first, SQLite, offline vs local models (C-1)**                | **Yes — event-sourced board with enforced verbs (D-004)** |
 
 ## Per-stack notes
 
 - **Jira/Linear + Copilot** — the incumbent to displace (BLUEPRINT §1.3): three tools,
   no shared state, "the AI said it's done" unverifiable. Linear is adding agent
   delegation to issues (`UNVERIFIED` depth); even so, the tracker records claims, it
-  does not re-run gates. Dokima's board *is* the execution state.
+  does not re-run gates. Dokima's board _is_ the execution state.
 - **Devin / Factory** — validated the demand for unattended agent work and the
   price ceiling for it. Their model is trust-the-agent in a cloud sandbox; failure
   mode is plausible-looking wrong work accepted for lack of receipts. Enterprise
@@ -50,7 +50,7 @@ claim needing that pass, not an assertion.
   developer's hands. Dokima does not compete for the editor (NON_GOALS.md N-1);
   it is the out-of-session layer that conducts many sessions, holds the gates they
   cannot, and survives any one session dying. Claude Code-class tools are also a
-  *provider* surface for us (agent sessions are provider-agnostic, BLUEPRINT §8).
+  _provider_ surface for us (agent sessions are provider-agnostic, BLUEPRINT §8).
 - **opencode** — closest relative; the founder's expert system runs on it today.
   Dokima productizes what opencode + content cannot enforce: out-of-session gate
   execution, lifecycle-verb invariants, receipts, budget breakers, morning queue.
@@ -93,5 +93,5 @@ claim needing that pass, not an assertion.
 Before the Phase 0 gate: verify current pricing/plans for Devin, Cursor, Copilot,
 Linear agent features; confirm OpenHands' current tracking/GUI capabilities; survey
 whether any competitor has shipped receipt-style verification since knowledge
-cutoff; confirm dokima.io collision posture and name availability (RISKS.md
-R-4). Findings land in `docs/research/` with per-claim citations (BLUEPRINT FR-P8).
+cutoff; confirm shipwright.io collision posture and name availability (RISKS.md
+R-4 — resolved by the D-021 rename; trademark clearance still open). Findings land in `docs/research/` with per-claim citations (BLUEPRINT FR-P8).

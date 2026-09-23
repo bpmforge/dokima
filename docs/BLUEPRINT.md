@@ -11,16 +11,16 @@
 
 Dokima is the productization of three proven internal systems. Every mechanism in this blueprint traces to a design that has already run, failed, been fixed, and re-run in those systems. This is not a green-field fantasy; it is a packaging exercise over battle-tested operational logic.
 
-| Source system | What it contributes | Dokima subsystem |
-|---|---|---|
-| **bpm-opencode-experts** (expert system + SDLC pipeline: ~70 agents, 66 validators, phase gates, HANDOFF protocol, micro-loop contract, ticket schema, autonomy protocol) | The *discipline*: phase pipeline 0–5, receipt-based gates, Challenger veracity layer, coverage loops, maker≠verifier scoring, plan-as-contract tickets with lanes and write-scopes | **Pipeline Engine**, **Validator Packs**, **Ticket Engine**, **Expert Registry** |
-| **bpm-agent-amplifier** (program repo: gap analysis, gate-integrity audit M27, Conductor design M28, Gitea-ledger research, advisor/rung-ladder M30, board-server) | The *integrity and economics*: receipts-not-flags, "conductor holds the gates", per-role model routing, escalation ladder, morning-review queue, forge-as-audit-ledger with per-identity credentials, memory-as-first-line-advisor | **Harbormaster (Conductor)**, **Trust & Receipts layer**, **Model Gateway routing policy**, **Forge Mirror** |
-| **Jarvis / Foreman** (24/7 TS runtime: AutonomousSdlcRunner, per-item micro-loops with anchors, coverage tracker, localFrontier soft-gates, budget circuit breakers, approval queue, clarification API, two-tier memory) | The *runtime*: long-running server, per-item micro-loop engine with external anchors, honest coverage reporting (DONE/WAIVED/SKIPPED never silent), budget breakers 70/85/100%, suspension/resume, dashboard APIs | **Loop Engine**, **Coverage Tracker**, **Budget Service**, **HITL services**, **Memory Service** |
+| Source system                                                                                                                                                                                                            | What it contributes                                                                                                                                                                                                                | Dokima subsystem                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **bpm-opencode-experts** (expert system + SDLC pipeline: ~70 agents, 66 validators, phase gates, HANDOFF protocol, micro-loop contract, ticket schema, autonomy protocol)                                                | The _discipline_: phase pipeline 0–5, receipt-based gates, Challenger veracity layer, coverage loops, maker≠verifier scoring, plan-as-contract tickets with lanes and write-scopes                                                 | **Pipeline Engine**, **Validator Packs**, **Ticket Engine**, **Expert Registry**                             |
+| **bpm-agent-amplifier** (program repo: gap analysis, gate-integrity audit M27, Conductor design M28, Gitea-ledger research, advisor/rung-ladder M30, board-server)                                                       | The _integrity and economics_: receipts-not-flags, "conductor holds the gates", per-role model routing, escalation ladder, morning-review queue, forge-as-audit-ledger with per-identity credentials, memory-as-first-line-advisor | **Harbormaster (Conductor)**, **Trust & Receipts layer**, **Model Gateway routing policy**, **Forge Mirror** |
+| **Jarvis / Foreman** (24/7 TS runtime: AutonomousSdlcRunner, per-item micro-loops with anchors, coverage tracker, localFrontier soft-gates, budget circuit breakers, approval queue, clarification API, two-tier memory) | The _runtime_: long-running server, per-item micro-loop engine with external anchors, honest coverage reporting (DONE/WAIVED/SKIPPED never silent), budget breakers 70/85/100%, suspension/resume, dashboard APIs                  | **Loop Engine**, **Coverage Tracker**, **Budget Service**, **HITL services**, **Memory Service**             |
 
 **Honesty invariants (the design spine, inherited verbatim):**
 
 1. No gate passes on self-attestation — only real runs mint receipts; the graded entity never grades itself.
-2. Skipped or waived work is always *visible*, never silent (`SKIPPED`/`WAIVED` are first-class statuses).
+2. Skipped or waived work is always _visible_, never silent (`SKIPPED`/`WAIVED` are first-class statuses).
 3. Verification buys correctness; memory buys economy and consistency — never confuse the two.
 4. Cheap/local models are raised toward frontier quality **only on bounded tasks with a checkable oracle** (compile, tests, tool scans, schema checks). Judgment moments escalate.
 5. Maker ≠ verifier, enforced mechanically (different agent identity, different model, different credential), not by prose.
@@ -36,12 +36,12 @@ You describe a product idea in plain English. Dokima interviews you like a good 
 
 ### 1.2 Who it is for
 
-| Persona | Need Dokima serves |
-|---|---|
-| **Solo builder / indie hacker** | An idea and no team. Dokima is the PM, architect, security reviewer, and dev crew. |
-| **Professional dev** | Wants the discipline (gates, threat model, coverage) without the ceremony; wants agents doing the bulk work under supervision. |
-| **Small team lead** | Replaces Jira + GitHub + scattered AI extensions with one cohesive surface; agents and humans share the same board. |
-| **Local-LLM enthusiast** | Owns hardware; wants maximum work out of local models with frontier spend only where it matters — with receipts proving the cheap tier is honest. |
+| Persona                         | Need Dokima serves                                                                                                                                |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Solo builder / indie hacker** | An idea and no team. Dokima is the PM, architect, security reviewer, and dev crew.                                                                |
+| **Professional dev**            | Wants the discipline (gates, threat model, coverage) without the ceremony; wants agents doing the bulk work under supervision.                    |
+| **Small team lead**             | Replaces Jira + GitHub + scattered AI extensions with one cohesive surface; agents and humans share the same board.                               |
+| **Local-LLM enthusiast**        | Owns hardware; wants maximum work out of local models with frontier spend only where it matters — with receipts proving the cheap tier is honest. |
 
 ### 1.3 What it replaces
 
@@ -125,11 +125,11 @@ flowchart TB
 
 ### 2.2 The trust boundary (load-bearing)
 
-The single most important architectural decision, inherited from the M27/M28 work: **agent sessions are untrusted**. An agent produces work products (files, diffs, a Completion Manifest) inside a scoped workspace. Everything that changes durable state — ticket status, phase advancement, board columns, merge actions — is performed by the **Harbormaster** from *outside* the agent session, after independently re-running the gates. Concretely:
+The single most important architectural decision, inherited from the M27/M28 work: **agent sessions are untrusted**. An agent produces work products (files, diffs, a Completion Manifest) inside a scoped workspace. Everything that changes durable state — ticket status, phase advancement, board columns, merge actions — is performed by the **Harbormaster** from _outside_ the agent session, after independently re-running the gates. Concretely:
 
 - An agent cannot flip its own ticket to `done`; it can only produce a manifest the Harbormaster verifies (files exist, verify command exits 0, commits present).
 - An agent cannot mint a phase-gate pass; gates emit **receipts** (validator list, exit codes, gap counts, input-tree hash, timestamp) and only a real validator run writes one.
-- Reviewer actions run under a *different internal identity* than maker actions; when the Forge Mirror is enabled, maker and reviewer use **different forge API tokens**, making maker≠verifier mechanical rather than aspirational.
+- Reviewer actions run under a _different internal identity_ than maker actions; when the Forge Mirror is enabled, maker and reviewer use **different forge API tokens**, making maker≠verifier mechanical rather than aspirational.
 - The completion signal is never a string an agent can type (no promise-token greps); it is the existence of a verifiable receipt.
 
 ### 2.3 Event-sourced core
@@ -147,12 +147,14 @@ Representative event types: `ticket.claimed`, `ticket.closed`, `gate.receipt_min
 A React SPA served by the local core. Three-pane split layout, every pane collapsible; layouts persist per project.
 
 **3.1.1 Chat Workspace (left pane).**
+
 - **Threads are per-concern, not one endless scroll**: a program thread (you ↔ Dokima-as-PM), plus ephemeral agent threads that open when an agent needs you (clarification) and archive when resolved.
 - Asynchronous by design: agents post structured messages (finding cards, question cards, manifest cards) that render as interactive components, not walls of text. You can answer a question hours later; the affected loop suspends and resumes exactly there (checkpoint/resume, §3.7).
 - Every agent message carries provenance: agent name, model used, ticket ID, cost of the turn. Click-through to the underlying receipt/artifact.
 - Slash-commands expose expert escape hatches (`/security --deep`, `/review`, `/perf`) that dispatch a specialist directly onto the current project without the full program.
 
 **3.1.2 Kanban Board (center pane).**
+
 - Native tracking engine (§3.4) rendered as: swimlanes = **lanes** (parallel-safe work streams derived from write-scope disjointness), columns = lifecycle states (`Ready / Claimed / In Progress / In Review / Blocked / Done`), cards = tickets typed as Epic / Story / Task / Bug.
 - Cards move only via lifecycle verbs — whether a human drags a card or an agent closes a ticket, the same verb fires and the same invariants apply (WIP=1 per actor, dependency satisfaction, receipt-on-close). A human drag that violates an invariant is refused with the reason inline.
 - Stale-blocked detection is always on: a card whose named blockers are all done gets a "STALE — claimable?" badge (ported from board-server).
@@ -160,13 +162,15 @@ A React SPA served by the local core. Three-pane split layout, every pane collap
 - The "Shipped today" ticker: commits landed since midnight, linked to their tickets.
 
 **3.1.3 Artifact & Document Viewer (right pane).**
+
 - Renders: markdown docs (the SDLC document tree), live code diffs (per ticket: the branch diff vs base, updating as the agent commits), and **Mermaid.js diagrams** (architecture C2/C3, sequence diagrams, state machines, the ticket dependency DAG) rendered client-side.
 - Every phase deliverable (VISION, SCOPE, SRS, ARCHITECTURE, THREAT_MODEL…) is a first-class artifact with version history (each save is an event; diffs between versions render inline).
 - Receipt inspector: open any gate receipt / coverage report / challenge report / approval ledger row as a structured view, not raw JSON.
 - Docs live on disk in the project repo (`docs/…`) — the viewer is a window onto files git also sees, never a proprietary silo.
 
 **3.1.4 Settings Matrix.**
-- **Model-to-role matrix** (§3.3): rows = agent roles, columns = task types, cells = model choice with fallback chain. Presets ship in three profiles: *All-local*, *Hybrid (local + frontier review)*, *All-cloud*.
+
+- **Model-to-role matrix** (§3.3): rows = agent roles, columns = task types, cells = model choice with fallback chain. Presets ship in three profiles: _All-local_, _Hybrid (local + frontier review)_, _All-cloud_.
 - **Autonomy dial** per project: `interactive` (every gated pause asks) / `auto` (documented defaults taken + ledgered) — with the NEVER-AUTO list always visible and non-editable below the dial (destructive DB ops, merges/releases/deploys, auth/crypto changes, scope-boundary breaks, new tech-stack additions, interviews).
 - **Budget panel**: per-project and per-run token/dollar budgets with the 70/85/100% circuit-breaker thresholds, plus per-model spend history.
 
@@ -174,40 +178,42 @@ A React SPA served by the local core. Three-pane split layout, every pane collap
 
 The productized six-phase SDLC, run as a state machine per project:
 
-| Phase | Name (UI) | Deliverables | Gate |
-|---|---|---|---|
-| 0 | **Idea** | VISION, COMPETITIVE_ANALYSIS | validators + human Gate |
-| 1 | **Plan** | SCOPE, RISKS, CONSTRAINTS, USER_PERSONAS | validators |
-| 2 | **Define** | SRS, USER_STORIES, USE_CASES, TEST_PLAN | validators + human **Gate A** |
-| 3 | **Design** | MODULE_DESIGN, ARCHITECTURE, API_DESIGN + openapi.yaml, TECH_STACK, THREAT_MODEL, SECURITY_CONTROLS, INFRASTRUCTURE, UX_SPEC | validators + Challenger + human **Gate B** |
-| 4 | **Build** | code, tests, per-module runtime reports — executed as the ticket board | per-ticket gates + wave gates |
-| 5 | **Launch** | FIX_BACKLOG closed, release notes, tagged release | release-readiness validators + NEVER-AUTO human approval |
+| Phase | Name (UI)  | Deliverables                                                                                                                 | Gate                                                     |
+| ----- | ---------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| 0     | **Idea**   | VISION, COMPETITIVE_ANALYSIS                                                                                                 | validators + human Gate                                  |
+| 1     | **Plan**   | SCOPE, RISKS, CONSTRAINTS, USER_PERSONAS                                                                                     | validators                                               |
+| 2     | **Define** | SRS, USER_STORIES, USE_CASES, TEST_PLAN                                                                                      | validators + human **Gate A**                            |
+| 3     | **Design** | MODULE_DESIGN, ARCHITECTURE, API_DESIGN + openapi.yaml, TECH_STACK, THREAT_MODEL, SECURITY_CONTROLS, INFRASTRUCTURE, UX_SPEC | validators + Challenger + human **Gate B**               |
+| 4     | **Build**  | code, tests, per-module runtime reports — executed as the ticket board                                                       | per-ticket gates + wave gates                            |
+| 5     | **Launch** | FIX_BACKLOG closed, release notes, tagged release                                                                            | release-readiness validators + NEVER-AUTO human approval |
 
 - Phases 0–2 are **interview-driven**: Dokima-as-PM runs a discovery interview (adaptive question depth), drafts deliverables, and iterates with the user. These phases are deliberately human-paced — this is where "helps be a product manager" lives.
 - **Gate mechanism**: each phase has a declared validator set. A clean run mints a **gate receipt** (`gates/<phase>-receipt.json`: validator names, exit codes, gap counts, input-file content hash). Advancing to phase N re-verifies phase N−1's receipt two ways — recompute the input hash (catches silently edited docs) and confirm every currently-required validator appears with exit 0 (catches gate-definition drift). The only bypass is an explicit **waiver receipt** signed by the human (name required; agent identities rejected).
-- **Challenger gate** (veracity): after coverage passes, every HIGH/CRITICAL finding and every design claim marked *needs verification* gets an independent challenge pass producing a CHALLENGE_REPORT with per-claim verdicts (CONFIRMED / CONTRADICTED / UNVERIFIABLE — a challenge without a citation is discarded, never treated as a contradiction). CONTRADICTED → mandatory revision HANDOFF to the originating agent.
-- **Two-track verification**: the default is the **coverage loop** (deterministic — is every inventory row covered?); subjective 1–10 confidence scoring exists but is *advisory only* with an **asymmetric threshold** (R-B2, 2026-07-14): ≥7 accept, 5–6 request polish (bounded), **1–4 escalate to the human — a low subjective score never auto-fails a passing deterministic gate**. Every reviewer/challenger verdict must carry a `re-ran independently: <command, counts, exit code>` evidence line; a verdict without one is INCOMPLETE and is bounced, not counted.
-- **Decision slates (founder decisions as a first-class primitive).** Whenever the program hits a fork that belongs to the founder — product name, deployment shape, tracker model, licensing, pricing, any irreversible architectural choice — the PM presents a **slate card**: 2–4 concrete options, each with trade-offs spelled out and one marked *Recommended* with the reasoning. The choice (and any free-text rationale) is appended to `docs/DECISIONS.md`, an ADR-lite ledger with stable IDs (D-001…), and downstream documents cite decision IDs instead of restating them. Slates are the productization of refuse-to-guess: an agent that cannot decide a founder-owned fork must slate it, never assume it.
-- **The Blueprint stage (Phase 2.5 — this document's own genesis, productized).** Before any ticket decomposition, Dokima synthesizes a founding **BLUEPRINT** — condensed SRS + system architecture + an explicit *Open Questions* section — and hands it to the founder with slate cards for every open question. Founder answers; the blueprint is revised with a decisions section (exactly the v0.1 → v0.2 cycle this document went through); the revision loop repeats until decision-complete. **Gate:** Phase 3 detailed design and Phase 4 decomposition are locked while any unresolved founder-decision marker remains in the blueprint. This stage exists because it is where products get their shape cheaply — one review of a 20-page blueprint prevents a hundred mis-aimed tickets.
-- **The research path (woven through every phase, not bolted on).** Each phase has a research lane producing *cited* deliverables in `docs/research/`:
+- **Challenger gate** (veracity): after coverage passes, every HIGH/CRITICAL finding and every design claim marked _needs verification_ gets an independent challenge pass producing a CHALLENGE_REPORT with per-claim verdicts (CONFIRMED / CONTRADICTED / UNVERIFIABLE — a challenge without a citation is discarded, never treated as a contradiction). CONTRADICTED → mandatory revision HANDOFF to the originating agent.
+- **Two-track verification**: the default is the **coverage loop** (deterministic — is every inventory row covered?); subjective 1–10 confidence scoring exists but is _advisory only_ with an **asymmetric threshold** (R-B2, 2026-07-14): ≥7 accept, 5–6 request polish (bounded), **1–4 escalate to the human — a low subjective score never auto-fails a passing deterministic gate**. Every reviewer/challenger verdict must carry a `re-ran independently: <command, counts, exit code>` evidence line; a verdict without one is INCOMPLETE and is bounced, not counted.
+- **Decision slates (founder decisions as a first-class primitive).** Whenever the program hits a fork that belongs to the founder — product name, deployment shape, tracker model, licensing, pricing, any irreversible architectural choice — the PM presents a **slate card**: 2–4 concrete options, each with trade-offs spelled out and one marked _Recommended_ with the reasoning. The choice (and any free-text rationale) is appended to `docs/DECISIONS.md`, an ADR-lite ledger with stable IDs (D-001…), and downstream documents cite decision IDs instead of restating them. Slates are the productization of refuse-to-guess: an agent that cannot decide a founder-owned fork must slate it, never assume it.
+- **The Blueprint stage (Phase 2.5 — this document's own genesis, productized).** Before any ticket decomposition, Dokima synthesizes a founding **BLUEPRINT** — condensed SRS + system architecture + an explicit _Open Questions_ section — and hands it to the founder with slate cards for every open question. Founder answers; the blueprint is revised with a decisions section (exactly the v0.1 → v0.2 cycle this document went through); the revision loop repeats until decision-complete. **Gate:** Phase 3 detailed design and Phase 4 decomposition are locked while any unresolved founder-decision marker remains in the blueprint. This stage exists because it is where products get their shape cheaply — one review of a 20-page blueprint prevents a hundred mis-aimed tickets.
+- **The research path (woven through every phase, not bolted on).** Each phase has a research lane producing _cited_ deliverables in `docs/research/`:
   - Phase 0 — market landscape + competitive analysis (who exists, what they charge, where the gap is);
   - Phase 1 — feasibility studies (can this be built under these constraints; license/API viability of critical dependencies);
   - Phase 2.5/3 — **design-options research** (2–3 alternative approaches per contested decision, scored trade-offs — these feed the decision slates) and **build-vs-adopt comparisons** for every major component;
   - Phase 4 — pre-code API verification (library APIs checked against current documentation, never from model training data).
-  Research discipline: depth is selectable (`quick` / `standard` / `deep` — deep fans out multi-source with adversarial verification); every report uses a tiered source catalog (primary docs > maintainer statements > community posts) with per-claim citations; HIGH-impact claims pass the **Challenger** (CONFIRMED / CONTRADICTED / UNVERIFIABLE) before a decision may cite them; confirmed findings enter the research fact bank, which is consulted at escalation rung R0 before any new research spend.
+    Research discipline: depth is selectable (`quick` / `standard` / `deep` — deep fans out multi-source with adversarial verification); every report uses a tiered source catalog (primary docs > maintainer statements > community posts) with per-claim citations; HIGH-impact claims pass the **Challenger** (CONFIRMED / CONTRADICTED / UNVERIFIABLE) before a decision may cite them; confirmed findings enter the research fact bank, which is consulted at escalation rung R0 before any new research spend.
 - **Modes**: `New Product` (full program), `Onboard` (map an existing codebase: landscape, entry points, components, health assessment), `Feature` (scoped mini-program over an onboarded repo), `Improve` (audit + fix backlog). All four ship at v1 in the UI as "What are we doing today?"
 
-**The full expert system ships in the box.** Dokima launches with the *entire* expert-system content library, one-time imported (D-008): all coordinators and phase specialists, the security / code-health / performance micro-agent clusters with their synthesizers, the game-dev cluster, the onboard specialists, the Challenger, all 66+ validators, and the shared protocols (HANDOFF, micro-loop, gate scoring, autonomy). Nothing is held back for a "pro tier" (D-006). Equally important: Dokima is the **go-forward home of the expert-system roadmap** — the amplifier program's designed improvements land here as native subsystems rather than bolt-ons (ticket-lifecycle integrity → the Ticket Engine's verbs; gate integrity → the receipts layer; the Conductor → the Harbormaster; lessons intake → the learning pipeline §12.6; advisor/tier-guard → escalation rung R0 and the role matrix guards).
+**The full expert system ships in the box.** Dokima launches with the _entire_ expert-system content library, one-time imported (D-008): all coordinators and phase specialists, the security / code-health / performance micro-agent clusters with their synthesizers, the game-dev cluster, the onboard specialists, the Challenger, all 66+ validators, and the shared protocols (HANDOFF, micro-loop, gate scoring, autonomy). Nothing is held back for a "pro tier" (D-006). Equally important: Dokima is the **go-forward home of the expert-system roadmap** — the amplifier program's designed improvements land here as native subsystems rather than bolt-ons (ticket-lifecycle integrity → the Ticket Engine's verbs; gate integrity → the receipts layer; the Conductor → the Harbormaster; lessons intake → the learning pipeline §12.6; advisor/tier-guard → escalation rung R0 and the role matrix guards).
 
 ### 3.3 Model Gateway (LLM-agnostic)
 
 **Providers.** First-class adapters at MVP: Anthropic, OpenAI, **GitHub Copilot**, and **Google Vertex AI** (cloud); LM Studio, Ollama, and any OpenAI-compatible endpoint (local). Copilot and Vertex are MVP-mandatory for adoption parity: the earliest corporate users already run opencode against employer-provisioned Copilot subscriptions and Vertex projects, and Dokima must slot into those credentials on day one (Copilot via the device-auth token flow; Vertex via Application Default Credentials / service-account JSON with region + project ID in provider settings). Provider layer handles: model discovery, warm-up pings (local models cold-start), request queueing per endpoint, context-length introspection, and normalized usage accounting (tokens in/out → cost via a per-model price table; local models cost $0 but tokens are still metered for budget/velocity stats).
 
 **Task/role routing.** Two orthogonal axes, kept separate deliberately:
+
 1. **Role matrix** (`models.json` equivalent, editable in Settings): each agent role maps to a model + fallback chain, e.g. `coding-agent → local-qwen-coder`, `code-reviewer → claude-opus`, `challenger → claude-opus`, `test-engineer → local-qwen`, `pm-interviewer → claude-sonnet`, `default → cheapest-capable`. Cross-model review is an **integrity feature**: the maker's model never reviews its own work.
 2. **Task types** within a role's calls: `reasoning`, `code`, `verification`, `embed`, `escalation` — so a role can think on one model and embed on another.
 
 **Escalation ladder (cheapest-first, the economic core).**
+
 ```
 R0  Memory/playbook answer (free)         — "have we solved this before?"
 R1  Cheapest capable model, micro-loop     — up to N revise passes with gap feedback
@@ -215,7 +221,8 @@ R2  Same ticket, one rung up               — automatic on gate failure after R
 R3  Frontier model, single re-run          — the expensive attempt, logged as an escalation event
 R4  Blocked-with-evidence                  — ticket parked with failure receipts; human decides
 ```
-- Escalation is **per-ticket and evidence-triggered** (a failed gate with receipts), never vibes-triggered. Every escalation event lands in the spend ledger and the ticket history, so the weekly report can answer: *which tickets actually needed the frontier, and what did it cost?*
+
+- Escalation is **per-ticket and evidence-triggered** (a failed gate with receipts), never vibes-triggered. Every escalation event lands in the spend ledger and the ticket history, so the weekly report can answer: _which tickets actually needed the frontier, and what did it cost?_
 - R0 is the memory-as-first-line-advisor pattern: before any model call, the loop consults the playbook/fact store; a confirmed prior lesson can shrink the prompt or skip a step entirely.
 - **Soft-gate policy for weak models** (localFrontier, productized): on document phases (0–3), if a cheap model can't fully satisfy a completeness gate within its iteration budget, remaining gaps may be **waived-and-recorded** (visible ⚠ in coverage) so momentum continues; on build/verify phases gates are **never** softened — code either compiles-and-passes-tests or the ticket escalates. Weak-model runs also get larger iteration budgets (tokens are cheap on owned hardware) and prescriptive gap prompts.
 
@@ -227,16 +234,17 @@ R4  Blocked-with-evidence                  — ticket parked with failure receip
 
 **Lifecycle (six verbs, enforced transition graph — never hand-edited):**
 `ready →claim→ claimed →start→ in_progress →close→ in_review →accept→ done` (+ `release`, `comment`).
+
 - `claim`: refused if the actor already owns an active ticket (WIP=1) or a hygiene validator is red (refuse-to-select-next-work).
 - `close`: the load-bearing gate — refused unless the Completion Manifest exists, `verify` exits 0, and a branch + ≥1 commit is attached. Emits a close receipt.
 - `accept`: reviewer identity must differ from owner; refused unless the manifest embeds the close receipt verbatim. This is the code-enforced end of self-asserted "done".
 - Human actions use the same verbs: dragging a card fires the verb; the UI explains any refusal.
 
-**Lanes & parallelism.** Same-lane active tickets must have disjoint write-scopes; cross-lane overlap is a schema error **among tickets that can still write — territory releases at `done`, and scaffold tickets may declare an explicit `scaffold` exemption (D-015, 2026-07-14: the any-status rule made every completed broad ticket a permanent landmine — this board failed its own validator 66× under it)**. Result: "different lane = safe to run in parallel" is a *provable* property, which is what lets multiple agents (or agents + humans) work simultaneously without stepping on each other (§7.3).
+**Lanes & parallelism.** Same-lane active tickets must have disjoint write-scopes; cross-lane overlap is a schema error **among tickets that can still write — territory releases at `done`, and scaffold tickets may declare an explicit `scaffold` exemption (D-015, 2026-07-14: the any-status rule made every completed broad ticket a permanent landmine — this board failed its own validator 66× under it)**. Result: "different lane = safe to run in parallel" is a _provable_ property, which is what lets multiple agents (or agents + humans) work simultaneously without stepping on each other (§7.3).
 
 **Reflow.** `claimable = ready ∧ unowned ∧ deps done`, recomputed on every event; blocked⇄ready auto-resolve; the dependency DAG renders as a live Mermaid diagram in the Artifact Viewer.
 
-**Forge Mirror (optional, recommended).** When a forge is connected, every ticket mirrors to a GitHub/Gitea Issue and lifecycle verbs write through: claim = assign + label, evidence = comment, close = state change + receipt comment, accept = reviewer-identity comment. The platform provisions **two machine identities with separate scoped tokens** (`dokima-maker`, `dokima-reviewer`); the reviewer token is held only by the Harbormaster and never enters an agent session. The forge timeline becomes an append-only audit ledger *outside* every agent's write scope — the Jira-grade guarantee, without Jira. Offline-tolerant: verbs queue locally in ticket `history[]` and flush when the forge is reachable.
+**Forge Mirror (optional, recommended).** When a forge is connected, every ticket mirrors to a GitHub/Gitea Issue and lifecycle verbs write through: claim = assign + label, evidence = comment, close = state change + receipt comment, accept = reviewer-identity comment. The platform provisions **two machine identities with separate scoped tokens** (`dokima-maker`, `dokima-reviewer`); the reviewer token is held only by the Harbormaster and never enters an agent session. The forge timeline becomes an append-only audit ledger _outside_ every agent's write scope — the Jira-grade guarantee, without Jira. Offline-tolerant: verbs queue locally in ticket `history[]` and flush when the forge is reachable.
 
 ### 3.5 Loop Engine (micro-loops with anchors)
 
@@ -245,6 +253,7 @@ The execution heart, productized from `runItemMicroLoop` + the MICRO_LOOP contra
 **Macro-loops (Harbormaster-owned):** the coverage loop per phase (cap 3 iterations, gap-checksum no-progress kill) and the fix-verify loop post-build (cap 3, owns "all CRITICAL/HIGH closed").
 
 **Micro-loop (per work item, cap 2 revise passes — evidence actions uncounted; a micro-loop that needs a third pass returns PARTIAL for the orchestrator to re-scope; 3 is a macro-loop budget. Aligned to the source MICRO_LOOP contract 2026-07-14, R-B1):**
+
 1. **CRITERION** — restate ONE checkable success criterion; a loop with no objectively decidable criterion refuses to run and asks the human (refuse-to-loop).
 2. **PRODUCE** — the focused model call for THIS item only (never a lumped one-shot over a whole phase).
 3. **EVIDENCE** — bounded look-actions (grep/read/run, ≤4) to ground the self-check.
@@ -253,22 +262,23 @@ The execution heart, productized from `runItemMicroLoop` + the MICRO_LOOP contra
 6. **EXIT** — Completion Manifest + tracker row, or honest `PARTIAL` + lesson capture.
 
 **Anchors (external ground truth composed onto the loop):**
+
 - **Tool anchor** — semgrep/jscpd/profilers/compilers supply facts the model must reconcile with.
 - **Memory anchor** — prior confirmed findings + per-(model, phase) calibration seed pass 1.
 - **Challenger anchor** — a second, skeptical model judgment, fired only on borderline confidence (cost-efficient).
 - **Adaptive budget anchor** — pass budgets spent where they demonstrably help.
 
-**Calibration honesty:** self-confidence is never trusted raw. A learned per-(model, phase) bias adjusts the *gate*, is rescue-only and clamped, requires a minimum sample count, and applies only when an external anchor is present — the system can never manufacture a DONE from an ungrounded high number.
+**Calibration honesty:** self-confidence is never trusted raw. A learned per-(model, phase) bias adjusts the _gate_, is rescue-only and clamped, requires a minimum sample count, and applies only when an external anchor is present — the system can never manufacture a DONE from an ungrounded high number.
 
 **Coverage Tracker:** every expected unit of work ends in exactly one state — `DONE`, `WAIVED` (intentional, recorded, attributed), `BLOCKED`, `FAILED`, or `SKIPPED` (expected-but-never-ran = a missed gate, loudly flagged). The end-of-phase COVERAGE_REPORT is a UI artifact and a gate input. Nothing disappears.
 
-**Finding lifecycle & loop budgets** (field-validated 2026-07-12; full design `docs/design/FINDING_LOOP_POLICY.md`): review findings are first-class records with identity (fingerprint; state OPEN → FIX_ATTEMPTED → RESOLVED, or REGRESSED; per-finding attempt counts), and every fix-loop iteration is classified — CLEARED / **STALLED** (same finding survived a targeted fix) / **PROGRESSED** (priors resolved, new findings opened) / OSCILLATING (a resolved finding regressed). Budgets differ by class: a stalled finding gets **2 same-tier attempts, then escalates** — the third identical attempt is always wrong; progress loops are budgeted by **convergence**, not count (open-findings must trend down; ceiling `3 + ticket points`, cap 8 — hitting it while still progressing parks the ticket as a *decomposition* signal, not a failure); any oscillation escalates immediately, twice blocks; infrastructure failures (truncated review output, provider-limit pause mid-review) retry free and never open findings or consume attempts.
+**Finding lifecycle & loop budgets** (field-validated 2026-07-12; full design `docs/design/FINDING_LOOP_POLICY.md`): review findings are first-class records with identity (fingerprint; state OPEN → FIX_ATTEMPTED → RESOLVED, or REGRESSED; per-finding attempt counts), and every fix-loop iteration is classified — CLEARED / **STALLED** (same finding survived a targeted fix) / **PROGRESSED** (priors resolved, new findings opened) / OSCILLATING (a resolved finding regressed). Budgets differ by class: a stalled finding gets **2 same-tier attempts, then escalates** — the third identical attempt is always wrong; progress loops are budgeted by **convergence**, not count (open-findings must trend down; ceiling `3 + ticket points`, cap 8 — hitting it while still progressing parks the ticket as a _decomposition_ signal, not a failure); any oscillation escalates immediately, twice blocks; infrastructure failures (truncated review output, provider-limit pause mid-review) retry free and never open findings or consume attempts.
 
 ### 3.6 Harbormaster (the Conductor)
 
 The out-of-session orchestrator — the component that makes unattended operation safe:
 
-- **Loop:** claim one ready ticket (WIP=1 per worker) → spawn a fresh agent session with the ticket HANDOFF and the role's model — **that session is Dokima's own tool-using loop, running through `gateway` (D-023)**, which is what makes "the role's model" mean anything: the matrix picks it, the ladder can escalate it, the breakers can stop it, and the ledger meters it. An external agent CLI remains available as an explicit escape hatch, and gives all four of those up → on return, run gates *outside* the session (scope check, manifest truth-check — stat the claimed files, re-run the verify command — then `close`) → checkpoint (receipt + commit) → repeat. No close receipt → failure comment on the ticket, never forward progress.
+- **Loop:** claim one ready ticket (WIP=1 per worker) → spawn a fresh agent session with the ticket HANDOFF and the role's model — **that session is Dokima's own tool-using loop, running through `gateway` (D-023)**, which is what makes "the role's model" mean anything: the matrix picks it, the ladder can escalate it, the breakers can stop it, and the ledger meters it. An external agent CLI remains available as an explicit escape hatch, and gives all four of those up → on return, run gates _outside_ the session (scope check, manifest truth-check — stat the claimed files, re-run the verify command — then `close`) → checkpoint (receipt + commit) → repeat. No close receipt → failure comment on the ticket, never forward progress.
 - **Berths (parallel or sequential build, user-selected):** the project has a **concurrency dial (1–N berths)**. Each berth is an independent worker identity running the loop above; the Harbormaster assigns at most one berth per **lane**, and the lane invariant (same-lane active tickets have disjoint write-scopes, cross-lane overlap is a schema error — §3.4) is what makes N berths provably collision-free. Berths = 1 is strict sequential; berths = N works up to N lanes at once. Each berth gets its own git worktree and ticket branch; landing (PR/merge) remains serialized through the review queue regardless of N. Effective parallelism is additionally capped by gateway capacity — local endpoints that serve one request at a time queue transparently rather than thrash — and by the aggregate budget (breakers apply across all berths, halting at the next ticket boundary on any berth). **Autorun** = breakpoint `never` × berths N: "run the board with 3 workers and show me the morning queue" is a single toggle + slider.
 - **Fresh session per ticket** — small-context friendly, cache-friendly, and eliminates context bleed between tickets.
 - **Hard guards:** per-ticket session counter (~2 sessions → auto-blocked with evidence), aggregate spend ceiling (halts cleanly at a ticket boundary), kill-file/pause-button checked between tickets, per-session watchdog (max seconds + heartbeat stall detection → terminate + dead-letter escalation).
@@ -279,7 +289,7 @@ The out-of-session orchestrator — the component that makes unattended operatio
 ### 3.7 HITL services
 
 - **Clarifications:** an agent hitting genuine ambiguity emits a question card (context, the specific question, options where possible, its default-if-unanswered). The affected loop checkpoints and suspends; everything not dependent on the answer continues. Answer → resume exactly at the checkpoint. Dismiss → documented default + ledger row.
-- **Approvals:** risk-classed cards (`deploy` / `main-merge` / `destructive` / `escalation` / `budget`). Risk classification is rule-first (branch == main, destructive command patterns, prod deploy markers); a model may *raise* a risk class, never lower it. Approve/reject resumes or re-plans.
+- **Approvals:** risk-classed cards (`deploy` / `main-merge` / `destructive` / `escalation` / `budget`). Risk classification is rule-first (branch == main, destructive command patterns, prod deploy markers); a model may _raise_ a risk class, never lower it. Approve/reject resumes or re-plans.
 - **Autonomy ledger:** in `auto` mode, every gated pause that took its documented default appends a machine-parseable ledger row (timestamp, pause-site, default taken, what you would have been asked). The ledger is itself validated at runtime; NEVER-AUTO rows require a human signature (agent-name blocklist enforced).
 
 ### 3.8 Memory & Learning Service
@@ -298,7 +308,7 @@ Built-in (in-process, not an optional sidecar — the #1 lesson from the source 
 
 **Forge adapters.** GitHub (REST/GraphQL + webhooks), Gitea (REST + webhooks), generic self-hosted git (SSH + optional adapter plug-in API). Adapters expose: repo CRUD, branch protection, PR lifecycle, issue mirror, commit status, and identity/token management.
 
-**MCP host.** Dokima is an MCP *client*: users register MCP servers (filesystem scopes, databases, browsers, external APIs) per project. Tools surface to agents through a permission matrix: each agent role gets an allowlist; side-effectful tools carry `requiresApproval` (dynamic for shell). Tool calls are events (audited, costed, replayable). MCP servers run outside the agent trust boundary — an agent requests a tool call; the core executes it under the project's permission policy.
+**MCP host.** Dokima is an MCP _client_: users register MCP servers (filesystem scopes, databases, browsers, external APIs) per project. Tools surface to agents through a permission matrix: each agent role gets an allowlist; side-effectful tools carry `requiresApproval` (dynamic for shell). Tool calls are events (audited, costed, replayable). MCP servers run outside the agent trust boundary — an agent requests a tool call; the core executes it under the project's permission policy.
 
 **Execution sandbox.** Agent-generated code runs in the project worktree under a restricted process (no network by default for test runs; opt-in per project), or in a container (Podman/Docker) when configured. The sandbox is where verify commands, test suites, and tool anchors execute — its results are what receipts attest to.
 
@@ -306,11 +316,11 @@ Built-in (in-process, not an optional sidecar — the #1 lesson from the source 
 
 Three scopes with strict precedence (**run > project > global**), all file-backed and inspectable:
 
-| Scope | Location | Contains |
-|---|---|---|
-| **Global** | `~/.dokima/config.json` | Provider registrations + credential *references*, default model-matrix presets (All-local / Hybrid / All-cloud), notification preferences + quiet hours, UI prefs, telemetry opt-in, global concurrency governor (max total berths, per-endpoint queue limits) |
-| **Project** | `<repo>/.dokima/settings.json` | Model matrix overrides, autonomy dial, budgets, default berths, forge connection (by credential ref), MCP server registrations + per-role tool allowlists, validator-pack selection, expert overrides/additions |
-| **Run** | ephemeral (UI/CLI flags) | Breakpoint mode, berths for this run, run budget, depth (quick/standard/deep) for research |
+| Scope       | Location                       | Contains                                                                                                                                                                                                                                                       |
+| ----------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Global**  | `~/.dokima/config.json`        | Provider registrations + credential _references_, default model-matrix presets (All-local / Hybrid / All-cloud), notification preferences + quiet hours, UI prefs, telemetry opt-in, global concurrency governor (max total berths, per-endpoint queue limits) |
+| **Project** | `<repo>/.dokima/settings.json` | Model matrix overrides, autonomy dial, budgets, default berths, forge connection (by credential ref), MCP server registrations + per-role tool allowlists, validator-pack selection, expert overrides/additions                                                |
+| **Run**     | ephemeral (UI/CLI flags)       | Breakpoint mode, berths for this run, run budget, depth (quick/standard/deep) for research                                                                                                                                                                     |
 
 Rules: **credentials never live in any settings file** — they go to the OS keychain (macOS Keychain / libsecret) under named refs that settings files point to, so `.dokima/settings.json` is safe to commit (a project can share its matrix and autonomy policy with collaborators without leaking keys). Every effective-settings resolution is computable and visible in the UI ("why is this role on this model?" shows the winning scope). Settings changes are events — the audit trail covers configuration, not just execution. First-run onboarding is a settings wizard: pick a preset, register one provider (or point at LM Studio), optionally connect a forge — then the guided sample project (§12.3).
 
@@ -328,7 +338,7 @@ A user runs several programs at once; Dokima treats that as the normal case:
 
 ## 4. Agent communication flow protocol — from idea to shipped epic
 
-The canonical trace. User types: *"I want an app where dog owners in my neighborhood coordinate walks."*
+The canonical trace. User types: _"I want an app where dog owners in my neighborhood coordinate walks."_
 
 ```mermaid
 sequenceDiagram
@@ -380,11 +390,11 @@ sequenceDiagram
 
 Step-by-step, with the artifacts each step produces:
 
-1. **Idea intake** — PM role interviews (persona, problem, differentiator, constraints). *Artifacts:* VISION.md, COMPETITIVE_ANALYSIS.md. Board gets one **Epic** card per major capability.
+1. **Idea intake** — PM role interviews (persona, problem, differentiator, constraints). _Artifacts:_ VISION.md, COMPETITIVE_ANALYSIS.md. Board gets one **Epic** card per major capability.
 2. **Plan/Define** — scope negotiation, risk register, then SRS + user stories with acceptance criteria (US-001/AC-1 formats, machine-validated). Each story becomes a **Story** card under its epic. Human **Gate A**.
 3. **Design fan-out** — parallel HANDOFFs to design specialists. Each HANDOFF is a bounded contract: ROLE, CONTEXT (a token-budgeted context packet, not the whole repo), WRITE-SCOPE, PRODUCE, VERIFY, manifest requirement. Challenger attacks HIGH/CRITICAL claims. Human **Gate B** — the last big human checkpoint before autonomous build.
 4. **Decomposition** — the design becomes a typed DAG of **Task** tickets: every ticket carries write-scope, dependencies, acceptance criteria, and an executable verify. Lanes are derived from write-scope disjointness. The DAG renders on the board; the human can edit (split/merge/re-prioritize) before the build starts.
-5. **Build loop** — the Harbormaster works the board ticket-by-ticket per §3.6: cheapest model first, micro-loop, out-of-session gates, escalation ladder on failure, receipts on every close. Card movement on the board *is* the event stream — no separate status reporting.
+5. **Build loop** — the Harbormaster works the board ticket-by-ticket per §3.6: cheapest model first, micro-loop, out-of-session gates, escalation ladder on failure, receipts on every close. Card movement on the board _is_ the event stream — no separate status reporting.
 6. **Review & land** — closed tickets sit `in_review` with PR + diff + receipts attached; reviewer identity (frontier model by default, or the human) accepts. Merges to main are NEVER-AUTO → morning queue.
 7. **Launch** — release-readiness gates (fix backlog empty, coverage clean, security pass, docs current) → human launch approval → tag, changelog, release.
 
@@ -410,13 +420,14 @@ RETURN: Completion Manifest (files produced, verify result, evidence)
 
 ### 5.1 Notification taxonomy (three tiers, strictly enforced)
 
-| Tier | Meaning | Delivery | Examples |
-|---|---|---|---|
+| Tier       | Meaning                                    | Delivery                                   | Examples                                                                           |
+| ---------- | ------------------------------------------ | ------------------------------------------ | ---------------------------------------------------------------------------------- |
 | **Decide** | The run is waiting on YOU, or will be soon | Badge + optional push/desktop notification | Clarification card, NEVER-AUTO approval, blocked-with-evidence ticket, budget 100% |
-| **Review** | Work is ready; no urgency | Morning queue + badge count only | PR ready, phase gate passed, coverage report ready |
-| **Record** | FYI; the ledger has it | Silent — visible in activity feed only | Auto-approvals taken, escalation events, waivers, spend thresholds at 70% |
+| **Review** | Work is ready; no urgency                  | Morning queue + badge count only           | PR ready, phase gate passed, coverage report ready                                 |
+| **Record** | FYI; the ledger has it                     | Silent — visible in activity feed only     | Auto-approvals taken, escalation events, waivers, spend thresholds at 70%          |
 
 Rules that keep the taxonomy honest:
+
 - **Nothing in Record may ever pop.** The autonomy ledger exists precisely so routine defaults don't become notifications.
 - **Decide cards are decision-shaped:** every one carries the question, the context slice, the options (with the agent's recommended default), and the cost of each path. Answerable in under a minute or it's mis-designed.
 - **Batching:** Review items coalesce into the **morning queue** (or per-wave digests when breakpoint=wave). One notification for the batch, never one per item.
@@ -430,7 +441,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 ### 5.3 DX details that compound
 
 - **Provenance everywhere:** any claim in the UI ("tests pass", "no critical findings") links to its receipt. Trust is inspectable.
-- **Cost transparency:** every card and chat turn shows its token/dollar cost; the escalation ladder's spend is attributed per ticket, so users *see* the cheap-first policy paying off.
+- **Cost transparency:** every card and chat turn shows its token/dollar cost; the escalation ladder's spend is attributed per ticket, so users _see_ the cheap-first policy paying off.
 - **The pause button:** one global control (the kill-file productized) — finishes the current ticket, checkpoints, stops. Resume is one click and provably idempotent.
 - **Explain-this-refusal:** whenever an invariant refuses an action (drag, claim, close), the UI shows the specific rule and the receipt/evidence behind it — the platform teaches its own discipline.
 - **Escape hatches are first-class:** experts can dispatch any specialist directly, edit the ticket DAG, write custom validators (a validator is any executable returning 0/1 + JSON gaps), and script the Harbormaster via CLI (`dokima run --breakpoint wave`), because the UI and CLI drive the same verbs.
@@ -442,16 +453,18 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 ### 6.1 Functional requirements
 
 **FR-CANVAS (Interface)**
+
 - FR-C1: Split-pane workspace: chat, board, artifact viewer; layout persists per project.
 - FR-C2: Chat renders structured agent cards (question, finding, manifest) with provenance (agent, model, ticket, cost).
 - FR-C3: Artifact viewer renders markdown, live diffs, and Mermaid diagrams client-side; deliverables are versioned with inline diffs.
 - FR-C4: Board renders lanes/columns/typed cards from live projections ≤1s after the underlying event.
 - FR-C5: Receipt inspector renders gate/coverage/challenge/ledger artifacts as structured views.
 - FR-C6: Guided first-fifteen-minutes sample project wired into the first-run wizard.
-- FR-C7: CLI parity: the `dokima` CLI drives the same lifecycle verbs, run controls, and audit commands as the UI through the same API — no CLI-only or UI-only mutation paths (§5.3). *(Backfilled 2026-07-14 per SRS §4.3.2, same pattern as FR-C6/T6/G6/G7/L5.)*
-- FR-C8: Artifact feedback loop: deliverables (markdown + rendered Mermaid) accept inline feedback; feedback on a gated deliverable emits a revision HANDOFF to the producing role; the revision renders as a diff against the commented version. *(R-H2, 2026-07-14.)*
+- FR-C7: CLI parity: the `dokima` CLI drives the same lifecycle verbs, run controls, and audit commands as the UI through the same API — no CLI-only or UI-only mutation paths (§5.3). _(Backfilled 2026-07-14 per SRS §4.3.2, same pattern as FR-C6/T6/G6/G7/L5.)_
+- FR-C8: Artifact feedback loop: deliverables (markdown + rendered Mermaid) accept inline feedback; feedback on a gated deliverable emits a revision HANDOFF to the producing role; the revision renders as a diff against the commented version. _(R-H2, 2026-07-14.)_
 
 **FR-PIPE (Pipeline)**
+
 - FR-P1: Six-phase program with per-phase validator sets and receipt-minting gates (validator list, exit codes, gap counts, input hash).
 - FR-P2: Phase prerequisites verified by receipt re-validation (input hash + validator-set currency); bypass only via human-signed waiver receipt.
 - FR-P3: Discovery interview drives phases 0–2; user can edit any deliverable; edits invalidate downstream receipts (hash change) and the UI says so.
@@ -462,6 +475,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-P8: Research path: per-phase cited research deliverables in `docs/research/` (market, feasibility, design-options, build-vs-adopt, pre-code API verification); quick/standard/deep depth; tiered sources with per-claim citations; Challenger verification of HIGH-impact claims before decisions may cite them; confirmed findings enter the R0 research fact bank.
 
 **FR-TICK (Ticket engine)**
+
 - FR-T1: Ticket schema with lane, write_scope, depends_on, acceptance, verify; six lifecycle verbs with enforced transition graph; WIP=1 per actor.
 - FR-T2: `close` requires manifest + verify exit 0 + attached commits; `accept` requires reviewer ≠ owner and receipt-bearing manifest.
 - FR-T3: Same-lane write-scope disjointness enforced; cross-lane overlap is a schema error; claimable set recomputed on every event.
@@ -470,6 +484,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-T6: Human/agent edit-conflict policy per §7.3: leases visible, human edits win, loops re-ground after rebase, material conflicts park as Decide cards.
 
 **FR-GW (Model gateway)**
+
 - FR-G1: Provider adapters at MVP: Anthropic, OpenAI, GitHub Copilot, Google Vertex AI, LM Studio, Ollama, OpenAI-compatible endpoints; discovery, warm-up, queueing, usage metering. Copilot device-auth and Vertex ADC/service-account flows are first-run onboarding paths, not advanced settings.
 - FR-G2: Role→model matrix with fallback chains; task-type routing within roles; maker model ≠ reviewer model by default.
 - FR-G3: Escalation ladder R0–R4 per §3.3, evidence-triggered, fully ledgered.
@@ -480,6 +495,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-G8: Provider-limit resilience: the gateway detects session/usage/rate-limit responses (429/529, quota messages), parses the stated reset time where present, parks affected berths with a `limit.pause` event, and auto-resumes at reset (exponential backoff fallback). An overnight run survives limit windows without human help; limit pauses are Record-tier, never Decide. Distinct from budget breakers (FR-G4): limits are the provider's ceiling, budgets are the user's.
 
 **FR-LOOP (Loop engine)**
+
 - FR-L1: Per-item micro-loop with criterion restatement, bounded passes, gap feedback, no-progress kill, refuse-to-loop on undecidable criteria.
 - FR-L2: Anchor framework (tool, memory, challenger, adaptive budget); challenger fires on borderline confidence only.
 - FR-L3: Calibration bias is rescue-only, clamped, min-sample gated, anchor-required.
@@ -488,9 +504,10 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-L6: Finding ledger: every HIGH/CRITICAL review finding is a record with stable identity, state (OPEN/FIX_ATTEMPTED/RESOLVED/REGRESSED), per-finding attempt counts, and evidence-bearing history; rechecks return per-finding verdicts, never just a fresh list. Infra failures (unparseable/truncated review, limit pause) retry free and never open findings.
 - FR-L7: Loop-convergence budgets per `docs/design/FINDING_LOOP_POLICY.md`: stalled finding = 2 same-tier attempts then escalate; progress loops budgeted by convergence (open-count trend) with ceiling 3+points capped at 8 on metered tiers and 12+ on local tiers (localFrontier-proven: not-same-error ⇒ keep looping; watchdog is the backstop), ceiling-while-progressing parks as a decomposition signal; oscillation (REGRESSED) escalates immediately, twice blocks.
 
-- FR-L8: Token envelopes: per-window session/packet budgets (instruction/working/emergency-stop tiers), write-before-reading-more for oversized tool results, honest PARTIAL on emergency stop, per-expert instruction-cost metadata; fresh session per HANDOFF — no inherited chains. *(R-I1, 2026-07-14; numbers in SRS §2.5.)*
+- FR-L8: Token envelopes: per-window session/packet budgets (instruction/working/emergency-stop tiers), write-before-reading-more for oversized tool results, honest PARTIAL on emergency stop, per-expert instruction-cost metadata; fresh session per HANDOFF — no inherited chains. _(R-I1, 2026-07-14; numbers in SRS §2.5.)_
 
 **FR-HM (Harbormaster)**
+
 - FR-H1: Out-of-session gate execution; agent sessions cannot mutate ticket state or mint receipts.
 - FR-H2: Fresh session per ticket; per-ticket session cap; watchdog (time + heartbeat) with dead-letter escalation.
 - FR-H3: Breakpoints ticket/wave/never; global pause; idempotent receipt-based resume that refuses on state drift.
@@ -498,30 +515,35 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-H5: User-selectable build concurrency (berths 1–N) per project; one berth per lane; per-berth worktrees and identities; serialized landing; budget breakers aggregate across berths; autorun = breakpoint never × berths N.
 
 **FR-HITL**
+
 - FR-N1: Clarification cards suspend only dependent work; answer resumes at checkpoint; dismissal takes the documented default + ledger row.
 - FR-N2: Risk-classed approval cards; rule-first classification; models may raise, never lower, risk.
 - FR-N3: Autonomy modes interactive/auto; machine-parseable approvals ledger; NEVER-AUTO list immutable in-product (deploys, main merges, destructive ops, auth/crypto changes, new stack additions, scope breaks).
 - FR-N4: Three-tier notification taxonomy (Decide/Review/Record) enforced at the API level — emitters declare a tier and the rules of §5.1 are code, not convention.
 
 **FR-INT (Integrations)**
+
 - FR-I1: Git worktree per ticket; per-ticket branches; explicit-path staging; PR per ticket; branch protection configured on forge connect.
 - FR-I2: Forge adapters GitHub/Gitea/generic; dual-remote sync with parity validator.
 - FR-I3: MCP client host with per-role tool allowlists, requiresApproval flags, audited tool-call events.
 - FR-I4: Sandboxed execution for verify/tests (process isolation default, container optional).
 
 **FR-MEM (Memory)**
+
 - FR-M1: Working + long-term memory in-process; token-budgeted assembly; hybrid retrieval with BM25 fallback.
 - FR-M2: ACE playbook: delta-edits only, verified-before-stored; playbook is escalation rung R0.
 - FR-M3: Scheduled sleep-time consolidation on by default; error-first recall.
-- FR-M4: Code-index service: per-project chunked code index (FTS5 + optional provider-sticky local embeddings, BM25 fallback), `code_search` tool for agents (audited), ranking source for the Context Packer, ⌘K search. No repo-map by design. *(R-J1, 2026-07-14.)*
+- FR-M4: Code-index service: per-project chunked code index (FTS5 + optional provider-sticky local embeddings, BM25 fallback), `code_search` tool for agents (audited), ranking source for the Context Packer, ⌘K search. No repo-map by design. _(R-J1, 2026-07-14.)_
 
 **FR-SET (Settings & configuration)**
+
 - FR-S1: Three-scope settings (global/project/run) with run > project > global precedence; effective-settings resolution visible in UI.
 - FR-S2: Credentials stored only in the OS keychain under named refs; settings files contain refs, never secrets; project settings safe to commit.
 - FR-S3: Matrix presets (All-local, Hybrid, All-cloud) shipped and user-definable; settings changes are audited events.
 - FR-S4: First-run wizard: preset → one provider → optional forge → guided sample project.
 
 **FR-FLEET (Multi-project)**
+
 - FR-F1: Fleet home screen: per-project cards (phase, board stats, berths + heartbeats, pending Decide count, spend today); create/onboard/import/archive.
 - FR-F2: Per-project isolation: own event log/DB (`.dokima/state.db` with the repo), own Harbormaster, own memory/calibration/budgets; state travels with the directory.
 - FR-F3: Global gateway pool: per-endpoint queues with fair cross-project scheduling; global governor caps total berths across projects.
@@ -529,16 +551,19 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 - FR-F5: Two-level playbook: per-project by default; explicit, provenance-carrying promotion to a global playbook consulted at R0 everywhere; promotion never automatic.
 
 **FR-EXP (Expert content)**
+
 - FR-E1: Full expert-system library imported at W1 as `content/` (all experts, clusters + synthesizers, validators, shared protocols) with provenance headers; expert definitions are data (markdown + frontmatter), user-extensible per project.
-- FR-E2: Agent roster & observability view: every expert with effective model resolution, fitness cards, instruction cost, and event-derived history (HANDOFFs, outcomes, spend, escalations); "pin roles, not models" enforced at content load. *(R-K1, 2026-07-14.)*
+- FR-E2: Agent roster & observability view: every expert with effective model resolution, fitness cards, instruction cost, and event-derived history (HANDOFFs, outcomes, spend, escalations); "pin roles, not models" enforced at content load. _(R-K1, 2026-07-14.)_
 
 **FR-RL (Rule lifecycle & gate economics — D-014, added 2026-07-14)**
+
 - FR-RL1: Every validator/gate rule carries lifecycle state `proposed → shadow → advisory → gate → deprecated`; shadow rules run on real diffs with findings stamped `experimental` and excluded from gates, scores, and blocks.
 - FR-RL2: Promotion is data-gated: red fixtures (trigger + clean) are required for a rule to exist at all; promotion to `gate` requires measured FP rate under a per-class threshold across a minimum finding count and window; trailing FP >50% auto-flags demotion. Humans confirm transitions on data; LLMs never promote/demote/dismiss.
 - FR-RL3: Finding suppression requires a fixed-enum justification + human signature (waiver machinery at finding granularity), is keyed to fingerprint + context, and auto-reopens when the context changes.
 - FR-RL4: Every gate/coverage surface reports the funnel: raw → deduped → in-scope → effective → suppressed(justified); raw counts are never hidden. Per-rule FP metrics never count infra failures (FR-L6 taxonomy).
 
 **FR-PLAN (Improvement Plans — D-016, added 2026-07-14)**
+
 - FR-PLAN1: A versioned deterministic recommendation catalog (condition → recommendation template → machine-checkable verify criterion) evaluates over receipts, coverage reports, and the finding ledger.
 - FR-PLAN2: Matches materialize as ranked plan items with lifecycle `proposed → accepted → in_progress → done → regressed`; ranking is deterministic (severity × leverage × staleness).
 - FR-PLAN3: Nightly auto-verify re-evaluates each accepted item's verify criterion against fresh snapshots and flips done/regressed; regressions surface as Review-tier notifications.
@@ -563,7 +588,8 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 **Problem:** a self-healing test cycle runs for hours; how does the board never lie?
 
 **Solution — the board is a projection, not a document:**
-1. Every state-bearing action is an event in the append-only log (single writer: the core; SQLite WAL). The Kanban board, spend meters, and activity feed are projections rebuilt from the log and streamed over WebSocket — the board *cannot* drift from execution state because it has no independent existence.
+
+1. Every state-bearing action is an event in the append-only log (single writer: the core; SQLite WAL). The Kanban board, spend meters, and activity feed are projections rebuilt from the log and streamed over WebSocket — the board _cannot_ drift from execution state because it has no independent existence.
 2. Long loops emit **heartbeat events** (per micro-loop pass); cards show live freshness ("pass 2/3, 40s ago"). A stalled heartbeat past threshold → watchdog terminates the session, emits a dead-letter event, and the card turns to `blocked-with-evidence` — visibly, within seconds.
 3. **Receipts are the durable anchors**: if the process dies mid-loop, boot runs the orphan sweep — any ticket claimed-but-unclosed is re-verified from its receipts and either resumed at the last checkpoint or returned to `ready`. Nothing is ever stuck `running` after a crash.
 4. Agent-internal progress (micro-loop passes) is intentionally summarized, not mirrored 1:1 — the board shows the contract states; the card's detail drawer streams the loop telemetry for those who want it. This keeps the board legible at a glance during a 200-event hour.
@@ -573,6 +599,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 **Problem:** repository-scale edits without prompt bloat or context-limit deaths — especially on 8–32k local models.
 
 **Solution — context is budgeted like money:**
+
 1. **Fresh session per ticket** (never one giant session): each HANDOFF carries a **context packet** assembled by the Context Packer under an explicit token budget — relevance-ranked file slices (never naive truncation), the repo map skeleton, the ticket's interfaces and acceptance criteria, and prior confirmed findings. Budget scales with the model's window.
 2. **Pinned core block** (≤1k tokens): project invariants, tech stack, naming conventions — stable-prefix ordered so local inference engines get KV-cache hits across calls.
 3. **Distill-never-replay:** history is never replayed into prompts; outcomes are distilled into memory/playbook entries and re-enter future packets as ranked facts.
@@ -585,6 +612,7 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 **Problem:** a human edits a file while an agent optimization loop holds it.
 
 **Solution — leases, worktrees, and a human-wins policy:**
+
 1. **Prevention first:** agents work in per-ticket git worktrees, never in the human's checkout; write-scopes are exclusive leases registered with the Ticket Engine. The UI shows leased paths (subtle lock badge in any file tree), so simultaneous editing is visible before it happens.
 2. **Detection:** a file watcher on the human's checkout flags edits inside an actively-leased scope → `conflict.detected` event.
 3. **Policy — the human always wins:** the affected loop checkpoints at its next pass boundary; the agent's worktree rebases onto the human's change; the micro-loop **re-grounds** (its criterion and evidence re-evaluated against the new base). If the rebase conflicts materially, the ticket parks as `blocked: human-edit conflict` with a Decide card offering: take mine / take agent's / merge view.
@@ -595,20 +623,20 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 
 ## 8. Technology stack (proposed)
 
-| Layer | Choice | Rationale |
-|---|---|---|
-| Core runtime | Node 22 + TypeScript (ESM), Fastify | Direct lineage from Jarvis/Foreman; the loop/provider code ports rather than rewrites |
-| State | SQLite (WAL) via better-sqlite3; append-only event tables + projection tables | Local-first, crash-safe, one file per project |
-| UI | React + Vite SPA; WebSocket/SSE for projections; Mermaid.js client-side; CodeMirror for diffs/docs | Fast, no build-time server coupling |
-| Agent sessions | Child-process sessions with the HANDOFF contract; provider-agnostic (any chat-completions API) | The Executor-B pattern, productized |
-| Validators | Executable contract: exit 0/1 + JSON gaps on stdout; packs ship as versioned plug-ins (bash/node) | Ports the 66-validator library as launch content |
-| Experts | Markdown + frontmatter definitions compiled at build (the canonical→generated pattern) | Expert content is reviewable data |
-| Sandbox | Process isolation default; Podman/Docker optional profile | Zero-dependency default, hardened opt-in |
-| Packaging | npm global / npx + packaged binaries (later); config in `~/.dokima/`, project state in `.dokima/` | "Anyone can use" onboarding |
+| Layer          | Choice                                                                                             | Rationale                                                                             |
+| -------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Core runtime   | Node 22 + TypeScript (ESM), Fastify                                                                | Direct lineage from Jarvis/Foreman; the loop/provider code ports rather than rewrites |
+| State          | SQLite (WAL) via better-sqlite3; append-only event tables + projection tables                      | Local-first, crash-safe, one file per project                                         |
+| UI             | React + Vite SPA; WebSocket/SSE for projections; Mermaid.js client-side; CodeMirror for diffs/docs | Fast, no build-time server coupling                                                   |
+| Agent sessions | Child-process sessions with the HANDOFF contract; provider-agnostic (any chat-completions API)     | The Executor-B pattern, productized                                                   |
+| Validators     | Executable contract: exit 0/1 + JSON gaps on stdout; packs ship as versioned plug-ins (bash/node)  | Ports the 66-validator library as launch content                                      |
+| Experts        | Markdown + frontmatter definitions compiled at build (the canonical→generated pattern)             | Expert content is reviewable data                                                     |
+| Sandbox        | Process isolation default; Podman/Docker optional profile                                          | Zero-dependency default, hardened opt-in                                              |
+| Packaging      | npm global / npx + packaged binaries (later); config in `~/.dokima/`, project state in `.dokima/`  | "Anyone can use" onboarding                                                           |
 
 ## 9. Delivery roadmap (wave sketch — full plan.json in the follow-up package)
 
-- **W0 Skeleton & trust core:** event log + projections, ticket engine with verbs/invariants, receipt primitive, git worktree service. *Exit: a board that cannot lie, moved by CLI.*
+- **W0 Skeleton & trust core:** event log + projections, ticket engine with verbs/invariants, receipt primitive, git worktree service. _Exit: a board that cannot lie, moved by CLI._
 - **W1 Loop engine:** micro-loop + coverage tracker + validator runner port; single-agent build of a toy project end-to-end.
 - **W2 Model gateway:** providers (incl. Copilot + Vertex onboarding flows), role matrix, escalation ladder, budget breakers, spend ledger.
 - **W3 Harbormaster:** unattended ticket loop, breakpoints, watchdog, morning queue, resume, **berths 1–N parallelism**.
@@ -622,13 +650,14 @@ A single screen, sorted by leverage: merges first (they unblock lanes), then app
 
 **Dokima** — the platform: the master builder who takes your vision from blueprint to launch, and won't let an unseaworthy product ship. Component names used in this document: **Harbormaster** (the conductor), **the Canvas** (UI), **lanes/berths** (parallel work streams), **manifest** (completion evidence — the nautical and logistics senses coincide), **launch** (release), **morning queue** (the reviewer's harbor office). Metaphor budget is deliberately capped: tickets are tickets, gates are gates, receipts are receipts.
 
-**Known namespace collision:** "Dokima" is also a CNCF project for building container images (dokima.io). Distinct domain (image builds vs. SDLC platform), but worth a naming pass before any public launch — `dokima.dev`-style branding or a qualifier (e.g., "Dokima Studio") are the obvious mitigations.
+**Known namespace collision (founding name):** "Shipwright", this product's name at founding, is also a CNCF project for building container images (shipwright.io). Assessed then as a distinct domain; that did not hold, and D-021 (2026-08-02) renamed the product to Dokima before any public launch. Formal trademark clearance for "Dokima" remains open (RISKS.md R-4).
 
 **Vocabulary canon (added 2026-07-14, design review G-14 — cheap agents copy these exactly):**
-- **Ticket lifecycle** (board columns): `ready → claimed → in_progress → in_review → done` (+ `blocked` overlay) — lower-snake in code/events, Title Case only as UI column labels. `blocked-with-evidence` is a *badge* on a blocked card (dead-letter/R4 cases), not a distinct status.
+
+- **Ticket lifecycle** (board columns): `ready → claimed → in_progress → in_review → done` (+ `blocked` overlay) — lower-snake in code/events, Title Case only as UI column labels. `blocked-with-evidence` is a _badge_ on a blocked card (dead-letter/R4 cases), not a distinct status.
 - **Coverage states** (a different axis — work-unit outcomes, not board columns): `DONE / WAIVED / BLOCKED / FAILED / SKIPPED`, always upper-case, always in this order.
 - **Constraint IDs** are written `C-1`…`C-8` (hyphenated) everywhere.
-- **Phase names**: phases are integers 0–5; the Blueprint stage is "Phase 2.5" informally but is *part of Phase 2's exit* in the state machine (no fractional phase exists in code).
+- **Phase names**: phases are integers 0–5; the Blueprint stage is "Phase 2.5" informally but is _part of Phase 2's exit_ in the state machine (no fractional phase exists in code).
 - **Scales in force** (each is its own axis; never mix): finding severity `CRITICAL/HIGH/MEDIUM/LOW`; challenger verdicts `CONFIRMED/CONTRADICTED/UNVERIFIABLE`; approval risk classes `deploy/main-merge/destructive/escalation/budget`; notification tiers `Decide/Review/Record`; threat ratings `H/M/L`.
 - **Runner**: `pnpm` (never `npm run`) in every doc and script.
 
@@ -641,7 +670,7 @@ Canonical ledger with stable IDs: [`docs/DECISIONS.md`](DECISIONS.md) (D-001…D
 1. **Multi-user → v2, with SSO/auth.** v1 stays single-operator. v2 adds first-class auth: SSO (OIDC/SAML), per-human identities alongside the machine identities, and role-based rights over the NEVER-AUTO surface (who may merge, who may deploy). Architectural pre-commitment now so v2 isn't a rewrite: every event already carries an actor identity; the identity table gets a `kind: human|machine` and an `auth_provider` column from W0, and the API gateway is built behind an auth middleware that v1 simply runs in single-user mode.
 2. **Expert content ships open** — adoption is the goal. The expert/validator library is open source with the platform; the moat is the integrated trust runtime + the compounding playbook, not withheld markdown. Community-contributed expert/validator packs become an adoption flywheel (with a signed-pack mechanism so users know what they're installing).
 3. **Copilot + Vertex are MVP** (§3.3, FR-G1) — parity with what corporate first-users already run under opencode. Onboarding treats "sign in with my employer's Copilot / point at my Vertex project" as a first-run path, not an advanced setting.
-4. **Dokima stands on its own — recommendation: one-time import, then Dokima is canonical for itself.** Do **not** build a live build-step dependency on bpm-opencode-experts (the canonical→generated pattern is right for internal twins, wrong for a product that must be clonable by strangers). Instead: (a) snapshot-import the expert definitions, validator packs, and shared protocols into `content/` at W1, with provenance headers; (b) re-implement the runtime clean in this repo — port the *contracts and algorithms* (micro-loop, coverage tracker, ticket lifecycle semantics, receipt format), not the code, with the source systems' test fixtures re-used as the conformance suite; (c) consolidate the two Jarvis SDLC drivers into the single Pipeline Engine (runner's loop mechanics + engine's phase machine) — neither ports wholesale; (d) bpm-opencode-experts remains Brad's internal lab and may upstream lessons as ordinary PRs, and anything proven in Dokima can flow back the same way. Two-way PRs between peers, no umbilical.
+4. **Dokima stands on its own — recommendation: one-time import, then Dokima is canonical for itself.** Do **not** build a live build-step dependency on bpm-opencode-experts (the canonical→generated pattern is right for internal twins, wrong for a product that must be clonable by strangers). Instead: (a) snapshot-import the expert definitions, validator packs, and shared protocols into `content/` at W1, with provenance headers; (b) re-implement the runtime clean in this repo — port the _contracts and algorithms_ (micro-loop, coverage tracker, ticket lifecycle semantics, receipt format), not the code, with the source systems' test fixtures re-used as the conformance suite; (c) consolidate the two Jarvis SDLC drivers into the single Pipeline Engine (runner's loop mechanics + engine's phase machine) — neither ports wholesale; (d) bpm-opencode-experts remains Brad's internal lab and may upstream lessons as ordinary PRs, and anything proven in Dokima can flow back the same way. Two-way PRs between peers, no umbilical.
 5. **Windows-native → post-v1.** WSL is the supported Windows path at 1.0 (NFR-7 stands).
 6. **Parallel + sequential build with autorun → in scope for v1** (§3.6 Berths, FR-H5): per-project concurrency dial (1–N workers), lane-safe by construction, autorun = breakpoint `never` × berths N.
 
@@ -650,16 +679,14 @@ Canonical ledger with stable IDs: [`docs/DECISIONS.md`](DECISIONS.md) (D-001…D
 Reviewing the design as a whole, these are the gaps I'd close next, ranked by leverage:
 
 1. **Model fitness check (pre-run bench).** Before a model is trusted in the role matrix, run it through a 10-minute planted-defect harness (small fixed tasks with known oracles — the PROOF_LEDGER pattern). Output: a fitness card per (model, role) — "qwen-coder: fit for coding-agent, unfit for challenger." Prevents the #1 new-user failure mode: assigning a local model a role it can't hold, then blaming the platform. Cheap to build (fixtures already exist in the source systems), huge trust payoff.
-2. **Dry-run cost estimate.** Before autorun, estimate tokens/dollars per wave from ticket sizes + model matrix + historical per-ticket actuals. "This board ≈ $4.10 on your current matrix; $0.60 if the review role drops to Sonnet." Makes the cheap-first economics *visible before spend*, not just after.
+2. **Dry-run cost estimate.** Before autorun, estimate tokens/dollars per wave from ticket sizes + model matrix + historical per-ticket actuals. "This board ≈ $4.10 on your current matrix; $0.60 if the review role drops to Sonnet." Makes the cheap-first economics _visible before spend_, not just after.
 3. **Guided first fifteen minutes.** Ship a built-in sample idea ("a link-shortener with auth") that runs the full program in miniature on local-or-cheap models. The user watches the whole lifecycle — interview → gates → board → morning queue — before risking their own idea. Onboarding is the product for the "anyone can use" goal.
 4. **Session trace viewer.** Every agent session is already an event stream; add a replay UI (prompt, tool calls, gate results per pass). This is the debugging surface for "why did this ticket block?" and doubles as the field-report generator for #6.
-5. **Secrets hygiene as a subsystem, not a scrubber.** A project-level secrets vault (keychain-backed), automatic redaction in context packets *and* in the event log, plus a secrets-scanner validator wired into every close gate. The trust story is incomplete if a receipt can contain a leaked key.
+5. **Secrets hygiene as a subsystem, not a scrubber.** A project-level secrets vault (keychain-backed), automatic redaction in context packets _and_ in the event log, plus a secrets-scanner validator wired into every close gate. The trust story is incomplete if a receipt can contain a leaked key.
 6. **Lessons intake → playbook pipeline (the M29/M30 pattern).** A structured "field report" a user (or the trace viewer) can file when a run goes sideways; triaged reports become playbook entries or validator fixes. This is the learning loop that made the source systems compound — productize it rather than leaving learning implicit.
 7. **Starter archetypes.** Project templates (web app / API service / CLI / static site / game) that pre-tune the validator packs, threat-model prompts, and ticket decomposition heuristics. Cuts phase 0–3 time dramatically for the common cases and shows off the game-dev expert cluster.
 8. **Board export/import.** The board, receipts, and ledgers serialize to a portable bundle (JSON + the repo). Guarantees no lock-in — which is itself an adoption argument — and gives support/debugging a reproducible artifact.
 
 Items 1–3 belong in the v1 roadmap (fold into W2/W5/W4 respectively); 4–8 are fast-follow candidates for the plan.json when the SDLC package is cut.
 
-*— End of blueprint v0.4.0 —*
-
-
+_— End of blueprint v0.4.0 —_

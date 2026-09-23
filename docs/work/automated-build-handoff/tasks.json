@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "purpose": "Planning manifest only; not directly consumable by Dokima plan.json or a conductor. Register cards using the repository schema.",
-  "repository": "/Users/bmatthews/Code/shipwright",
+  "repository": "/Users/bmatthews/Code/dokima",
   "reviewed_head": "307ed76288f656cb764cb1dad4dc7bd049c8ec72",
   "tasks": [
     {

@@ -11,18 +11,18 @@ its own branch with `node src/check.mjs` printing OK, and the ticket stopped at
 **Exit 3 is still open** and needs a paid provider: both models tested were
 local, so a `$0` ledger is correct rather than the pre-W12-11 defect.
 
-*It took two attempts to get there, and the first failure is the reason this
-document exists.* Everything that had been fixture-tested worked — worktree
+_It took two attempts to get there, and the first failure is the reason this
+document exists._ Everything that had been fixture-tested worked — worktree
 isolation, the MCP allowlist, the tool loop, SC-17/SC-01, the commit path — and
 the run failed on the one thing no fixture could catch: the model was asked for
 a Completion Manifest in a line of prose and judged against a strict JSON
 schema it was never shown (W13-09).
 
-*Document refreshed 2026-08-18. Three things it previously told you were wrong:
+_Document refreshed 2026-08-18. Three things it previously told you were wrong:
 two "known gaps" (W12-19's provider list, W12-20's missing run trigger) have
 since closed, and the wizard now offers five model-policy choices, not four.
 Both gaps are rewritten below rather than deleted, because knowing they were
-recently true tells you which paths are newest and therefore least exercised.*
+recently true tells you which paths are newest and therefore least exercised._
 
 Everything the agent loop is built from has been proven against recorded
 fixtures, a fake shell agent and a `node:http` stub. All of that is correct
@@ -31,17 +31,17 @@ is the same as watching a real model finish a real ticket.**
 
 What this run tests, in one sitting:
 
-| Exit | Claim | How you will see it |
-|---|---|---|
-| **W11-2** | A native `SpawnSession` completes a real ticket end to end, producing a Completion Manifest the close gate accepts | `T-1: landed` on stdout, and the ticket reaches `in_review` |
-| **W11-3** | Every call is metered — spend is non-zero and attributable per role | The ledger shows real dollars. Before W12-11 it read `$0` even on a paid API |
+| Exit      | Claim                                                                                                              | How you will see it                                                          |
+| --------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| **W11-2** | A native `SpawnSession` completes a real ticket end to end, producing a Completion Manifest the close gate accepts | `T-1: landed` on stdout, and the ticket reaches `in_review`                  |
+| **W11-3** | Every call is metered — spend is non-zero and attributable per role                                                | The ledger shows real dollars. Before W12-11 it read `$0` even on a paid API |
 
 ---
 
 ## 1. Seed a scratch project
 
 ```sh
-cd ~/Code/shipwright
+cd ~/Code/dokima
 pnpm build          # REQUIRED — cli-entry.mjs prefers apps/server/dist/main.js,
                     # so a stale bundle silently runs old code
 pnpm exec tsx scripts/supervised-run/seed.ts /tmp/dokima-run
@@ -72,7 +72,7 @@ resolution, and real per-model pricing. The env vars go through generic
 ```sh
 fnm use 22
 cd /tmp/dokima-run
-node ~/Code/shipwright/apps/server/src/bootstrap/cli-entry.mjs
+node ~/Code/dokima/apps/server/src/bootstrap/cli-entry.mjs
 ```
 
 That boots the core and opens the Canvas at <http://127.0.0.1:4317>. Then:
@@ -121,7 +121,7 @@ exercises what a user actually touches.
 
 ```sh
 cd /tmp/dokima-run
-node ~/Code/shipwright/apps/server/src/bootstrap/cli-entry.mjs \
+node ~/Code/dokima/apps/server/src/bootstrap/cli-entry.mjs \
   run start --project <project-id> --mode new_product \
   --breakpoint never --berths 1 --actor worker-1
 ```
@@ -138,7 +138,7 @@ The CLI is better for capturing a failure verbatim; the Canvas is better for
 testing what ships. On a first supervised run, the CLI's unfiltered output is
 worth more — take that one, and check the board afterwards.
 
-Watch it. Do not walk away — that is the point of the word *supervised*.
+Watch it. Do not walk away — that is the point of the word _supervised_.
 
 ## 4. What to check afterwards
 
@@ -150,13 +150,13 @@ node src/check.mjs && git -C /tmp/dokima-run log --oneline
 node .../cli-entry.mjs board --db /tmp/dokima-run/.dokima/state.db
 ```
 
-| Check | Pass looks like | If it fails |
-|---|---|---|
-| **Packed context** (W12-04) | The prompt carried `PROJECT INVARIANTS` and a `REPO MAP`, not just the title | The packer is wired but not reaching this path |
-| **Tool anchor** (W12-05) | After a failed `verify`, later turns still carry `External anchor facts` | Ground truth is scrolling out of the window — the thing W12-05 exists to stop |
-| **Spend metered** (W11-3) | Ledger cost is **non-zero** on a paid model | Pricing did not resolve; the breakers cannot fire (this was the pre-W12-11 state) |
-| **Close gate** (W11-2) | `T-1: landed`, ticket in `in_review` | Read the refusal — it names what was missing |
-| **Maker ≠ verifier** (C-4) | The ticket stops at `in_review`, NOT `done` | If it self-accepted, that is a serious finding |
+| Check                       | Pass looks like                                                              | If it fails                                                                       |
+| --------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| **Packed context** (W12-04) | The prompt carried `PROJECT INVARIANTS` and a `REPO MAP`, not just the title | The packer is wired but not reaching this path                                    |
+| **Tool anchor** (W12-05)    | After a failed `verify`, later turns still carry `External anchor facts`     | Ground truth is scrolling out of the window — the thing W12-05 exists to stop     |
+| **Spend metered** (W11-3)   | Ledger cost is **non-zero** on a paid model                                  | Pricing did not resolve; the breakers cannot fire (this was the pre-W12-11 state) |
+| **Close gate** (W11-2)      | `T-1: landed`, ticket in `in_review`                                         | Read the refusal — it names what was missing                                      |
+| **Maker ≠ verifier** (C-4)  | The ticket stops at `in_review`, NOT `done`                                  | If it self-accepted, that is a serious finding                                    |
 
 **`in_review` is the correct end state, not a failure.** The loop is the maker
 and may not accept its own work; a distinct reviewer identity moves it to
