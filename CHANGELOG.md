@@ -36,6 +36,32 @@ name what a change means for that boundary, not just what moved.
   better-sqlite3 and opens (then removes) a throwaway database, so an install
   made with `ignore-scripts=true` — no native binary — now fails by name with
   the fix, instead of reporting `doctor: OK`.
+- **The machine review's SAST check runs Opengrep over a pinned local
+  ruleset.** `tool-sast` used `semgrep --config auto --metrics=off`, which
+  current semgrep refuses, so it errored on every review and no ticket could be
+  accepted without a person. It now runs `opengrep` (no metrics, no version
+  check, no network) over the rule packs found at `DOKIMA_SAST_RULES` or
+  `~/.dokima/rules/sast`, and never registry rules. The ruleset is pinned by a
+  content digest recorded with each verdict. With no ruleset or no `opengrep`,
+  the check reports NOT RUN, which still blocks automatic acceptance and is
+  never counted as a pass; `dokima doctor` has a new `sast` check that says
+  which one is missing and how to fix it.
+- **Findings that were already at the ticket's base no longer count against
+  it.** When a security check reports findings, the same scanner runs over the
+  ticket's base commit, and only findings the change added are counted. The
+  pre-existing count is still reported. If the base can't be scanned, every
+  finding stands.
+- **The reviewer is told that a scanner which did not run is missing
+  coverage.** It is neither a clean result nor evidence against the change.
+- **Free infrastructure retries wait before re-running**: 5 s, then 15 s, then
+  45 s, capped at 60 s. When the provider says a model is loading or was
+  unloaded, the waits start at 15 s. Previously all three retries could land
+  inside one model reload. The number of retries is unchanged.
+- **A refused reviewer reply is recorded, and parsed more tolerantly.** Each
+  `review.bounced` event now carries the reply (bounded and redacted) and the
+  reason it was refused. A `<think>` block before the JSON, a lower-case
+  verdict, and a numeric-string score are now accepted. A refused reply still
+  never counts as an approval.
 
 ### Removed
 

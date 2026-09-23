@@ -47,7 +47,7 @@ import {
   ensureReviewerIdentity,
   type ReviewDecision,
 } from './review-decision.js';
-import { countsFrom, parseVerdict, reviewPrompt } from './loop-review-prompt.js';
+import { askForVerdict, countsFrom, reviewPrompt } from './loop-review-prompt.js';
 import { collectReviewEvidence, evidenceStillCurrent } from './review-evidence.js';
 // W21-75: the literal that used to sit further down was Dokima's own gate,
 // duplicated; the ticket's verify command is resolved in loop-gates.ts now.
@@ -254,33 +254,21 @@ async function reviewOne(
     evidence,
     securityChecksSection(security),
   );
-  let raw: string;
-  try {
-    raw = await options.reviewChat(prompt);
-  } catch (err) {
-    const reason = `reviewer unavailable: ${err instanceof Error ? err.message.slice(0, 200) : String(err)}`;
-    record({ reason }, 'review.skipped');
+  const asked = await askForVerdict(options.reviewChat, prompt, record);
+  if (asked.kind === 'unavailable') {
+    record({ reason: asked.reason }, 'review.skipped');
     return {
-      outcome: { ticketId: ticket.id, status: 'skipped', reason },
+      outcome: { ticketId: ticket.id, status: 'skipped', reason: asked.reason },
       decision: null,
     };
   }
-  let parsed = parseVerdict(raw);
-  if (!parsed) {
-    record({ attempt: 1, reason: 'unparseable verdict' }, 'review.bounced');
-    try {
-      parsed = parseVerdict(await options.reviewChat(prompt));
-    } catch {
-      parsed = null;
-    }
-  }
-  if (!parsed) {
-    record({ attempt: 2, reason: 'unparseable verdict — not counted' }, 'review.bounced');
+  if (asked.kind === 'bounced') {
     return {
       outcome: { ticketId: ticket.id, status: 'bounced', reason: 'unparseable verdict' },
       decision: null,
     };
   }
+  const parsed = asked.parsed;
 
   // W23-03: the source must still be the source that was reviewed. A model
   // turn takes seconds to minutes and nothing stops the session, a person or a

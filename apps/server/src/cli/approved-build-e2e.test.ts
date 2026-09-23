@@ -163,7 +163,7 @@ async function fakeModel(replies: string[]): Promise<{
   return { url: `http://127.0.0.1:${address.port}/v1`, prompts, close };
 }
 
-/** The reviewer's wire shape, as `parseVerdict` actually reads it: JSON. */
+/** The reviewer's wire shape, as `diagnoseVerdict` actually reads it: JSON. */
 const VERDICT = (verdict: string) =>
   JSON.stringify({ verdict, score: 9, reasoning: 'what the ticket asked for' });
 

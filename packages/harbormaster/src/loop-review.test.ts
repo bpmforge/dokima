@@ -170,6 +170,10 @@ describe('runReviewPass (W15-01)', () => {
     });
     expect(events(log, 'review.bounced').length).toBeGreaterThanOrEqual(2);
     expect(events(log, 'review.verdict')).toHaveLength(0);
+    // W23-49: the log says what the reviewer said and why it was refused.
+    const bounce = events(log, 'review.bounced')[0]!.payload as Record<string, unknown>;
+    expect(bounce.raw).toBe('I feel good about this one!');
+    expect(String(bounce.detail)).toContain('no JSON object');
   });
 
   it("RED FIXTURE: when the core's independent re-run FAILS, the verdict is CONTRADICTED by construction — the model's CONFIRMED cannot out-vote the gate (C-2)", async () => {
