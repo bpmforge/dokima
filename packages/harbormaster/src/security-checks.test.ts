@@ -198,7 +198,6 @@ describe('local-only means local-only', () => {
         {},
         {
           networkPolicy: 'local-only',
-          localAdvisoryDbPath: null,
           runTool: async (adapter) => {
             if (adapter.checkId === 'tool-deps') ranDeps = true;
             return ok({ stdout: '{"results":[]}' });
@@ -236,7 +235,6 @@ describe('local-only means local-only', () => {
         {},
         {
           networkPolicy: 'local-only',
-          localAdvisoryDbPath: '/opt/advisories.json',
           runTool: async (adapter, _args, opts) => {
             if (adapter.checkId === 'tool-deps') localFlags.push(opts.allowNetwork);
             return ok({ stdout: '{"metadata":{"vulnerabilities":{}}}' });
@@ -244,8 +242,11 @@ describe('local-only means local-only', () => {
         },
       ),
     );
-    // It may run against the local snapshot; it may not open a socket.
-    expect(localFlags).toEqual([false]);
+    // W23-56: under local-only npm audit is never started at all. (This case
+    // used to pass a `localAdvisoryDbPath` that nothing in the product ever
+    // supplied, and with it npm audit would have run with the network denied
+    // and reported "could not reach" — snapshot support that did not exist.)
+    expect(localFlags).toEqual([]);
   });
 
   it('an audit that reached no advisory database is UNAVAILABLE, not a clean bill of health', async () => {

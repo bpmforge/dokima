@@ -347,6 +347,8 @@ export {
   runSecurityChecks,
   sandboxedToolRunner,
   SECURITY_TOOLS,
+  UNAUDITED_DEPENDENCIES_SETTING,
+  type UnauditedDependenciesPolicy,
   type CheckEvidence,
   type CheckStatus,
   type NetworkPolicy,

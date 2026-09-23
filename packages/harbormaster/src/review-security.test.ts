@@ -8,9 +8,23 @@
  * coverage — never a pass, and never evidence against the diff either.
  */
 
-import { describe, expect, it } from 'vitest';
-import { securityChecksPayload, securityChecksSection } from './review-security.js';
-import type { CheckEvidence } from './security-checks.js';
+import { execFile } from 'node:child_process';
+import { promises as fs } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { promisify } from 'node:util';
+import { afterEach, describe, expect, it } from 'vitest';
+import {
+  collectTicketSecurityChecks,
+  securityChecksPayload,
+  securityChecksSection,
+} from './review-security.js';
+import {
+  checksPermitAutomaticCompletion,
+  type CheckEvidence,
+} from './security-checks.js';
+
+const execFileAsync = promisify(execFile);
 
 const row = (over: Partial<CheckEvidence>): CheckEvidence => ({
   checkId: 'tool-x',
@@ -97,5 +111,123 @@ describe('W23-51: a check that did not run is reported as NOT RUN', () => {
     });
     expect(payload[2]).toMatchObject({ ruleDigest: 'sha256:rules' });
     expect(payload[0]).not.toHaveProperty('preexistingCount');
+  });
+});
+
+/**
+ * W23-56 — a local-only project and the dependency audit.
+ *
+ * `npm audit` needs an advisory database, a local-only project may not reach
+ * one, and NOT RUN blocks machine acceptance — so before this no ticket in a
+ * local-only project could ever be accepted without a person, including the
+ * great majority that never touch a dependency. Two answers, both measured:
+ * a change that leaves every manifest and lockfile identical to its fork point
+ * cannot have introduced an advisory (W23-51 counts only introduced ones); a
+ * change that did touch them is still NOT RUN, and the PROJECT's policy says
+ * whether that blocks — default block, matching SAST.
+ */
+describe('W23-56: tool-deps under local-only', () => {
+  const dirs: string[] = [];
+  afterEach(async () => {
+    await Promise.all(
+      dirs.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
+    );
+  });
+
+  async function repo(
+    change: Record<string, string>,
+  ): Promise<{ dir: string; base: string }> {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-deps-offline-'));
+    dirs.push(dir);
+    const git = (...args: string[]) =>
+      execFileAsync('git', [
+        '-C',
+        dir,
+        '-c',
+        'user.name=t',
+        '-c',
+        'user.email=t@t',
+        ...args,
+      ]);
+    await git('init', '-q');
+    await fs.writeFile(
+      path.join(dir, 'package.json'),
+      '{"name":"p","dependencies":{"a":"1.0.0"}}\n',
+    );
+    await fs.writeFile(path.join(dir, 'package-lock.json'), '{"lockfileVersion":3}\n');
+    await fs.writeFile(path.join(dir, 'index.js'), 'export {};\n');
+    await git('add', '.');
+    await git('commit', '-qm', 'base');
+    const base = (await git('rev-parse', 'HEAD')).stdout.trim();
+    for (const [name, body] of Object.entries(change)) {
+      await fs.writeFile(path.join(dir, name), body);
+    }
+    await git('add', '.');
+    await git('commit', '-qm', 'ticket');
+    return { dir, base };
+  }
+
+  const collect = (
+    dir: string,
+    base: string | null,
+    over: Partial<Parameters<typeof collectTicketSecurityChecks>[0]> = {},
+  ) =>
+    collectTicketSecurityChecks({
+      worktreePath: dir,
+      sourceDigest: 'sha256:head',
+      networkPolicy: 'local-only',
+      baseCommit: base,
+      ...over,
+    });
+  const deps = (c: { evidence: readonly CheckEvidence[] }) =>
+    c.evidence.find((e) => e.checkId === 'tool-deps')!;
+
+  it('RED: a ticket that changed no manifest or lockfile is NOT_APPLICABLE, with the measured reason', async () => {
+    const { dir, base } = await repo({ 'index.js': 'export const x = 1;\n' });
+    const d = deps(await collect(dir, base));
+    expect(d.status).toBe('not_applicable');
+    expect(d.reason).toMatch(/identical to the ticket.s base/);
+  });
+
+  it('NEGATIVE: a ticket that changed the lockfile is still NOT RUN, and blocks by default', async () => {
+    const { dir, base } = await repo({
+      'package-lock.json': '{"lockfileVersion":3,"x":1}\n',
+    });
+    const checks = await collect(dir, base);
+    expect(deps(checks).status).toBe('unavailable');
+    expect(deps(checks).waived).toBeUndefined();
+    expect(checks.blockedBy.join(' ')).toMatch(/tool-deps/);
+  });
+
+  it('NEGATIVE: an unknown fork point never reads as unchanged', async () => {
+    const { dir } = await repo({ 'index.js': 'export const x = 1;\n' });
+    expect(deps(await collect(dir, null)).status).toBe('unavailable');
+    expect(deps(await collect(dir, 'deadbeef'.repeat(5))).status).toBe('unavailable');
+  });
+
+  it('RED: with the project policy "allow", a changed-dependency NOT RUN is waived — recorded, and no longer blocking', async () => {
+    const { dir, base } = await repo({
+      'package.json': '{"name":"p","dependencies":{"b":"2.0.0"}}\n',
+    });
+    const checks = await collect(dir, base, { unauditedDependencies: 'allow' });
+    const d = deps(checks);
+    expect(d.status).toBe('unavailable');
+    expect(d.waived).toMatch(/security\.unauditedDependencies/);
+    expect(checks.blockedBy.join(' ')).not.toMatch(/tool-deps/);
+    expect(
+      securityChecksPayload(checks).find((p) => p.checkId === 'tool-deps'),
+    ).toMatchObject({
+      waived: expect.stringMatching(/unauditedDependencies/),
+    });
+  });
+
+  it('"allow" waives nothing else: dependency FINDINGS on a networked project still block', async () => {
+    const evidence = [row({ checkId: 'tool-deps', status: 'findings', findingCount: 2 })];
+    expect(checksPermitAutomaticCompletion(evidence).eligible).toBe(false);
+    expect(
+      checksPermitAutomaticCompletion([
+        row({ checkId: 'tool-sast', status: 'unavailable', waived: 'forged' }),
+      ]).eligible,
+    ).toBe(false);
   });
 });

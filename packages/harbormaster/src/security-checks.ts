@@ -28,9 +28,10 @@
  *
  * LOCAL-ONLY MEANS LOCAL-ONLY (Law 9b). The dependency audit is the one check
  * that wants a network. Under a local-only policy it does not quietly reach a
- * cloud advisory service: without a local advisory snapshot it reports
- * UNAVAILABLE and says so, and the coverage a user does not have is visible
- * rather than implied.
+ * cloud advisory service: it reports UNAVAILABLE and says so, and the coverage
+ * a user does not have is visible rather than implied. W23-56: unless the
+ * change left every manifest and lockfile as its base had them (nothing to
+ * audit), and the project's own policy may waive that NOT RUN (review-deps.ts).
  */
 
 import {
@@ -46,6 +47,16 @@ import {
 import { compareWithBaseline, expandArgs, runtimePathsOf } from './security-baseline.js';
 export { executableIsInstalled, sandboxedToolRunner } from './security-tool-runner.js';
 import { sastRulesFix, type SastRuleset } from './sast-rules.js';
+import {
+  isWaivedNotRun,
+  localOnlyAudit,
+  type UnauditedDependenciesPolicy,
+} from './review-deps.js';
+export {
+  isWaivedNotRun,
+  UNAUDITED_DEPENDENCIES_SETTING,
+  type UnauditedDependenciesPolicy,
+} from './review-deps.js';
 
 export { SECURITY_TOOLS };
 
@@ -76,6 +87,12 @@ export interface CheckEvidence {
   readonly preexistingCount?: number;
   /** W23-51: the base the head was compared against, when it was. */
   readonly baselineRef?: string | null;
+  /**
+   * W23-56: why a NOT RUN does not block — the project's own recorded choice.
+   * Set in exactly one place (tool-deps, local-only, no advisory data), and
+   * honoured only there by every reader.
+   */
+  readonly waived?: string;
 }
 
 /** What the runtime knows about how this project is allowed to reach the world. */
@@ -126,6 +143,12 @@ export interface ProjectProfile {
   readonly hasNodeManifest: boolean;
   readonly hasLockfile: boolean;
   readonly hasInfrastructureAsCode: boolean;
+  /**
+   * W23-56: whether every root manifest and lockfile is byte-identical to the
+   * ticket's base. `true` only when MEASURED; unknown (no base, a git
+   * failure) is null and never reads as unchanged.
+   */
+  readonly dependenciesUnchangedSinceBase?: boolean | null;
 }
 
 export interface RunSecurityChecksOptions {
@@ -136,11 +159,11 @@ export interface RunSecurityChecksOptions {
   /** Absolute path to the bundled secrets scanner, resolved by the caller (content/ is data). */
   readonly secretsValidatorPath?: string | null;
   /**
-   * A local advisory snapshot. Without one, a local-only project cannot claim
-   * a completed dependency audit — and must not reach a cloud service to get
-   * one (Law 9b).
+   * W23-56: whether a dependency audit that could not run under local-only
+   * blocks an automatic completion. Default 'block'. The caller reads it from
+   * the repository root, never from the worktree under review.
    */
-  readonly localAdvisoryDbPath?: string | null;
+  readonly unauditedDependencies?: UnauditedDependenciesPolicy;
   /** W23-51: the pinned SAST ruleset (`resolveSastRules`). Absent, SAST is NOT RUN. */
   readonly sastRules?: SastRuleset | null;
   /**
@@ -257,18 +280,9 @@ export async function runSecurityChecks(
     // local-only project with no local advisory snapshot gets UNAVAILABLE and
     // an honest sentence — never a silent call to a cloud advisory service.
     const wantsNetwork = adapter.requiresNetwork;
-    if (
-      wantsNetwork &&
-      options.networkPolicy === 'local-only' &&
-      !options.localAdvisoryDbPath
-    ) {
+    if (wantsNetwork && options.networkPolicy === 'local-only') {
       results.push(
-        evidence(adapter, options.sourceDigest, args, {
-          status: 'unavailable',
-          reason:
-            'this project is local-only and no local advisory snapshot is installed, so the ' +
-            'dependency audit did not run. Its coverage is missing, not clean.',
-        }),
+        evidence(adapter, options.sourceDigest, args, localOnlyAudit(options)),
       );
       continue;
     }
@@ -362,7 +376,8 @@ export function checksPermitAutomaticCompletion(checks: readonly CheckEvidence[]
   const blockedBy = checks
     .filter(
       (c) =>
-        c.status === 'error' || c.status === 'unavailable' || c.status === 'findings',
+        (c.status === 'error' || c.status === 'unavailable' || c.status === 'findings') &&
+        !isWaivedNotRun(c),
     )
     .map((c) => `${c.checkId}: ${c.status}${c.reason ? ` — ${c.reason}` : ''}`);
   return { eligible: blockedBy.length === 0, blockedBy };
