@@ -17083,9 +17083,10 @@
         "Red fixture: a native loader that throws the bindings error, which today yields `doctor: OK`, yields `doctor: FAILED` naming the fix"
       ],
       "points": 2,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
-        "FILED 2026-09-23 (v1 release hardening). better-sqlite3 loads its binding lazily inside `new Database`, and the CLI entry deliberately lets a non-ABI load failure through so --help still works; doctor's only DB check returns 'no state.db yet (fresh project)' without opening anything, so an install with no binary at all reads as healthy."
+        "FILED 2026-09-23 (v1 release hardening). better-sqlite3 loads its binding lazily inside `new Database`, and the CLI entry deliberately lets a non-ABI load failure through so --help still works; doctor's only DB check returns 'no state.db yet (fresh project)' without opening anything, so an install with no binary at all reads as healthy.",
+        "CLAIMED 2026-09-23 (fix/v1-release-hardening)."
       ],
       "stories": []
     },
@@ -17112,10 +17113,11 @@
         "No client-side retry is added: a 404 on the status route still means the run does not exist"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
         "FILED 2026-09-23 from the nightly logs (gh run view --log-failed, runs 35841145119, 35708636549, 35501436153, 35203491589, 35077674768). Every red nightly since 09-16 is one of two specs, and both show the SAME client symptom: a 404 from GET /pipeline/runs/:runId, rendered as 'the server that answered doesn't offer this step' (W13-39) and 'doesn't have the guided-sample pipeline route wired in' (guided sample). pollPipelineRun throws on the first non-2xx. saveRunRecord is fs.writeFile (O_TRUNC then write) and loadRunRecord maps unreadable/unparseable to undefined -> 404.",
-        "The 09-22 `ENOENT ... .dokima/blueprint.md` is a CONSEQUENCE, not a cause: gateway calls were 3 (the pipeline had finished its model work), the page degraded on the torn poll, the test threw, and its afterEach removed WORKSPACE while the server job was still writing the blueprint. The 09-16 run shows the same sequence ending in ENOTEMPTY."
+        "The 09-22 `ENOENT ... .dokima/blueprint.md` is a CONSEQUENCE, not a cause: gateway calls were 3 (the pipeline had finished its model work), the page degraded on the torn poll, the test threw, and its afterEach removed WORKSPACE while the server job was still writing the blueprint. The 09-16 run shows the same sequence ending in ENOTEMPTY.",
+        "CLAIMED 2026-09-23 (fix/v1-release-hardening)."
       ],
       "stories": [
         "US-101"
@@ -17140,9 +17142,10 @@
         "Red fixture: Node v24.x against this repo's engines, refused today via the .nvmrc pin, is accepted; v26 is refused"
       ],
       "points": 1,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
-        "FILED 2026-09-23 (v1 release hardening). scripts/conductor.mjs:111 compares process.version against .nvmrc ('22'), so a Node 24 shell \u2014 a supported line since v1.0.1 \u2014 cannot run the conductor."
+        "FILED 2026-09-23 (v1 release hardening). scripts/conductor.mjs:111 compares process.version against .nvmrc ('22'), so a Node 24 shell \u2014 a supported line since v1.0.1 \u2014 cannot run the conductor.",
+        "CLAIMED 2026-09-23 (fix/v1-release-hardening)."
       ],
       "stories": []
     },
@@ -17164,9 +17167,10 @@
         "CHANGELOG [Unreleased] states the removal as a breaking CLI change with the replacement, and that no 1.x release carrying the flag was published to npm"
       ],
       "points": 1,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
-        "FILED 2026-09-23 (v1 release hardening), from W23-42's breaking change."
+        "FILED 2026-09-23 (v1 release hardening), from W23-42's breaking change.",
+        "CLAIMED 2026-09-23 (fix/v1-release-hardening)."
       ],
       "stories": [
         "US-402"
