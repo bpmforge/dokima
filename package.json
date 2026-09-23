@@ -1,6 +1,6 @@
 {
   "name": "@bpmforge/dokima",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Local-first agentic development platform: agent sessions are untrusted, every durable state change goes through verbs and hash-chained receipts, and no gate can be talked past.",
   "license": "SEE LICENSE IN LICENSE",
   "author": "Bradford Matthews",
@@ -30,7 +30,7 @@
     "dokima": "apps/server/src/bootstrap/cli-entry.mjs"
   },
   "engines": {
-    "node": "22.x",
+    "node": "22.x || 24.x",
     "pnpm": "11.x"
   },
   "packageManager": "pnpm@11.11.0",
@@ -48,6 +48,7 @@
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "build": "pnpm --filter @dokima/web build && node apps/server/build.mjs",
+    "smoke:pack": "node scripts/smoke-pack.mjs",
     "autorun": "bash scripts/autorun.sh start",
     "autorun:stop": "bash scripts/autorun.sh stop",
     "autorun:status": "bash scripts/autorun.sh status",
@@ -78,10 +79,17 @@
     "CHANGELOG.md",
     "apps/server/dist/main.js",
     "apps/server/src/bootstrap/cli-entry.mjs",
+    "apps/server/src/bootstrap/node-abi-guard.mjs",
+    "apps/server/src/bootstrap/bundle-age.mjs",
     "apps/web/dist",
     "content",
     "packages/events/migrations",
     "packages/events/src/global-db/migrations",
-    "e2e/fitness-fixtures"
+    "e2e/fitness-fixtures",
+    "docs/dogfood/DOGFOOD_REPORT.md",
+    "docs/dogfood/receipts.json",
+    "docs/dogfood/run-result.json",
+    "docs/dogfood/findings-tickets.json",
+    "docs/dogfood/coverage-manifest.json"
   ]
 }

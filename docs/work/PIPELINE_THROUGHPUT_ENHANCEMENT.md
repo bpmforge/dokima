@@ -5,6 +5,7 @@
 **Scope:** `attest` (policy + expert content) → `attest-claude` (generated) → Dokima/Shipwright (executor + conductor).
 
 **Inputs:**
+
 - `~/Documents/02_Work_Notes/LOCAL_EXHAUSTION_INCIDENT_LESSONS.md` — sanitized incident review + measured throughput analysis + OPT-01..OPT-12. **This plan does not restate that document; it is the delta and the landing plan.**
 - `~/Documents/02_Work_Notes/cursormeeting.md` — Cursor/SpaceX AI platform session, 2026-08-31.
 - <https://github.com/cursor/plugins/blob/main/pstack/skills/interrogate/SKILL.md> — pstack `interrogate` skill (multi-model adversarial review).
@@ -19,18 +20,18 @@
 **Two conductors run boards, and they have different dominant defects** (a third code path, Dokima's product
 pipeline, is inventoried in §2). Treating them as one problem mis-orders the work.
 
-| Measure | attest / Marauder conductor | Dokima conductor (this repo) |
-|---|---:|---:|
-| Unit | 181 coding attempts | 282 ticket starts |
-| **Review sessions per unit** | **4.76** | **0.93** |
-| Approve rate | 18.7% (25 of 134) | 48.3% |
-| Expert-review wall time | 1,900.8 min | — |
-| Worst single ticket | 32 expert sessions, 111.8 min, then exhausted | — |
-| Median 4-expert sequential pass | ~8.8 min before any fix | n/a (one reviewer) |
-| Retries per **start event** | — | 0.72 |
-| Deterministic gate failures per **start event** | — | 0.63 |
-| Tickets needing ≥1 block/recover cycle | — | **45.4%** (64 of 141 unique) |
-| Tickets that ultimately completed | — | **90.8%** (128 of 141 unique) |
+| Measure                                         |                   attest / Marauder conductor |  Dokima conductor (this repo) |
+| ----------------------------------------------- | --------------------------------------------: | ----------------------------: |
+| Unit                                            |                           181 coding attempts |             282 ticket starts |
+| **Review sessions per unit**                    |                                      **4.76** |                      **0.93** |
+| Approve rate                                    |                             18.7% (25 of 134) |                         48.3% |
+| Expert-review wall time                         |                                   1,900.8 min |                             — |
+| Worst single ticket                             | 32 expert sessions, 111.8 min, then exhausted |                             — |
+| Median 4-expert sequential pass                 |                       ~8.8 min before any fix |            n/a (one reviewer) |
+| Retries per **start event**                     |                                             — |                          0.72 |
+| Deterministic gate failures per **start event** |                                             — |                          0.63 |
+| Tickets needing ≥1 block/recover cycle          |                                             — |  **45.4%** (64 of 141 unique) |
+| Tickets that ultimately completed               |                                             — | **90.8%** (128 of 141 unique) |
 
 Marauder figures: `LOCAL_EXHAUSTION_INCIDENT_LESSONS.md`. Dokima figures: computed from this repo's
 `docs/work/conductor-log.jsonl`, 3,610 rows, 2026-07-11 → 2026-08-07.
@@ -39,9 +40,9 @@ Marauder figures: `LOCAL_EXHAUSTION_INCIDENT_LESSONS.md`. Dokima figures: comput
 quality feature: the expensive assurance runs at the wrong granularity (every candidate), in the wrong shape
 (sequentially, one model, full re-run on every fix).
 
-**Defect B — rework cost, not failure rate (Dokima).** *Corrected 2026-08-31 after an independent challenge.
+**Defect B — rework cost, not failure rate (Dokima).** _Corrected 2026-08-31 after an independent challenge.
 The first version of this section was a measurement defect, and the correction matters more than the original
-claim.*
+claim._
 
 The first draft read event ratios as outcomes: 111 `ticket.blocked` events ÷ 282 `ticket.start` events =
 "39.4% block rate." **Per unique ticket the picture inverts:** 141 tickets started, **128 completed (90.8%)**;
@@ -76,33 +77,33 @@ Three compounding causes of Defect A:
    against the **diff text** — so the word `validate` in a comment recruits a security expert and any `.map(`
    recruits a performance expert. `agents/sdlc/PARALLEL_WAVE_PROTOCOL.md:58-62` and
    `agents/sdlc-init-phase-4.md:129-138` are the prose twins; all three must change together. The file's own
-   rationale — *"Biased toward firing: a false positive costs one review session; a false negative ships
-   unreviewed auth"* — was sound when the cost was unmeasured. At 4.76 sessions per attempt and 1,900.8
-   minutes it is falsified: a false positive costs a session *and* an 8.8-minute serial pass, repeatedly.
+   rationale — _"Biased toward firing: a false positive costs one review session; a false negative ships
+   unreviewed auth"_ — was sound when the cost was unmeasured. At 4.76 sessions per attempt and 1,900.8
+   minutes it is falsified: a false positive costs a session _and_ an 8.8-minute serial pass, repeatedly.
 3. **Wrong failure accounting.** Formatter defects, provider errors, reviewer-process errors, and a
    pre-existing red baseline all consume the same feature retry budget, so tickets exhaust for reasons no
    coding retry can repair.
 
-The user-visible symptom is exactly the ask: *the coding portion is slow, gets stuck, and the parts are not
-integrated at the end.*
+The user-visible symptom is exactly the ask: _the coding portion is slow, gets stuck, and the parts are not
+integrated at the end._
 
 ## 2. What is actually on this machine
 
 Verified 2026-08-31, not assumed:
 
-| Component | Path | State |
-|---|---|---|
-| Expert system (canonical) | `~/Code/attest` v3.5.4 | 45 skills, `agents/sdlc-init-phase-4.md` (815 lines) holds the Round 1/2/3 per-module policy |
-| Claude target (generated) | `~/Code/attest-claude` | regenerate with `npm run build:claude` from attest; **never hand-edit** |
-| Product / factory | `~/Code/shipwright` (**Dokima**) | `scripts/conductor.mjs` + `scripts/conductor/` chapters + `scripts/conductor-lib/` |
+| Component                 | Path                         | State                                                                                        |
+| ------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------- |
+| Expert system (canonical) | `~/Code/attest` v3.5.4       | 45 skills, `agents/sdlc-init-phase-4.md` (815 lines) holds the Round 1/2/3 per-module policy |
+| Claude target (generated) | `~/Code/attest-claude`       | regenerate with `npm run build:claude` from attest; **never hand-edit**                      |
+| Product / factory         | `~/Code/dokima` (**Dokima**) | `scripts/conductor.mjs` + `scripts/conductor/` chapters + `scripts/conductor-lib/`           |
 
 **There are THREE conductors, not one** (corrected 2026-08-31, verification C-01):
 
-| Conductor | Path | Role |
-|---|---|---|
-| attest's M28 reference conductor | `attest/scripts/conductor/conductor.mjs` (1,159 lines) + `resume.mjs` + `supervise.sh` + `scripts/jira/` | The lineage the incident doc describes; ported *from* the Shipwright build 2026-07-11/12, then adapted. Carries the reviewer fan-out. |
-| Dokima's dogfood conductor | `shipwright/scripts/conductor*.mjs` | Portable 2-file import surface; one reviewer per ticket |
-| Dokima's product pipeline | `shipwright/packages/pipeline`, `packages/loop` | Where `decompose`, `challenger`, the findings ledger and loop policy actually live — **and the dogfood conductor does not import any of it** |
+| Conductor                        | Path                                                                                                     | Role                                                                                                                                         |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| attest's M28 reference conductor | `attest/scripts/conductor/conductor.mjs` (1,159 lines) + `resume.mjs` + `supervise.sh` + `scripts/jira/` | The lineage the incident doc describes; ported _from_ the Shipwright build 2026-07-11/12, then adapted. Carries the reviewer fan-out.        |
+| Dokima's dogfood conductor       | `shipwright/scripts/conductor*.mjs`                                                                      | Portable 2-file import surface; one reviewer per ticket                                                                                      |
+| Dokima's product pipeline        | `shipwright/packages/pipeline`, `packages/loop`                                                          | Where `decompose`, `challenger`, the findings ledger and loop policy actually live — **and the dogfood conductor does not import any of it** |
 
 That third row is itself a finding: the seam linter and the findings ledger exist in `packages/`, while the
 board the conductor runs comes from a hand-written `plan.json` that carries none of those fields.
@@ -111,13 +112,13 @@ board the conductor runs comes from a hand-written `plan.json` that carries none
 an isolated local JIRA-conductor worktree on the work machine, deliberately not pushed upstream. Checked in
 both places:
 
-| | attest's conductor | Dokima's conductor |
-|---|---|---|
-| Reviewers concurrent (OPT-01) | **No** — `attest/scripts/conductor/conductor.mjs:554-556`, `runReviewRound` is a `for` loop over reviewers | **No** — one reviewer only, `shipwright/scripts/conductor/ticket.mjs:41` |
-| Baseline preflight / fingerprints | **No** — only a formatter-clean baseline string at `conductor.mjs:489`; no `blocked_on_*` states | **No** — `grep -n "unchanged\|baseline" shipwright/scripts/conductor/*.mjs` returns unrelated comments only |
-| No-change fix-loop abort (OPT-02) | **No** | **No** |
-| Mechanical remediation before a new attempt | **No** — and attest has *no* model ladder at all: `CODER_MODEL` is fixed (`conductor.mjs:143`, unchanged at `:606`, `:737`) | **No** — Dokima *is* the one with a ladder (`ticket.mjs:16`), and it regenerates the whole candidate on the next model |
-| Partial credit | Re-reviews **only the reviewers that blocked** (`conductor.mjs:607-613`) — a fragment of OPT-10 | Sticky findings across attempts |
+|                                             | attest's conductor                                                                                                          | Dokima's conductor                                                                                                     |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Reviewers concurrent (OPT-01)               | **No** — `attest/scripts/conductor/conductor.mjs:554-556`, `runReviewRound` is a `for` loop over reviewers                  | **No** — one reviewer only, `shipwright/scripts/conductor/ticket.mjs:41`                                               |
+| Baseline preflight / fingerprints           | **No** — only a formatter-clean baseline string at `conductor.mjs:489`; no `blocked_on_*` states                            | **No** — `grep -n "unchanged\|baseline" shipwright/scripts/conductor/*.mjs` returns unrelated comments only            |
+| No-change fix-loop abort (OPT-02)           | **No**                                                                                                                      | **No**                                                                                                                 |
+| Mechanical remediation before a new attempt | **No** — and attest has _no_ model ladder at all: `CODER_MODEL` is fixed (`conductor.mjs:143`, unchanged at `:606`, `:737`) | **No** — Dokima _is_ the one with a ladder (`ticket.mjs:16`), and it regenerates the whole candidate on the next model |
+| Partial credit                              | Re-reviews **only the reviewers that blocked** (`conductor.mjs:607-613`) — a fragment of OPT-10                             | Sticky findings across attempts                                                                                        |
 
 One defect visible only in attest's conductor: `conductor.mjs:508` commits scope-violation evidence with
 `git add -f` from the target checkout. The incident doc lists that exact force-add-and-commit fallback as a
@@ -137,12 +138,12 @@ Two useful seeds already exist and should be generalized rather than rebuilt:
 
 Reading past the demo, four things are worth taking:
 
-| Cursor primitive | What it actually solves | Where it lands here |
-|---|---|---|
-| **rules** (`description` + `glob` + `alwaysApply`, `.mdc`) | Context bloat *and* trigger precision — a rule loads only when its glob/description matches | **Net-new primitive in attest.** Direct mechanism for OPT-08. |
-| **multitask** | Each reviewer gets its own context window *and its own model*; orchestrator sees only summaries | Level 2 concurrent fan-out (OPT-01 + model diversity) |
-| **loop / goal / orchestrator** | Named, bounded self-driving skills instead of operator babysitting | Map onto existing attest loops; `goal` is the gap |
-| **automations** (webhook/PR-triggered cloud agents; bugbot + security reviewer on the **PR diff**) | Assurance attaches to the *diff at a merge boundary*, not to every coding session | Level 3 merge train |
+| Cursor primitive                                                                                   | What it actually solves                                                                         | Where it lands here                                           |
+| -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| **rules** (`description` + `glob` + `alwaysApply`, `.mdc`)                                         | Context bloat _and_ trigger precision — a rule loads only when its glob/description matches     | **Net-new primitive in attest.** Direct mechanism for OPT-08. |
+| **multitask**                                                                                      | Each reviewer gets its own context window _and its own model_; orchestrator sees only summaries | Level 2 concurrent fan-out (OPT-01 + model diversity)         |
+| **loop / goal / orchestrator**                                                                     | Named, bounded self-driving skills instead of operator babysitting                              | Map onto existing attest loops; `goal` is the gap             |
+| **automations** (webhook/PR-triggered cloud agents; bugbot + security reviewer on the **PR diff**) | Assurance attaches to the _diff at a merge boundary_, not to every coding session               | Level 3 merge train                                           |
 
 The `interrogate` skill is the concrete worked example and the single most transferable artifact:
 
@@ -151,13 +152,13 @@ The `interrogate` skill is the concrete worked example and the single most trans
 > categorizes every finding as **Act On / Consider / Noted / Dismissed** with an agreement map.
 
 The signal is **model diversity, not assigned personas.** That is a direct critique of the current design,
-which runs four *personas* (code/security/perf/UX) on one model, sequentially. Level 2 should do the
+which runs four _personas_ (code/security/perf/UX) on one model, sequentially. Level 2 should do the
 opposite: fewer passes, more models, concurrent, with an explicit dismissal category — which is also the
 answer to 109-of-134 `CHANGES REQUESTED`. Findings that no second model reproduces are `Noted`, not blockers.
 
 **What attest already has here (verification C-09).** v3.5.0 shipped `/gauntlet` + `gauntlet-lead` +
 `GAUNTLET_LOOP.md`: builders never grade their own work, and a critic that saw a previous draft never grades
-the retry — blind, fresh-context critics against a named real exemplar. So *blindness* and *maker≠verifier*
+the retry — blind, fresh-context critics against a named real exemplar. So _blindness_ and _maker≠verifier_
 are solved. `GAUNTLET_LOOP.md:115` draws the boundary explicitly: for "are these claims true," use the
 challenger, not the gauntlet. **The genuine gap is narrower than the first draft implied: model diversity and
 consensus weighting.** T1-07 adds those to the existing challenger/gauntlet layer; it does not replace them.
@@ -172,17 +173,17 @@ is the end state, not the starting point. It is Phase T5 below.
 
 What exists today, verified:
 
-| Layer | State | Citation |
-|---|---|---|
-| Seam declaration on a ticket | **Implemented** — `providesInterfaces`, `consumesInterfaces`, `importsWorkspacePackages`, `ownPackage` | `packages/pipeline/src/decompose/types.ts:20-56` |
-| Plan-time seam lint | **Implemented** — `findUnownedInterfaces`: *"consumes X but no ticket in the DAG owns its public re-export"*, plus cycle and writeScope checks | `packages/pipeline/src/decompose/linter.ts:45-65, 111+` |
-| The originating lesson | W0-05 built `mintReceipt`, W1-02 consumed it, neither owned re-exporting it — *"the function existed and was invisible"* | `linter.ts:38-44` |
-| Same concept in attest | Interface-contract module pattern specified… **and explicitly unenforced**: *"is a manual check — nothing in `tickets.mjs` enforces it today"* | `attest/agents/task-decomposer.md:137-145, 218` |
-| Hand-written instance | "a new UI page must also hold its route + nav files" | `scripts/conductor-lib/lint-rules.mjs` |
+| Layer                        | State                                                                                                                                          | Citation                                                |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Seam declaration on a ticket | **Implemented** — `providesInterfaces`, `consumesInterfaces`, `importsWorkspacePackages`, `ownPackage`                                         | `packages/pipeline/src/decompose/types.ts:20-56`        |
+| Plan-time seam lint          | **Implemented** — `findUnownedInterfaces`: _"consumes X but no ticket in the DAG owns its public re-export"_, plus cycle and writeScope checks | `packages/pipeline/src/decompose/linter.ts:45-65, 111+` |
+| The originating lesson       | W0-05 built `mintReceipt`, W1-02 consumed it, neither owned re-exporting it — _"the function existed and was invisible"_                       | `linter.ts:38-44`                                       |
+| Same concept in attest       | Interface-contract module pattern specified… **and explicitly unenforced**: _"is a manual check — nothing in `tickets.mjs` enforces it today"_ | `attest/agents/task-decomposer.md:137-145, 218`         |
+| Hand-written instance        | "a new UI page must also hold its route + nav files"                                                                                           | `scripts/conductor-lib/lint-rules.mjs`                  |
 
 So the concept, the schema, and a linter are all present. **The real gap is four narrower things:**
 
-1. **Plan-time only.** `findUnownedInterfaces` checks that *some ticket claims ownership* of a re-export. It
+1. **Plan-time only.** `findUnownedInterfaces` checks that _some ticket claims ownership_ of a re-export. It
    never checks that the export **actually exists on the built head**. A ticket can declare
    `providesInterfaces` and simply not write the re-export — and the lint stays green. **The missing
    assertion is build-time wiring evidence at Level 2.**
@@ -206,7 +207,7 @@ Three consumers make it pay for itself:
 1. **Wave composition (OPT-12).** Disjoint write scopes and the dependency DAG fall straight out of the map —
    no heuristic needed. A producer seam and its consumers belong in the same wave or in ordered waves.
 2. **Level 2 cross-ticket contract checks.** The wave gate can only detect "these did not get wired up" if it
-   knows what the seams were *supposed* to be. Generalize `lint-rules.mjs`: **a seam whose `wiring_evidence`
+   knows what the seams were _supposed_ to be. Generalize `lint-rules.mjs`: **a seam whose `wiring_evidence`
    is absent on the synthetic wave head is a blocking Level 2 finding, attributed to the consumer ticket.**
 3. **Ticket scope reachability.** A consumer whose `write_scope` cannot reach its seam's symbol is a filing
    defect caught at lint time, not at the wall — the failure mode already recorded as the dominant one in the
@@ -220,14 +221,14 @@ this plan exists to draw. Six conditions must hold at the Phase 3.5 → Phase 4 
 may run unattended. Each is checked deterministically; failing any one stops the run with a distinct status
 and **consumes zero coding attempts**.
 
-| # | Condition | Checked by | Failure status |
-|---|---|---|---|
-| 1 | **Baseline is green.** The configured verify command exits zero on the exact base commit, in a clean detached worktree; result cached by base SHA + command + lockfile hash + runtime fingerprint | T2-01 | `blocked_on_baseline` |
-| 2 | **Remotes agree.** Every configured remote is fetched and local `main` is an ancestor; fast-forward only when all agree | T2-01 | synchronization error |
-| 3 | **Seams resolve.** Every ticket's declared inputs and outputs resolve against `seams.json`, and each ticket's `write_scope` can physically reach the symbols its seams name | T1-09 board lint | `blocked_on_scope` (at lint, before claim) |
-| 4 | **Verify profile is available.** Browser, E2E, database, and external-service requirements of the ticket's verify command are present and reachable | T3-07 | `blocked_on_infrastructure` |
-| 5 | **External evidence is declared.** Work needing a sandbox, production data, owner attestation, or unavailable credentials is marked as external-evidence work *before* coding | T3-08 | `blocked_on_scope` |
-| 6 | **Risk tier admits the ticket.** Only bounded, evidence-based work with known acceptance criteria is claimable unattended; ambiguous, large, or judgment-requiring tickets are held for a human pass | T2-09 (M-02) | `held_for_human` |
+| #   | Condition                                                                                                                                                                                            | Checked by       | Failure status                             |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ------------------------------------------ |
+| 1   | **Baseline is green.** The configured verify command exits zero on the exact base commit, in a clean detached worktree; result cached by base SHA + command + lockfile hash + runtime fingerprint    | T2-01            | `blocked_on_baseline`                      |
+| 2   | **Remotes agree.** Every configured remote is fetched and local `main` is an ancestor; fast-forward only when all agree                                                                              | T2-01            | synchronization error                      |
+| 3   | **Seams resolve.** Every ticket's declared inputs and outputs resolve against `seams.json`, and each ticket's `write_scope` can physically reach the symbols its seams name                          | T1-09 board lint | `blocked_on_scope` (at lint, before claim) |
+| 4   | **Verify profile is available.** Browser, E2E, database, and external-service requirements of the ticket's verify command are present and reachable                                                  | T3-07            | `blocked_on_infrastructure`                |
+| 5   | **External evidence is declared.** Work needing a sandbox, production data, owner attestation, or unavailable credentials is marked as external-evidence work _before_ coding                        | T3-08            | `blocked_on_scope`                         |
+| 6   | **Risk tier admits the ticket.** Only bounded, evidence-based work with known acceptance criteria is claimable unattended; ambiguous, large, or judgment-requiring tickets are held for a human pass | T2-09 (M-02)     | `held_for_human`                           |
 
 **Condition 6 is the empirically strongest one.** `CONDUCTOR_PILOT_REPORT_REDACTED_2026-08-03.md:325-333`
 (lesson 8) records that using exactly this filter — the same bounded, known-acceptance shape that had already
@@ -246,7 +247,7 @@ attribution stay exact. What changes is where the expensive assurance runs.
 
 ### Level 1 — Fast per-ticket gate (deterministic, minutes, no expert session)
 
-0. **Untrusted verify receipts (M-01, ships first).** A wrapper — *never the agent* — runs the project's
+0. **Untrusted verify receipts (M-01, ships first).** A wrapper — _never the agent_ — runs the project's
    declared verify commands and writes `docs/work/receipts/<ticket>-<sha>.json`: each command, its exit code,
    captured tail, and the `git rev-parse HEAD` it ran at. The completion manifest **cites** the receipt; the
    validator asserts the receipt's SHA matches the pushed commit and every exit code is zero. The agent cannot
@@ -269,11 +270,11 @@ attribution stay exact. What changes is where the expensive assurance runs.
 
 **Precondition — red-fixture calibration.** No check is promoted from advisory to gating until it has a red
 fixture proving it fails on the defect and passes on clean code. `CONDUCTOR_FIELD_REPORT.md:86` records the
-imported grep validators flagging `256` inside "AES-256-GCM" *in a comment*, HTTP `429`, and model-ID strings
+imported grep validators flagging `256` inside "AES-256-GCM" _in a comment_, HTTP `429`, and model-ID strings
 as magic numbers, plus 20 bogus "unreachable" hits on passing code. An uncalibrated gate imports the exact
 false-block problem Level 1 exists to remove.
 
-An expert runs *before* wave admission only for intrinsic high risk: authn/authz, cryptography, secrets,
+An expert runs _before_ wave admission only for intrinsic high risk: authn/authz, cryptography, secrets,
 unsafe deserialization, DB schema or query shape, public API compatibility, concurrency, or a material
 interaction redesign. Ordinary loops, validation helpers, `.tsx` and `.css` do **not** qualify while the
 deterministic scanners are green.
@@ -286,7 +287,7 @@ production lines; 1–3 tickets for auth, persistence, migrations, or parsers.
 
 > **Who holds the gate (corrected 2026-08-31, verification C-06).** `CONDUCTOR_FIELD_REPORT.md:76-88` records
 > LLM-review-as-a-hard-gate failing **in both directions in one session**: a false negative (the hash-forgery
-> bug merged) and, after stickiness was added, false positives that blocked three *completed* tickets —
+> bug merged) and, after stickiness was added, false positives that blocked three _completed_ tickets —
 > **75% of the last four blocks were false**. The resolution is already adopted and wired in
 > `conductor.config.json`: **deterministic validators own the gate; the LLM review is advisory and grounded
 > by validator findings.**
@@ -320,7 +321,7 @@ lead categorizes **Act On / Consider / Noted / Dismissed** with an agreement map
 ID — `packages/loop/src/findings-ledger.ts:100` already mints `F-<ticket>-<n>` with fingerprints and signed
 suppressions, so this reuses the ledger rather than inventing IDs — and is attributed to the ticket and lines
 that introduced it. **Only the owning ticket reopens.** After its fix, re-run that ticket's Level 1 and only
-the *failed* wave checks against the new synthetic head.
+the _failed_ wave checks against the new synthetic head.
 
 **Reviewer-citation gate (M-05, required before any fan-out).** A reviewer finding must cite evidence that
 resolves — a file:line that exists, a command whose output is in a receipt. Findings whose citation does not
@@ -342,7 +343,7 @@ as the real reviewability objection.
 
 Expected effect, using the doc's own medians: a four-expert pass drops from ~8.8 min (sum) to ~2.7 min
 (slowest) — a **3.3× duration reduction**, which is the defensible half and stands on its own. Moving the pass
-from per-ticket to per-wave adds **up to** a 4–8× reduction in the *number* of passes, bounded by the current
+from per-ticket to per-wave adds **up to** a 4–8× reduction in the _number_ of passes, bounded by the current
 trigger rate (861 sessions across 181 attempts is 4.8 experts per attempt, not 4 experts on every ticket).
 
 ### Level 3 — Merge train + automations
@@ -359,7 +360,7 @@ and CVE sweeps, and post-merge smoke — all attached to a merge boundary rather
 
 Wave batching is **not** "audit at the end of the project." A wave is a bounded merge gate; nothing in it
 merges until the applicable aggregate reviews are green. Security- and performance-sensitive tickets keep
-individual specialist review *in addition to* wave checks. Release still requires the full launch gates and a
+individual specialist review _in addition to_ wave checks. Release still requires the full launch gates and a
 final complete security / performance / anti-slop / test / runtime pass on the release candidate.
 **The zero-exit close gate is never weakened.**
 
@@ -368,9 +369,9 @@ final complete security / performance / anti-slop / test / runtime pass on the r
 Two of the additions the verification pass found missing are **already Dokima law**, just unimplemented in
 the executor path — which raises their priority rather than lowering it:
 
-- `CLAUDE.md` Law 4: *"agent sessions are untrusted; every durable state change goes through the
+- `CLAUDE.md` Law 4: _"agent sessions are untrusted; every durable state change goes through the
   verbs/receipts APIs… never let a component verify its own output. When a ticket touches gates, its red
-  fixtures are part of acceptance."* That is M-01 (untrusted verify receipts) and M-04 (red-fixture
+  fixtures are part of acceptance."_ That is M-01 (untrusted verify receipts) and M-04 (red-fixture
   calibration), stated as law. **Policy support is not implementation:** `docs/work/receipts/` does not
   exist, and no conductor file mentions a receipt outside two prompt strings
   (`scripts/conductor/prompts.mjs:13,25`). T2-00 is greenfield in the executor — budget it as build, not
@@ -379,7 +380,7 @@ the executor path — which raises their priority rather than lowering it:
 
 A third law is direct evidence for the seam work: Law 1 records that **45 tickets on this board logged a
 scope collision**, and that five in one session (2026-08-29) were written down honestly and filed nowhere —
-*"a follow-up that names no ticket id is not a deferral, it is a dropped finding."* Seam records with
+_"a follow-up that names no ticket id is not a deferral, it is a dropped finding."_ Seam records with
 build-time assertions are how that stops depending on the moment of least remaining attention.
 
 ## 6. Getting unstuck: the failure-accounting rebuild
@@ -388,14 +389,14 @@ Throughput is lost as much to bad failure routing as to over-scanning. From the 
 executor work:
 
 - **Stage 0 baseline preflight.** Run the exact configured verify command against the exact base commit in a
-  clean detached worktree *before* claiming. Cache by base SHA + normalized command + lockfile hash + runtime
+  clean detached worktree _before_ claiming. Cache by base SHA + normalized command + lockfile hash + runtime
   fingerprint. Red baseline → do not claim, file a repair ticket, consume **zero** feature attempts.
 - **Structured failure fingerprints.** Gate output as JSON (suite, test, file, line, errorClass,
   expected/received), with volatile values normalized before comparison.
 - **Base-vs-candidate differential.** Deterministic tooling — not model prose — classifies
   regression / baseline blocker / mixed / candidate-also-repairs-baseline.
 - **Bounded mechanical remediation.** One formatter/autofix pass, in scope, formatting-only diff, command
-  re-run from scratch, scanners see the amended commit — *before* consuming a coding attempt. Never a security
+  re-run from scratch, scanners see the amended commit — _before_ consuming a coding attempt. Never a security
   waiver, test deletion, or assertion weakening.
 - **Preserve and resume.** `in_progress → candidate_verified → blocked_on_baseline → candidate_verified → in_review`.
   A reviewed candidate is an asset; preserve the branch and worktree metadata rather than regenerating.
@@ -409,20 +410,20 @@ executor work:
 
 Cursor's four named skills, mapped onto what attest already has:
 
-| Cursor | attest today | Action |
-|---|---|---|
-| `multitask` | HANDOFF fan-out, sequential, one model | **Change:** concurrent, per-reviewer model, readonly, summary-only return to orchestrator |
-| `loop` | `MICRO_LOOP.md`, `FIX_VERIFY_LOOP.md`, `RALPH_WIGGUM_LOOP.md`, `GAUNTLET_LOOP.md` | Keep. Already stronger than Cursor's (class-driven CLEARED/PROGRESSED/STALLED/OSCILLATING ceilings) |
-| `goal` | — | **Net-new:** bounded objective loop with a *measurable* exit condition and a budget, for "get X under Y" work |
-| `orchestrator` | `scripts/conductor.mjs` | Keep. This is the conductor; it needs the Level 2 wave stage, not a new name |
+| Cursor         | attest today                                                                      | Action                                                                                                        |
+| -------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `multitask`    | HANDOFF fan-out, sequential, one model                                            | **Change:** concurrent, per-reviewer model, readonly, summary-only return to orchestrator                     |
+| `loop`         | `MICRO_LOOP.md`, `FIX_VERIFY_LOOP.md`, `RALPH_WIGGUM_LOOP.md`, `GAUNTLET_LOOP.md` | Keep. Already stronger than Cursor's (class-driven CLEARED/PROGRESSED/STALLED/OSCILLATING ceilings)           |
+| `goal`         | —                                                                                 | **Net-new:** bounded objective loop with a _measurable_ exit condition and a budget, for "get X under Y" work |
+| `orchestrator` | `scripts/conductor.mjs`                                                           | Keep. This is the conductor; it needs the Level 2 wave stage, not a new name                                  |
 
 Plus the missing layer:
 
-| Primitive | attest today | Action |
-|---|---|---|
-| **rules** (scoped, glob + description, dynamically loaded) | — (only always-loaded shared protocol `.md`) | **Net-new.** `rules/*.mdc` with `description` / `globs` / `alwaysApply`. This is how OPT-08 replaces prose triggers, and how always-on context stops bloating every session |
-| **hooks** (must-run lifecycle) | `plugins/expert-hooks.ts`, validators | Keep for the OpenCode path — but see §16.3: these **cannot reach Dokima's conductor**, which spawns `claude`. Level 1 enforcement there lands in the conductor's gate chain and in git hooks (which do not exist yet in either repo) |
-| **skills** (repeatable workflow) | 45 skills | Keep |
+| Primitive                                                  | attest today                                 | Action                                                                                                                                                                                                                               |
+| ---------------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **rules** (scoped, glob + description, dynamically loaded) | — (only always-loaded shared protocol `.md`) | **Net-new.** `rules/*.mdc` with `description` / `globs` / `alwaysApply`. This is how OPT-08 replaces prose triggers, and how always-on context stops bloating every session                                                          |
+| **hooks** (must-run lifecycle)                             | `plugins/expert-hooks.ts`, validators        | Keep for the OpenCode path — but see §16.3: these **cannot reach Dokima's conductor**, which spawns `claude`. Level 1 enforcement there lands in the conductor's gate chain and in git hooks (which do not exist yet in either repo) |
+| **skills** (repeatable workflow)                           | 45 skills                                    | Keep                                                                                                                                                                                                                                 |
 
 The rules/skills/hooks separation is worth adopting verbatim as vocabulary: **skills are workflows, rules are
 guiding principles that load conditionally, hooks are things that must happen.** Today attest conflates the
@@ -431,7 +432,7 @@ first two, which is why the always-loaded protocol set keeps growing.
 ## 8. Landing sequence
 
 > **Hard ordering constraint.** The incident doc states it and it governs this plan: the current project rules
-> explicitly require per-ticket security and performance review *in addition to* wave review. Changing only the
+> explicitly require per-ticket security and performance review _in addition to_ wave review. Changing only the
 > executor creates a **policy bypass** even if the resulting technical checks are sound. Therefore:
 > **attest policy → validators → Dokima executor.** T2 may not start before T1 merges.
 
@@ -442,81 +443,81 @@ identifiers, not claimable tickets, and filing them is the first action after th
 
 **Lineage note.** The Marauder JIRA-conductor and its local executor commit `e73f668` stay separate. That work
 was deliberately kept project-local and this plan does not attempt to unify the two conductors. T2-08 means
-*re-derive these behaviors here*, not *merge that lineage into Dokima*.
+_re-derive these behaviors here_, not _merge that lineage into Dokima_.
 
 ### T0 — Instrumentation (no policy change, unblocks measurement)
 
-| ID | Work | Repo |
-|---|---|---|
-| T0-01 | Emit per-session structured events: kind, model, duration, verdict, finding IDs | shipwright |
-| T0-02 | Report from the event log: expert sessions per coding attempt, wall time by expert, approve/changes ratio, terminal-state histogram | shipwright |
+| ID    | Work                                                                                                                                                                               | Repo       |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| T0-01 | Emit per-session structured events: kind, model, duration, verdict, finding IDs                                                                                                    | shipwright |
+| T0-02 | Report from the event log: expert sessions per coding attempt, wall time by expert, approve/changes ratio, terminal-state histogram                                                | shipwright |
 | T0-03 | Add the incident doc's metrics list as the report's schema (attempts consumed, mechanical remediations, baseline blockers before/after claim, candidates preserved vs regenerated) | shipwright |
 
 ### T1 — Policy + content (attest first, per the constraint)
 
-| ID | Work | Repo |
-|---|---|---|
-| T1-01 | Rewrite `agents/sdlc-init-phase-4.md` Round 2 into the three-level model; state explicitly which experts are per-ticket (high-risk only) and which are per-wave | attest |
-| T1-02 | Update Definition-of-Done language so per-ticket + per-wave assurance agree — **this is the gate that legalizes OPT-09/OPT-12** | attest |
-| T1-03 | Add the `rules/` primitive (`description`/`globs`/`alwaysApply`) + loader + validator | attest |
-| T1-04 | Convert the broad prose triggers to path + semantic-risk classification expressed as rules (OPT-08) | attest |
-| T1-05 | New skill `wave` — compose, run, and synthesize a Level 2 integration gate | attest |
-| T1-06 | New skill `goal` — bounded objective loop with measurable exit condition | attest |
-| T1-07 | **Add model diversity + consensus weighting to the existing challenger/gauntlet layer** (blindness and maker≠verifier already ship in v3.5.0): concurrent multi-model, 2+-model consensus, Act On / Consider / Noted / Dismissed, agreement map. Not a replacement of `/gauntlet` or `/challenge`. | attest |
-| T1-07b | State in policy that **LLM review is advisory; deterministic validators own the gate** — aligning attest with what `conductor.config.json` already does (`CONDUCTOR_FIELD_REPORT.md:76-88`) | attest |
-| T1-08 | Structured verdict contract for runtime expert: `PASS` / `FAIL_CANDIDATE` / `BLOCKED_BASELINE_CONFIRMED` / `BLOCKED_BASELINE_SUSPECTED` / `BLOCKED_INFRASTRUCTURE`; a nonzero configured verify **always** produces FAIL | attest |
-| T1-11 | **Conductor-first Phase 4** — when a board and conductor are present, Phase 4 dispatches through the conductor; HANDOFF prose becomes the interactive fallback (§12) | attest |
-| T1-12 | Requirement coverage ledger + assembly tickets + long-tail wave emitted at decomposition (§14) | attest |
-| T1-09 | `task-decomposer` emits the seam records `packages/pipeline` already models, and its interface-contract rule stops being "a manual check" (`task-decomposer.md:218`) — add the validator that enforces it | attest |
-| T1-10 | `npm run build:claude`; commit both repos; push both remotes | attest + attest-claude |
+| ID     | Work                                                                                                                                                                                                                                                                                               | Repo                   |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| T1-01  | Rewrite `agents/sdlc-init-phase-4.md` Round 2 into the three-level model; state explicitly which experts are per-ticket (high-risk only) and which are per-wave                                                                                                                                    | attest                 |
+| T1-02  | Update Definition-of-Done language so per-ticket + per-wave assurance agree — **this is the gate that legalizes OPT-09/OPT-12**                                                                                                                                                                    | attest                 |
+| T1-03  | Add the `rules/` primitive (`description`/`globs`/`alwaysApply`) + loader + validator                                                                                                                                                                                                              | attest                 |
+| T1-04  | Convert the broad prose triggers to path + semantic-risk classification expressed as rules (OPT-08)                                                                                                                                                                                                | attest                 |
+| T1-05  | New skill `wave` — compose, run, and synthesize a Level 2 integration gate                                                                                                                                                                                                                         | attest                 |
+| T1-06  | New skill `goal` — bounded objective loop with measurable exit condition                                                                                                                                                                                                                           | attest                 |
+| T1-07  | **Add model diversity + consensus weighting to the existing challenger/gauntlet layer** (blindness and maker≠verifier already ship in v3.5.0): concurrent multi-model, 2+-model consensus, Act On / Consider / Noted / Dismissed, agreement map. Not a replacement of `/gauntlet` or `/challenge`. | attest                 |
+| T1-07b | State in policy that **LLM review is advisory; deterministic validators own the gate** — aligning attest with what `conductor.config.json` already does (`CONDUCTOR_FIELD_REPORT.md:76-88`)                                                                                                        | attest                 |
+| T1-08  | Structured verdict contract for runtime expert: `PASS` / `FAIL_CANDIDATE` / `BLOCKED_BASELINE_CONFIRMED` / `BLOCKED_BASELINE_SUSPECTED` / `BLOCKED_INFRASTRUCTURE`; a nonzero configured verify **always** produces FAIL                                                                           | attest                 |
+| T1-11  | **Conductor-first Phase 4** — when a board and conductor are present, Phase 4 dispatches through the conductor; HANDOFF prose becomes the interactive fallback (§12)                                                                                                                               | attest                 |
+| T1-12  | Requirement coverage ledger + assembly tickets + long-tail wave emitted at decomposition (§14)                                                                                                                                                                                                     | attest                 |
+| T1-09  | `task-decomposer` emits the seam records `packages/pipeline` already models, and its interface-contract rule stops being "a manual check" (`task-decomposer.md:218`) — add the validator that enforces it                                                                                          | attest                 |
+| T1-10  | `npm run build:claude`; commit both repos; push both remotes                                                                                                                                                                                                                                       | attest + attest-claude |
 
 ### T2 — Executor: trust + failure accounting (**now ordered first — this is Defect B**)
 
-| ID | Work | Maps to |
-|---|---|---|
-| **T2-00** | **Untrusted verify receipts** — `.sdlc/verify.json` declares commands; a wrapper runs them and writes `docs/work/receipts/<ticket>-<sha>.json`; the validator asserts SHA match + all exit codes zero | **M-01 / P1 — highest value, ship first** |
-| T2-01 | Stage 0 cached baseline preflight in a clean detached worktree | doc Stage 0 |
-| T2-02 | Structured failure fingerprints + normalization | Stage 1 |
-| T2-03 | Deterministic base-vs-candidate differential classifier | Stage 2 |
-| T2-04 | Bounded in-scope mechanical remediation before a new coding attempt | Stage 3 / OPT-04 |
-| T2-05 | `blocked_on_baseline` + candidate preservation and resume | Stage 4 |
-| T2-06 | Six terminal states with separate retry budgets | Stage 5 |
-| T2-07 | Terminal report: latest blocker first, no destructive truncation | Stage 5 |
-| T2-08 | Port OPT-01..OPT-05 (concurrency, no-change abort, carry exact blocking excerpts, continue after nonzero coder exit with a real diff, parse complete reports despite nonzero exit) — **re-derive here; `e73f668` is not on this machine** | OPT-01..05 |
-| **T2-09** | **Risk-tier admission filter** — only bounded, known-acceptance work is claimable unattended; `held_for_human` for the rest | M-02, §4b condition 6 |
-| **T2-10** | **Scope validation scoped to tracked paths**; never traverse an untracked tree; time-box with a distinct `blocked_on_infrastructure` exit | M-06 |
-| **T2-11** | **Red-fixture calibration harness** — no check promoted advisory→gating without a red fixture | M-04 |
-| **T2-12** | Fix the four executor/infra fatal classes seen in the log (`ENOBUFS`, `ENOSPC`, `row.notes.push`, `testSiblingWarning`) and route them to `blocked_on_infrastructure` | §1 Defect B |
-| **T2-14** | Risk/size-based model routing generalized from `cheapLanes`/`cheapMaxPoints`, exposed as a project setting (§15) | §15.1 |
-| **T2-15** | **Wire** the existing `packages/loop` policy engine (`classifyIteration`, budget, convergence, ledger — 0 external callers today) into the conductor/harbormaster land loop; implement rungs 1-8 incl. split-on-stall and `[PARTIAL]` resume (§13) | §13 |
-| **T2-16** | **Make the LLM verdict advisory in Dokima** — `scripts/conductor/ticket.mjs:51-73` turns reviewer blockers into `gaps` that drive retry and `markBlocked`. This is the change `CONDUCTOR_FIELD_REPORT.md` §5 says matters most, and it was previously unfiled | C-06 |
-| **T2-17** | Fix `row.notes.push is not a function` — **15 of 24 fatals (62%)** — and the `testSiblingWarning` import wiring; route the rest to `blocked_on_infrastructure`. Supersedes the four-equal-causes framing of T2-12 | §1 Defect B |
-| **T2-13** | Failure/scope evidence is written **beside** the worktree, outside the target repo; never `git add -f` from the main checkout (`attest/scripts/conductor/conductor.mjs:508`) | M-08 |
+| ID        | Work                                                                                                                                                                                                                                                          | Maps to                                   |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| **T2-00** | **Untrusted verify receipts** — `.sdlc/verify.json` declares commands; a wrapper runs them and writes `docs/work/receipts/<ticket>-<sha>.json`; the validator asserts SHA match + all exit codes zero                                                         | **M-01 / P1 — highest value, ship first** |
+| T2-01     | Stage 0 cached baseline preflight in a clean detached worktree                                                                                                                                                                                                | doc Stage 0                               |
+| T2-02     | Structured failure fingerprints + normalization                                                                                                                                                                                                               | Stage 1                                   |
+| T2-03     | Deterministic base-vs-candidate differential classifier                                                                                                                                                                                                       | Stage 2                                   |
+| T2-04     | Bounded in-scope mechanical remediation before a new coding attempt                                                                                                                                                                                           | Stage 3 / OPT-04                          |
+| T2-05     | `blocked_on_baseline` + candidate preservation and resume                                                                                                                                                                                                     | Stage 4                                   |
+| T2-06     | Six terminal states with separate retry budgets                                                                                                                                                                                                               | Stage 5                                   |
+| T2-07     | Terminal report: latest blocker first, no destructive truncation                                                                                                                                                                                              | Stage 5                                   |
+| T2-08     | Port OPT-01..OPT-05 (concurrency, no-change abort, carry exact blocking excerpts, continue after nonzero coder exit with a real diff, parse complete reports despite nonzero exit) — **re-derive here; `e73f668` is not on this machine**                     | OPT-01..05                                |
+| **T2-09** | **Risk-tier admission filter** — only bounded, known-acceptance work is claimable unattended; `held_for_human` for the rest                                                                                                                                   | M-02, §4b condition 6                     |
+| **T2-10** | **Scope validation scoped to tracked paths**; never traverse an untracked tree; time-box with a distinct `blocked_on_infrastructure` exit                                                                                                                     | M-06                                      |
+| **T2-11** | **Red-fixture calibration harness** — no check promoted advisory→gating without a red fixture                                                                                                                                                                 | M-04                                      |
+| **T2-12** | Fix the four executor/infra fatal classes seen in the log (`ENOBUFS`, `ENOSPC`, `row.notes.push`, `testSiblingWarning`) and route them to `blocked_on_infrastructure`                                                                                         | §1 Defect B                               |
+| **T2-14** | Risk/size-based model routing generalized from `cheapLanes`/`cheapMaxPoints`, exposed as a project setting (§15)                                                                                                                                              | §15.1                                     |
+| **T2-15** | **Wire** the existing `packages/loop` policy engine (`classifyIteration`, budget, convergence, ledger — 0 external callers today) into the conductor/harbormaster land loop; implement rungs 1-8 incl. split-on-stall and `[PARTIAL]` resume (§13)            | §13                                       |
+| **T2-16** | **Make the LLM verdict advisory in Dokima** — `scripts/conductor/ticket.mjs:51-73` turns reviewer blockers into `gaps` that drive retry and `markBlocked`. This is the change `CONDUCTOR_FIELD_REPORT.md` §5 says matters most, and it was previously unfiled | C-06                                      |
+| **T2-17** | Fix `row.notes.push is not a function` — **15 of 24 fatals (62%)** — and the `testSiblingWarning` import wiring; route the rest to `blocked_on_infrastructure`. Supersedes the four-equal-causes framing of T2-12                                             | §1 Defect B                               |
+| **T2-13** | Failure/scope evidence is written **beside** the worktree, outside the target repo; never `git add -f` from the main checkout (`attest/scripts/conductor/conductor.mjs:508`)                                                                                  | M-08                                      |
 
 ### T3 — Executor: the wave gate
 
-| ID | Work | Maps to |
-|---|---|---|
-| T3-01 | Synthetic validation branch builder from N compatible PR heads | OPT-09 |
-| T3-02 | Wave composition from `seams.json` + disjoint write scopes + changed-line/risk budgets | OPT-12 |
-| T3-03 | Concurrent multi-model reviewer fan-out (**Tier A, advisory only**); each writes a distinct immutable report | OPT-01 + multitask |
-| **T3-03b** | **Reviewer-citation gate** — a finding whose citation does not resolve is discarded before synthesis | M-05 / P4 |
-| T3-04 | Ticket/line attribution + failed-check-only delta re-review, **reusing `packages/loop`'s existing finding ledger** (`F-<ticket>-<n>`, fingerprints, signed suppressions) rather than minting new IDs | OPT-10 — *partly already built* |
-| **T3-05a** | Extend `InterfaceRef` → a tagged `Seam` union (route, DB column, DI binding, event topic, nav entry, config key, feature flag) with `wiring_evidence` + optional `contract_test` | §4 gap 2 |
-| **T3-05b** | **Build-time** seam assertions against the synthetic wave head — Tier D, gating (today's `findUnownedInterfaces` is plan-time only) | §4 gap 1 |
-| **T3-05c** | Teach both conductors to read/emit seam records; `plan.json` boards currently carry none | §4 gap 3 |
-| T3-06 | Merge train: ancestor-compatibility recheck before each merge, post-merge smoke, Done only on verified `main` ancestry | Level 3 |
-| T3-07 | Verify-profile preflight (browser/E2E/DB/external service) before claim | OPT-06 |
-| T3-08 | Mark external-evidence work (sandbox, prod data, owner attestation, credentials) before coding | OPT-07 |
-| T3-09 | Cache dependency install + affected-package build artifacts by main SHA + lockfile hash | OPT-11 |
+| ID         | Work                                                                                                                                                                                                 | Maps to                         |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| T3-01      | Synthetic validation branch builder from N compatible PR heads                                                                                                                                       | OPT-09                          |
+| T3-02      | Wave composition from `seams.json` + disjoint write scopes + changed-line/risk budgets                                                                                                               | OPT-12                          |
+| T3-03      | Concurrent multi-model reviewer fan-out (**Tier A, advisory only**); each writes a distinct immutable report                                                                                         | OPT-01 + multitask              |
+| **T3-03b** | **Reviewer-citation gate** — a finding whose citation does not resolve is discarded before synthesis                                                                                                 | M-05 / P4                       |
+| T3-04      | Ticket/line attribution + failed-check-only delta re-review, **reusing `packages/loop`'s existing finding ledger** (`F-<ticket>-<n>`, fingerprints, signed suppressions) rather than minting new IDs | OPT-10 — _partly already built_ |
+| **T3-05a** | Extend `InterfaceRef` → a tagged `Seam` union (route, DB column, DI binding, event topic, nav entry, config key, feature flag) with `wiring_evidence` + optional `contract_test`                     | §4 gap 2                        |
+| **T3-05b** | **Build-time** seam assertions against the synthetic wave head — Tier D, gating (today's `findUnownedInterfaces` is plan-time only)                                                                  | §4 gap 1                        |
+| **T3-05c** | Teach both conductors to read/emit seam records; `plan.json` boards currently carry none                                                                                                             | §4 gap 3                        |
+| T3-06      | Merge train: ancestor-compatibility recheck before each merge, post-merge smoke, Done only on verified `main` ancestry                                                                               | Level 3                         |
+| T3-07      | Verify-profile preflight (browser/E2E/DB/external service) before claim                                                                                                                              | OPT-06                          |
+| T3-08      | Mark external-evidence work (sandbox, prod data, owner attestation, credentials) before coding                                                                                                       | OPT-07                          |
+| T3-09      | Cache dependency install + affected-package build artifacts by main SHA + lockfile hash                                                                                                              | OPT-11                          |
 
 ### T4 — Automations (trigger-driven, not prompt-driven)
 
-| ID | Work |
-|---|---|
-| T4-01 | PR-diff-triggered review automation (bugbot analogue) on the merge boundary |
-| T4-02 | Scheduled dependency/CVE sweep producing tickets, not prose |
-| T4-03 | Post-merge smoke + contract automation with human-in-loop escalation on second failure |
+| ID    | Work                                                                                                                        |
+| ----- | --------------------------------------------------------------------------------------------------------------------------- |
+| T4-01 | PR-diff-triggered review automation (bugbot analogue) on the merge boundary                                                 |
+| T4-02 | Scheduled dependency/CVE sweep producing tickets, not prose                                                                 |
+| T4-03 | Post-merge smoke + contract automation with human-in-loop escalation on second failure                                      |
 | T4-04 | Risk-tiered auto-merge policy (low-risk auto, medium-risk human) — **explicitly a founder decision, not an agent decision** |
 
 ### T5 — Standing agents (Grokbot analogue) — last, and only after T0–T4 measure clean
@@ -572,7 +573,7 @@ New, for this plan:
     finding row — asserted on the event log (§13 rung 2).
 28. A `[PARTIAL]` return resumes from the specialist's phase files; work the ledger shows finished is never
     re-run (§13).
-29. A requirement with tickets closed but no passing E2E on `main` is reported as *coded*, not *done*, and
+29. A requirement with tickets closed but no passing E2E on `main` is reported as _coded_, not _done_, and
     blocks the assembly gate (§14.1).
 30. A seam whose producer and consumers are in different tickets generates an assembly ticket automatically;
     a board missing one fails plan lint (§14.2).
@@ -591,27 +592,27 @@ Split by defect, because the two pipelines start from different numbers.
 
 **Defect A — Marauder / attest conductor (over-gating):**
 
-| Measure | Now | Target |
-|---|---:|---:|
-| Expert review sessions per coding attempt | 4.76 | **≤ 1.5** |
-| Median four-expert pass | 8.8 min | **~2.7 min** (concurrency), at per-wave frequency |
-| Approve : changes-requested | 25 : 109 | measured post-consensus, with `Dismissed` counted separately |
+| Measure                                   |      Now |                                                       Target |
+| ----------------------------------------- | -------: | -----------------------------------------------------------: |
+| Expert review sessions per coding attempt |     4.76 |                                                    **≤ 1.5** |
+| Median four-expert pass                   |  8.8 min |            **~2.7 min** (concurrency), at per-wave frequency |
+| Approve : changes-requested               | 25 : 109 | measured post-consensus, with `Dismissed` counted separately |
 
 **Defect B — Dokima conductor (failure mis-routing):**
 
-| Measure | Now | Target |
-|---|---:|---:|
-| Retries per start event | 0.72 | **≤ 0.35** |
-| Deterministic gate failures per start event | 0.63 | **≤ 0.30** |
-| Tickets needing ≥1 block/recover cycle | 45.4% (64/141) | **≤ 20%** |
-| Tickets ultimately completing | 90.8% (128/141) | **hold ≥ 90%** — this is already good; do not regress it |
-| `conductor.fatal` rows charged to a ticket | 21 of 24 (excl. operator STOP) | **0** |
-| Terminal summaries whose reason matches the last failing gate | truncated mid-stream today | **100%** |
+| Measure                                                       |                            Now |                                                   Target |
+| ------------------------------------------------------------- | -----------------------------: | -------------------------------------------------------: |
+| Retries per start event                                       |                           0.72 |                                               **≤ 0.35** |
+| Deterministic gate failures per start event                   |                           0.63 |                                               **≤ 0.30** |
+| Tickets needing ≥1 block/recover cycle                        |                 45.4% (64/141) |                                                **≤ 20%** |
+| Tickets ultimately completing                                 |                90.8% (128/141) | **hold ≥ 90%** — this is already good; do not regress it |
+| `conductor.fatal` rows charged to a ticket                    | 21 of 24 (excl. operator STOP) |                                                    **0** |
+| Terminal summaries whose reason matches the last failing gate |     truncated mid-stream today |                                                 **100%** |
 
-*All Defect-B rates are per unique ticket except where the row says "per start event." Rates keyed to
+_All Defect-B rates are per unique ticket except where the row says "per start event." Rates keyed to
 `ticket.start` events are gameable by emitting fewer of them, so the unique-ticket denominator governs
 acceptance; the event ratios are cost indicators only. Baseline window: W0–W11, 141 of 497 tickets — re-derive
-against a current window before grading.*
+against a current window before grading._
 
 **Both:**
 
@@ -625,14 +626,14 @@ against a current window before grading.*
 
 ## 11. Risks
 
-| Risk | Control |
-|---|---|
-| Wave batching read as "scan later" | §5 assurance floor; nothing merges until aggregate reviews are green; release gates unchanged |
-| Policy bypass from executor-first ordering | T1 gates T2/T3; T1-02 is the explicit legalizing ticket |
-| Consensus filtering hides a true lone-model finding | `Dismissed` requires a written reason; lone-model HIGH/CRITICAL on a security surface is never auto-dismissed |
-| Seam map becomes stale documentation | `seams.json` is machine-read by board lint and Level 2; a stale map fails a gate rather than misleading a human |
-| Attribution error reopens the wrong ticket | Findings carry ticket + line attribution; test 11 asserts single-ticket attribution |
-| `attest-claude` drift | Generated only; `npm run build:claude` after every attest merge, per `GENERATED_FILES.txt` |
+| Risk                                                | Control                                                                                                         |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Wave batching read as "scan later"                  | §5 assurance floor; nothing merges until aggregate reviews are green; release gates unchanged                   |
+| Policy bypass from executor-first ordering          | T1 gates T2/T3; T1-02 is the explicit legalizing ticket                                                         |
+| Consensus filtering hides a true lone-model finding | `Dismissed` requires a written reason; lone-model HIGH/CRITICAL on a security surface is never auto-dismissed   |
+| Seam map becomes stale documentation                | `seams.json` is machine-read by board lint and Level 2; a stale map fails a gate rather than misleading a human |
+| Attribution error reopens the wrong ticket          | Findings carry ticket + line attribution; test 11 asserts single-ticket attribution                             |
+| `attest-claude` drift                               | Generated only; `npm run build:claude` after every attest merge, per `GENERATED_FILES.txt`                      |
 
 ---
 
@@ -644,23 +645,23 @@ against a current window before grading.*
 
 From the Cursor session transcript, unprompted, describing this exact system:
 
-> *"Where OpenCode fails still is one agent. If you create a specialized agent and it knows about the
+> _"Where OpenCode fails still is one agent. If you create a specialized agent and it knows about the
 > other specialized agents next in the path that needs to do — it can't call it. It could call it, but the
 > timeout is set so low on calling the next skill. It doesn't really do it as a child process, so you can't
-> wait for it to come back. So automation fails with OpenCode. You kind of have to babysit OpenCode still."*
+> wait for it to come back. So automation fails with OpenCode. You kind of have to babysit OpenCode still."_
 
 That is the defect, and it is architectural, not behavioural. **attest's Phase 4 is human-mediated by
-construction.** `agents/shared/HANDOFF_TEMPLATES.md:44` — *"Print a short pointer to the user — which agent
-to open, the exact line to paste"*; `:281` — *"tell the user to open the N agents (`/<skill>` each)"*. Every
+construction.** `agents/shared/HANDOFF_TEMPLATES.md:44` — _"Print a short pointer to the user — which agent
+to open, the exact line to paste"_; `:281` — _"tell the user to open the N agents (`/<skill>` each)"_. Every
 Round 1 → Round 2 → Round 3 transition requires a human to open a session. The field report names the cost
-directly: *"the copy-paste HANDOFF tax is real and compounds over a long engagement"*
+directly: _"the copy-paste HANDOFF tax is real and compounds over a long engagement"_
 (`attest/issues/field-report-mode1-sdlc-run-2026-07.md:114`).
 
 So "the coding portion gets stuck and is constantly confused" is not a prompting problem to be solved with
 better agent instructions. **The HANDOFF is a message to a human. A conductor is a child process.**
 
 **Therefore: automating Phase 4 means routing Phase 4 through a conductor, not through HANDOFF prose.** The
-mechanism already exists in both repos — it spawns sessions from *outside*, holds the gates itself, and never
+mechanism already exists in both repos — it spawns sessions from _outside_, holds the gates itself, and never
 asks a human to relay a message. What is missing is that the SDLC's own Phase 4 does not use it; it still
 emits HANDOFF documents. Cursor's answer to the same problem is `multitask` — the orchestrator spawns
 subagents and blocks on their return. We have the equivalent and do not point Phase 4 at it.
@@ -672,8 +673,8 @@ becomes the fallback for the interactive case, not the default path.
 ## 13. Self-healing — what happens when a ticket will not move
 
 > **Corrected 2026-08-31 after an independent mechanism audit — this section was wrong in the direction that
-> changes the ticket.** The first draft said the stall ladder is attest doctrine that *"neither executor
-> implements."* It is **implemented and tested in TypeScript in `packages/loop`, and wired to nothing.**
+> changes the ticket.** The first draft said the stall ladder is attest doctrine that _"neither executor
+> implements."_ It is **implemented and tested in TypeScript in `packages/loop`, and wired to nothing.**
 > `classifyIteration`, `createFindingBudgetTracker`, `checkConvergence` and `checkProgressCeiling` have
 > **zero callers** outside `packages/loop` (verified by grep across `apps/`, `packages/`, `scripts/`);
 > `createFindingLedger` has one. `apps/server/src/scheduler/snapshot.ts:18-21` admits it in its own source.
@@ -687,21 +688,21 @@ Dokima code — and the executors call neither.
 **Stall classification already exists** — `attest/agents/shared/FIX_VERIFY_LOOP.md:153-157`, per-row verdicts
 (CLOSED / STILL-OPEN / NEW / REGRESSED) rolled into iteration classes:
 
-| Class | Signature | Doctrine |
-|---|---|---|
-| **STALLED** | a row is STILL-OPEN after an iteration that explicitly targeted it | 2 targeted iterations at the same tier, never 3 — *"the third identical attempt is the worst spend in the system"* |
-| **PROGRESSED** | prior rows CLOSED, NEW rows opened | Healthy. Let it loop while NEW-row count strictly decreases. Ceiling 6 metered / 12 local |
-| **OSCILLATING** | a previously-CLOSED row returns | Zero tolerance. First regression escalate, second stop |
-| **Infra event** | verify truncated / tooling crashed | *"Consumes no iteration and opens no row. Never charge the fixer for infrastructure"* |
+| Class           | Signature                                                          | Doctrine                                                                                                           |
+| --------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| **STALLED**     | a row is STILL-OPEN after an iteration that explicitly targeted it | 2 targeted iterations at the same tier, never 3 — _"the third identical attempt is the worst spend in the system"_ |
+| **PROGRESSED**  | prior rows CLOSED, NEW rows opened                                 | Healthy. Let it loop while NEW-row count strictly decreases. Ceiling 6 metered / 12 local                          |
+| **OSCILLATING** | a previously-CLOSED row returns                                    | Zero tolerance. First regression escalate, second stop                                                             |
+| **Infra event** | verify truncated / tooling crashed                                 | _"Consumes no iteration and opens no row. Never charge the fixer for infrastructure"_                              |
 
 **And it is already TypeScript, with tests** (`packages/loop/src/`):
 
-| Module | What it decides | Constant |
-|---|---|---|
-| `loop-policy-classify.ts:6` | `CLEARED · STALLED · PROGRESSED · MIXED · OSCILLATING` — and `ReviewSignalAction` has **no FAIL variant**, so by construction it cannot auto-fail a passing gate | — |
-| `loop-policy-budget.ts:11-13` | `RETRY_SAME_TIER · ESCALATE · BLOCK · CLEARED`, reasons `stall · regression · post_escalation_stall · second_oscillation` | 2 attempts/tier, +1 post-escalation |
-| `loop-policy-convergence.ts:12-14` | `CONTINUE · PARK`; `CONVERGING · DIVERGED` on a sliding window. Its `:39` comment already says *"Hitting the ceiling while still PROGRESSED is a park, not a failure… split it"* | **metered cap 8, local floor 12** |
-| `micro-loop.ts:126-127` | `DONE · BLOCKED · PARTIAL` | 3 passes, 4 evidence actions |
+| Module                             | What it decides                                                                                                                                                                  | Constant                            |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| `loop-policy-classify.ts:6`        | `CLEARED · STALLED · PROGRESSED · MIXED · OSCILLATING` — and `ReviewSignalAction` has **no FAIL variant**, so by construction it cannot auto-fail a passing gate                 | —                                   |
+| `loop-policy-budget.ts:11-13`      | `RETRY_SAME_TIER · ESCALATE · BLOCK · CLEARED`, reasons `stall · regression · post_escalation_stall · second_oscillation`                                                        | 2 attempts/tier, +1 post-escalation |
+| `loop-policy-convergence.ts:12-14` | `CONTINUE · PARK`; `CONVERGING · DIVERGED` on a sliding window. Its `:39` comment already says _"Hitting the ceiling while still PROGRESSED is a park, not a failure… split it"_ | **metered cap 8, local floor 12**   |
+| `micro-loop.ts:126-127`            | `DONE · BLOCKED · PARTIAL`                                                                                                                                                       | 3 passes, 4 evidence actions        |
 
 ⚠ **Constant conflict — do not land the prose over the code.** `FIX_VERIFY_LOOP.md:156` says the metered
 PROGRESSED ceiling is **6**; `loop-policy-convergence.ts:12` ships **8**. The shipped, tested constant wins
@@ -710,7 +711,7 @@ a committed value — exactly the failure this plan exists to prevent.
 
 Two doctrine items are load-bearing and reach no executor:
 
-1. **"Hitting any ceiling while still PROGRESSED is a *decomposition signal* (the change is too big — split
+1. **"Hitting any ceiling while still PROGRESSED is a _decomposition signal_ (the change is too big — split
    it), not a fix failure."** (`FIX_VERIFY_LOOP.md:156`, and `loop-policy-convergence.ts:39` already
    implements the PARK.) **Splitting the ticket is the missing self-heal move** — the classifier decides
    PARK, and nothing acts on it. A conductor that stalls twice should hand the ticket to the decomposer and
@@ -721,20 +722,20 @@ Two doctrine items are load-bearing and reach no executor:
 **The escalation ladder, in order.** Each rung is attempted once; falling off the bottom is the only path to
 a terminal state:
 
-| # | Trigger | Action | Consumes a coding attempt? |
-|---|---|---|---|
-| 1 | Deterministic gate fails, autofixable | Bounded mechanical remediation in scope | No |
-| 2 | Infra event (`ENOBUFS`, `ENOSPC`, timeout, provider error) | Re-run; route to `blocked_on_infrastructure` if persistent | No |
-| 3 | Candidate fails, base also fails identically | `blocked_on_baseline`; file the repair ticket | No |
-| 4 | Candidate-only failure, first time | Retry with exact blocking evidence carried forward | Yes (1) |
-| 5 | STALLED twice at one tier | Escalate tier — the current ladder's only move | Yes (1) |
-| 6 | Still STALLED, or PROGRESSED into the ceiling | **Decompose: split the ticket, re-plan the pieces, run them** | No — this is a planning act |
-| 7 | Scope wall — the fix needs a file outside `write_scope` | Widen with recorded justification if the file is unowned, else **file a linked ticket** (`CLAUDE.md` Law 1) | No |
-| 8 | Two consecutive failures of the same class after 6 and 7 | `held_for_human` with the candidate and all evidence preserved | No |
+| #   | Trigger                                                    | Action                                                                                                      | Consumes a coding attempt?  |
+| --- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------- |
+| 1   | Deterministic gate fails, autofixable                      | Bounded mechanical remediation in scope                                                                     | No                          |
+| 2   | Infra event (`ENOBUFS`, `ENOSPC`, timeout, provider error) | Re-run; route to `blocked_on_infrastructure` if persistent                                                  | No                          |
+| 3   | Candidate fails, base also fails identically               | `blocked_on_baseline`; file the repair ticket                                                               | No                          |
+| 4   | Candidate-only failure, first time                         | Retry with exact blocking evidence carried forward                                                          | Yes (1)                     |
+| 5   | STALLED twice at one tier                                  | Escalate tier — the current ladder's only move                                                              | Yes (1)                     |
+| 6   | Still STALLED, or PROGRESSED into the ceiling              | **Decompose: split the ticket, re-plan the pieces, run them**                                               | No — this is a planning act |
+| 7   | Scope wall — the fix needs a file outside `write_scope`    | Widen with recorded justification if the file is unowned, else **file a linked ticket** (`CLAUDE.md` Law 1) | No                          |
+| 8   | Two consecutive failures of the same class after 6 and 7   | `held_for_human` with the candidate and all evidence preserved                                              | No                          |
 
-Rung 8 matches the automation pattern Cursor described at Amplitude — *CI fails twice, bring in a human* —
-and rung 7 is already Dokima law: *"a follow-up that names no ticket id is not a deferral, it is a dropped
-finding."*
+Rung 8 matches the automation pattern Cursor described at Amplitude — _CI fails twice, bring in a human_ —
+and rung 7 is already Dokima law: _"a follow-up that names no ticket id is not a deferral, it is a dropped
+finding."_
 
 **The `[PARTIAL]` contract is the return channel for this** (attest v3.5.4, `BOUNDED_TASK_CONTRACT.md`
 Rule 8): a specialist that hits its own cap returns `[PARTIAL]` plus a task ledger and phase files on disk.
@@ -742,7 +743,7 @@ A conductor receiving `[PARTIAL]` must **resume from the phase files**, never bl
 restart finished work. Neither conductor reads that channel today.
 
 **Stuck must be observable, not inferred.** Every rung emits a typed event; a ticket that changes rung
-without changing state twice is itself a signal. The operator's question is *"what is it stuck on"*, and the
+without changing state twice is itself a signal. The operator's question is _"what is it stuck on"_, and the
 answer must come from the event log, not from reading a session transcript.
 
 ## 14. The Assembler — so "done" means a working product, not 495 closed tickets
@@ -759,10 +760,10 @@ Three artifacts close it. None exist today.
 Tickets are the wrong denominator. **User stories and acceptance criteria are.** The ledger maps every
 requirement → the tickets claiming to implement it → the end-to-end test that proves it on `main`.
 
-- A requirement with tickets but no passing E2E is **not done** — it is *coded*.
+- A requirement with tickets but no passing E2E is **not done** — it is _coded_.
 - A requirement with no tickets at all is the silent case A-1 describes, and only a re-derivation from the
   SRS catches it. attest already has the discipline (`includes/denominator-discipline.md`: re-derive the
-  requirement list from the SRS, *never* from the node list you just wrote) and no artifact carries it into
+  requirement list from the SRS, _never_ from the node list you just wrote) and no artifact carries it into
   Phase 4.
 - This is the Ralph Wiggum loop applied to requirements rather than to documents — same inventory / verify /
   gap / repeat, same objective coverage instead of a feeling.
@@ -772,8 +773,8 @@ requirement → the tickets claiming to implement it → the end-to-end test tha
 Wiring is work, and it is currently nobody's ticket. Every seam whose producer and consumers sit in
 different tickets gets an **assembly ticket** whose acceptance is the wiring evidence itself — the route
 registered, the export re-exported, the migration applied, the nav entry present, the flag read. Dokima's own
-originating lesson is exactly this shape: *"W0-05 built `mintReceipt`, W1-02 consumed it, but neither ticket
-owned re-exporting it — the function existed and was invisible"* (`decompose/linter.ts:38-44`).
+originating lesson is exactly this shape: _"W0-05 built `mintReceipt`, W1-02 consumed it, but neither ticket
+owned re-exporting it — the function existed and was invisible"_ (`decompose/linter.ts:38-44`).
 
 The planner emits these automatically from the seam graph. They are the tickets nobody writes by hand
 because they are not features.
@@ -790,7 +791,7 @@ expired-session paths · every error path a happy-path ticket declared but never
 the previous version · uninstall and reset · the first-run bootstrap deadlock class specifically.
 
 Because these are planned tickets with acceptance criteria, they are subject to the same gates. Because they
-are planned *up front*, they are budgeted rather than discovered at the point of maximum schedule pressure.
+are planned _up front_, they are budgeted rather than discovered at the point of maximum schedule pressure.
 
 ### 14.4 The assembly gate
 
@@ -804,16 +805,16 @@ Two requirements, and the second is the one that makes this a product rather tha
 
 ### 15.1 Make the pipeline cheaper and faster
 
-| Lever | Mechanism | Status |
-|---|---|---|
-| Run reviewers concurrently | Slowest-reviewer cost instead of the sum: 8.8 → ~2.7 min | OPT-01, T3-03 |
-| Stop re-reviewing an unchanged patch | Abort the fix loop when the coder produced no diff | OPT-02, T2-08 |
-| Cache the baseline | Keyed by base SHA + command + lockfile + runtime fingerprint; one suite run serves every ticket on that base | T2-01 |
-| Cache dependency install + build | Keyed by main SHA + lockfile hash | OPT-11, T3-09 |
-| Route by risk and size, not by habit | Cheap tier for mechanical work, escalate only on evidence — `cheapLanes` / `cheapMaxPoints` already exist in `conductor.config.json` and are the seed | T2-14 (new) |
-| Summaries, not transcripts | A subagent returns its finding set; the orchestrator never ingests the subagent's context. Cursor's framing, and Brad's in the meeting: *"the main agent doesn't need to know about all the things it did — it just needs that finalized report"* | T1-05 |
-| Load rules by glob, not always | Cursor: *"don't have too many always-apply, that brings context bloat to every chat."* attest's shared protocol set is always-on and growing | T1-03 |
-| Stop paying for false triggers | `.map(` and the word `validate` currently recruit specialists (§1) | OPT-08, T1-04 |
+| Lever                                | Mechanism                                                                                                                                                                                                                                         | Status        |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| Run reviewers concurrently           | Slowest-reviewer cost instead of the sum: 8.8 → ~2.7 min                                                                                                                                                                                          | OPT-01, T3-03 |
+| Stop re-reviewing an unchanged patch | Abort the fix loop when the coder produced no diff                                                                                                                                                                                                | OPT-02, T2-08 |
+| Cache the baseline                   | Keyed by base SHA + command + lockfile + runtime fingerprint; one suite run serves every ticket on that base                                                                                                                                      | T2-01         |
+| Cache dependency install + build     | Keyed by main SHA + lockfile hash                                                                                                                                                                                                                 | OPT-11, T3-09 |
+| Route by risk and size, not by habit | Cheap tier for mechanical work, escalate only on evidence — `cheapLanes` / `cheapMaxPoints` already exist in `conductor.config.json` and are the seed                                                                                             | T2-14 (new)   |
+| Summaries, not transcripts           | A subagent returns its finding set; the orchestrator never ingests the subagent's context. Cursor's framing, and Brad's in the meeting: _"the main agent doesn't need to know about all the things it did — it just needs that finalized report"_ | T1-05         |
+| Load rules by glob, not always       | Cursor: _"don't have too many always-apply, that brings context bloat to every chat."_ attest's shared protocol set is always-on and growing                                                                                                      | T1-03         |
+| Stop paying for false triggers       | `.map(` and the word `validate` currently recruit specialists (§1)                                                                                                                                                                                | OPT-08, T1-04 |
 
 ### 15.2 Dogfood symmetry — every lever above ships as a project-level capability
 
@@ -830,38 +831,38 @@ that is the product. Concretely, each lever gets a project-level configuration s
 - The self-healing ladder (§13) is the conductor's behaviour on any board it runs.
 
 **The test of this section is mechanical:** every lever in 15.1 must name the project-level setting that
-exposes it. A lever that only makes *our* build faster is an incomplete ticket.
+exposes it. A lever that only makes _our_ build faster is an incomplete ticket.
 
 ## 16. The mechanism inventory — what already runs, and what genuinely does not
 
 An independent mechanism audit (2026-08-31) enumerated the deterministic-check and automation surface of both
 repos against this plan. **The plan's recurring error is proposing to build things that exist and are
 unwired.** Four times now: the seam model (§4), the findings ledger (§5), the loop-policy engine (§13), and
-the automation layer below. The default assumption for any new ticket should be *find the existing
-implementation first*.
+the automation layer below. The default assumption for any new ticket should be _find the existing
+implementation first_.
 
 ### 16.1 Already built — extend or wire, do not rebuild
 
-| Surface | Evidence | Consequence for this plan |
-|---|---|---|
-| Loop policy engine | `packages/loop/src/loop-policy-{classify,budget,convergence}.ts`, `micro-loop.ts` — tested, **0 external callers** | §13 is a wiring ticket (T2-15) |
-| Trigger-driven automation | `apps/server/src/scheduler/plan-scheduler.ts` (`pollRunCompletions`, `runNightlyVerify`), `api/server/board-watcher.ts`, `packages/forge/src/mirror/queue.ts`, `packages/gateway/src/providers/request-queue.ts` | **T4 is an extension, not a new layer.** Its header records a deliberate constraint worth keeping: *zero Decide-tier auto-actions* |
-| Loop safety rails | `packages/harbormaster`: `loop-killswitch.ts` (kill/pause file, effective at the next ticket boundary, never mid-session), `limit-pause.ts` (12 attempts, 5-min backoff → 60-min cap), `watchdog-process.ts`, `berths-scheduler.ts`, `conflict-watcher.ts`, `loop-claim.ts` (2 sessions/ticket, 30-min stale claim) | §13's ladder plugs into these; the STOP-at-boundary semantics are already right |
-| Reviewer-citation gate (M-05) | `attest/scripts/delegation-gate.mjs --citations` — **already written** | Wire it, do not design it |
-| Red-fixture harness | `attest/scripts/check-validator-fixtures.mjs`, enforced in `npm test` Pass 7 | Port to Dokima (T2-11) rather than inventing |
-| Supervision / until-done | `attest/scripts/{conductor/supervise.sh,run-until-done.sh,soak-monitor.mjs}`; `shipwright/scripts/{autorun.sh,supervise.sh}` | §12's conductor-first Phase 4 has a runner already |
+| Surface                       | Evidence                                                                                                                                                                                                                                                                                                            | Consequence for this plan                                                                                                          |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Loop policy engine            | `packages/loop/src/loop-policy-{classify,budget,convergence}.ts`, `micro-loop.ts` — tested, **0 external callers**                                                                                                                                                                                                  | §13 is a wiring ticket (T2-15)                                                                                                     |
+| Trigger-driven automation     | `apps/server/src/scheduler/plan-scheduler.ts` (`pollRunCompletions`, `runNightlyVerify`), `api/server/board-watcher.ts`, `packages/forge/src/mirror/queue.ts`, `packages/gateway/src/providers/request-queue.ts`                                                                                                    | **T4 is an extension, not a new layer.** Its header records a deliberate constraint worth keeping: _zero Decide-tier auto-actions_ |
+| Loop safety rails             | `packages/harbormaster`: `loop-killswitch.ts` (kill/pause file, effective at the next ticket boundary, never mid-session), `limit-pause.ts` (12 attempts, 5-min backoff → 60-min cap), `watchdog-process.ts`, `berths-scheduler.ts`, `conflict-watcher.ts`, `loop-claim.ts` (2 sessions/ticket, 30-min stale claim) | §13's ladder plugs into these; the STOP-at-boundary semantics are already right                                                    |
+| Reviewer-citation gate (M-05) | `attest/scripts/delegation-gate.mjs --citations` — **already written**                                                                                                                                                                                                                                              | Wire it, do not design it                                                                                                          |
+| Red-fixture harness           | `attest/scripts/check-validator-fixtures.mjs`, enforced in `npm test` Pass 7                                                                                                                                                                                                                                        | Port to Dokima (T2-11) rather than inventing                                                                                       |
+| Supervision / until-done      | `attest/scripts/{conductor/supervise.sh,run-until-done.sh,soak-monitor.mjs}`; `shipwright/scripts/{autorun.sh,supervise.sh}`                                                                                                                                                                                        | §12's conductor-first Phase 4 has a runner already                                                                                 |
 
 ### 16.2 Genuinely absent — and three are load-bearing
 
-| # | Gap | Evidence |
-|---|---|---|
-| 1 | **No git hooks in either repo.** `core.hooksPath` empty, no tracked `hooks/`, no `hooks:install`. `attest/plugins/expert-hooks.ts:38` explicitly punts commit validation to *"a git pre-commit hook in the user's repo"* — nobody wrote one | Level 1's "must-run" enforcement has **no pre-commit/pre-push surface**; every deterministic check is opt-in, run only when a human types a command or a conductor spawns a gate |
-| 2 | **Dokima red fixtures: 0 of 78.** The vendored `content/validators` pack came without its fixtures, and `check-validator-fixtures.mjs` was not vendored either. attest itself is 22 of 57 chained validators fixtured, 35 grandfathered | M-04/T2-11 is **building the harness from zero** on the Dokima side, not a calibration pass |
-| 3 | **Dokima's gate is two checks wide.** `conductor.config.json` `gate[]` = `validate-file-size`, `validate-circular-deps`; `advisory[]` = 3; **73 of 78 vendored validators are inert** | §5's "deterministic validators own the gate" is aspirational today. Level 1 needs the promotion pipeline (`$note` in that file already states the rule: *promote once red-fixture-calibrated*) |
-| 4 | **The only scheduled job in either repo has never run its payload.** `nightly.yml` gates on root `package.json` `scripts.e2e`, which is `undefined` — the real command is `pnpm --filter @dokima/web e2e` (Law 3). Green-skipping since W4 | Any §10 target assuming a nightly signal is unfounded until fixed. Same shape as this repo's own lesson: *a check nobody runs decays into a check nobody can trust* |
-| 5 | **`TESTING.md` §6's named planted-defect suite does not exist as a suite.** It tabulates 5 attack fixtures; `ci.yml`'s `gate-integrity` job instead re-runs five whole packages | `CLAUDE.md` Law 4 makes those fixtures acceptance for any gate-touching ticket, and nothing enumerates them or fails when one goes missing |
-| 6 | **`validate-scope.sh` and `validate-tracker-fresh.sh` gate every HANDOFF with no red fixture and no grandfather entry** — `check-validator-fixtures.mjs:29` parses only `validate-phase-gate.sh`, missing `run-handoff-gates.sh` | The scope gate M-06 is about is one of the two unproven ones |
-| 7 | **attest CI runs no validator and has no scheduled job** — 4 steps: `npm ci`, `npm test`, `agents:check`, `build:claude:check` | The policy repo's own gates are local-only |
+| #   | Gap                                                                                                                                                                                                                                         | Evidence                                                                                                                                                                                       |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **No git hooks in either repo.** `core.hooksPath` empty, no tracked `hooks/`, no `hooks:install`. `attest/plugins/expert-hooks.ts:38` explicitly punts commit validation to _"a git pre-commit hook in the user's repo"_ — nobody wrote one | Level 1's "must-run" enforcement has **no pre-commit/pre-push surface**; every deterministic check is opt-in, run only when a human types a command or a conductor spawns a gate               |
+| 2   | **Dokima red fixtures: 0 of 78.** The vendored `content/validators` pack came without its fixtures, and `check-validator-fixtures.mjs` was not vendored either. attest itself is 22 of 57 chained validators fixtured, 35 grandfathered     | M-04/T2-11 is **building the harness from zero** on the Dokima side, not a calibration pass                                                                                                    |
+| 3   | **Dokima's gate is two checks wide.** `conductor.config.json` `gate[]` = `validate-file-size`, `validate-circular-deps`; `advisory[]` = 3; **73 of 78 vendored validators are inert**                                                       | §5's "deterministic validators own the gate" is aspirational today. Level 1 needs the promotion pipeline (`$note` in that file already states the rule: _promote once red-fixture-calibrated_) |
+| 4   | **The only scheduled job in either repo has never run its payload.** `nightly.yml` gates on root `package.json` `scripts.e2e`, which is `undefined` — the real command is `pnpm --filter @dokima/web e2e` (Law 3). Green-skipping since W4  | Any §10 target assuming a nightly signal is unfounded until fixed. Same shape as this repo's own lesson: _a check nobody runs decays into a check nobody can trust_                            |
+| 5   | **`TESTING.md` §6's named planted-defect suite does not exist as a suite.** It tabulates 5 attack fixtures; `ci.yml`'s `gate-integrity` job instead re-runs five whole packages                                                             | `CLAUDE.md` Law 4 makes those fixtures acceptance for any gate-touching ticket, and nothing enumerates them or fails when one goes missing                                                     |
+| 6   | **`validate-scope.sh` and `validate-tracker-fresh.sh` gate every HANDOFF with no red fixture and no grandfather entry** — `check-validator-fixtures.mjs:29` parses only `validate-phase-gate.sh`, missing `run-handoff-gates.sh`            | The scope gate M-06 is about is one of the two unproven ones                                                                                                                                   |
+| 7   | **attest CI runs no validator and has no scheduled job** — 4 steps: `npm ci`, `npm test`, `agents:check`, `build:claude:check`                                                                                                              | The policy repo's own gates are local-only                                                                                                                                                     |
 
 ### 16.3 The plugin-reach asymmetry — a real constraint on §7
 
@@ -874,8 +875,8 @@ never fire — not once, for any Dokima conductor session.**
 So §7's "extend hooks to Level 1 enforcement" is unimplementable on the executor where Defect B lives.
 **Corrected direction:** Level 1 enforcement on the Dokima side belongs in the conductor's own gate chain and
 in git hooks (16.2 #1), not in the OpenCode plugin. Any constraint that must bind both executors travels as a
-**verify command in the packet**, per attest's own v3.5.2 doctrine — *"if the executor loaded nothing but
-this packet, would this still bind?"*
+**verify command in the packet**, per attest's own v3.5.2 doctrine — _"if the executor loaded nothing but
+this packet, would this still bind?"_
 
 **New tickets from this audit:** T2-18 install tracked git hooks in both repos · T2-19 port
 `check-validator-fixtures.mjs` and build Dokima red fixtures · T2-20 validator promotion pipeline

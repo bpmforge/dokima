@@ -52,15 +52,18 @@ On a branch `release/v<version>`:
 
 ### 3. Tag and release (founder, on a machine logged in to npm)
 
-From the repo root on `main` after the merge, **Node 22 on PATH**
-(`fnm use 22`):
+From the repo root on `main` after the merge, **Node 22 or 24 on PATH**
+(`fnm use 22`; both are supported since v1.0.1):
 
 ```sh
 git pull --ff-only origin main
 git tag -a v<version> -m "Dokima <version>"
 git push origin v<version> && git push github v<version>
 npm whoami                # must print your npm user
-npm pack --dry-run        # 268 files, dist present — sanity, no side effects
+pnpm smoke:pack           # REQUIRED (v1.0.1): build → npm pack → install the tarball
+                          # into a temp dir → dokima --help, doctor, better-sqlite3
+                          # load. Must end "smoke:pack: OK". Needs the registry.
+npm pack --dry-run        # 275 files as of v1.0.1, dist present — sanity, no side effects
 npm publish --access public
 ```
 
@@ -74,7 +77,21 @@ npx dokima doctor
 ```
 
 `doctor: OK` from the installed package is the definition of "out the door".
-Then, in one commit:
+
+_Added 2026-09-23 (v1.0.1)._ v1.0.0 was tagged without that check having run
+against its final `files` list, and the tarball could not start
+(`ERR_MODULE_NOT_FOUND` for `node-abi-guard.mjs`). `pnpm smoke:pack` above is
+the same check, run before the tag instead of after, and CI runs it on Node 22
+and 24 (`pack-smoke` job). Two limits it names rather than hides:
+
+- `doctor` on a fresh `DOKIMA_HOME` never opens a database, so it does **not**
+  prove better-sqlite3 loads — the smoke loads it explicitly.
+- A client with `ignore-scripts=true` in its npm config (this repo's own
+  `.npmrc` posture) installs **without** the better-sqlite3 native binary, and
+  `doctor` still prints `OK`. Verified 2026-09-23: the load then fails with
+  "Could not locate the bindings file". Install from a directory without that
+  setting, or run `npm rebuild better-sqlite3 --ignore-scripts=false` after.
+  Then, in one commit:
 
 - flip the README's "Not on the registry yet" callout to the
   `npm i -g @bpmforge/dokima` form (it is deliberately still the

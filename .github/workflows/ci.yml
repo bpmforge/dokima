@@ -29,8 +29,15 @@ env:
 
 jobs:
   gate:
-    name: gate (lint + typecheck + test)
+    # Both supported Node lines (engines.node, v1.0.1). better-sqlite3 is a
+    # native module built per ABI, so "supports 24" means the whole suite ran
+    # on 24 — not that the version guard stopped refusing it.
+    name: gate (lint + typecheck + test) — Node ${{ matrix.node }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,7 +49,7 @@ jobs:
           version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'
+          node-version: ${{ matrix.node }}
           cache: 'pnpm'
       - name: Install (frozen lockfile)
         run: pnpm install --frozen-lockfile
@@ -63,6 +70,40 @@ jobs:
         run: pnpm typecheck
       - name: Test
         run: pnpm test
+
+  # v1.0.1 — v1.0.0 shipped a `files` list without two modules its bin entry
+  # imports, and every gate above was green: they all run from the source
+  # tree, where every file exists. This is the one job that installs what a
+  # user installs: build → npm pack → npm install the tarball into an empty
+  # directory → `dokima --help`, `dokima doctor`, and a better-sqlite3 load,
+  # on each supported Node. It needs the npm registry (dependencies), which is
+  # why it is here and not in pre-push or `pnpm test`.
+  pack-smoke:
+    name: pack → install smoke (scripts/smoke-pack.mjs) — Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+    env:
+      # Linux has no OS keychain adapter; doctor's keychain check uses the
+      # encrypted-file vault, whose key is a throwaway generated per run.
+      DOKIMA_NO_KEYCHAIN: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'pnpm'
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+      - name: Throwaway vault key for doctor's keychain probe
+        run: echo "DOKIMA_VAULT_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+      - name: Build, pack, install the tarball, run the installed CLI
+        run: pnpm smoke:pack
 
   conformance:
     name: conformance suite (TESTING.md §4)

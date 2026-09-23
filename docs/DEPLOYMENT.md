@@ -7,11 +7,11 @@ backup, and the optional sandbox container profile.
 
 ## 1. Install & run
 
-| Path | Command | Notes |
-|---|---|---|
-| Try it | `npx dokima` | zero-install; downloads, runs first-run wizard, opens the Canvas |
-| Daily driver | `npm i -g dokima` → `dokima` | adds the `dokima` CLI (same verbs as the UI) |
-| Packaged binaries | post-v1 | per BLUEPRINT §8; npm is the v1 channel |
+| Path              | Command                      | Notes                                                            |
+| ----------------- | ---------------------------- | ---------------------------------------------------------------- |
+| Try it            | `npx dokima`                 | zero-install; downloads, runs first-run wizard, opens the Canvas |
+| Daily driver      | `npm i -g dokima` → `dokima` | adds the `dokima` CLI (same verbs as the UI)                     |
+| Packaged binaries | post-v1                      | per BLUEPRINT §8; npm is the v1 channel                          |
 
 First run: generate the API token (SC-08), pick a port (default localhost-only), offer
 provider onboarding — Copilot device-auth and Vertex ADC are first-run paths, not
@@ -20,7 +20,7 @@ advanced settings (D-007) — and offer the guided sample project (UX_SPEC §8).
 --breakpoint wave --berths 3` drives the same API the Canvas uses.
 
 Platforms (NFR-7): macOS + Linux first-class; **Windows = WSL2 at v1** (D-009) — the
-docs' Windows path installs Node 22 inside WSL; native Windows is post-v1. Apple-Silicon
+docs' Windows path installs Node 22 or 24 inside WSL; native Windows is post-v1. Apple-Silicon
 local inference (LM Studio) is a first-class tested path.
 
 `pnpm build` produces what ships: `vite build` for the SPA, then
@@ -38,11 +38,15 @@ a dev machine has both, and silently preferring `tsx` there would mean the bundl
 never exercised by the person most likely to notice it was broken.
 
 **Assets keep their repo-relative layout inside the tarball** — `content/`,
-`packages/events/migrations`, `apps/web/dist`, `e2e/fitness-fixtures`. Runtime code finds
+`packages/events/migrations`, `apps/web/dist`, `e2e/fitness-fixtures`, the
+bootstrap modules the `bin` entry imports (`cli-entry.mjs`, `node-abi-guard.mjs`,
+`bundle-age.mjs` — v1.0.0 shipped only the first and could not start), and the
+W8 dogfood receipts under `docs/dogfood/` (the report and its JSON; not the
+dev-only driver script). Runtime code finds
 them through `resolveAsset()` / `distributionRoot()` in `@dokima/shared`, which
 anchors on the root `package.json`'s name rather than counting `../` hops from
 `import.meta.url`. That is what makes one path expression correct from a source checkout
-*and* from an installed copy; the old depth-counting silently pointed outside the package
+_and_ from an installed copy; the old depth-counting silently pointed outside the package
 once bundled (W9-13).
 
 Verified end-to-end with no network (C-1): `pnpm pack` → extract → run the `bin` entry
@@ -55,14 +59,14 @@ unverifiable here is only the registry round trip itself (no live publish).
 
 ## 2. Where things live
 
-| Location | Contents | In git? |
-|---|---|---|
-| `~/.dokima/` | `config.json` (global defaults, provider endpoints — non-secret), `token` (0600), `packs/` (installed content packs + signatures), per-project audit high-water seqs (SC-11), logs | no |
-| OS keychain | provider + forge credentials (SC-06) | no |
-| `<project>/.dokima/` | `state.db` (events/projections/receipts — DATABASE.md), `backups/`, `worktrees/`, session scratch | **gitignored** |
-| `<project>/docs/`, `gates/`, `DECISIONS.md` | SDLC deliverables, receipts' file twins | **yes — the repo is the durable artifact store** |
+| Location                                    | Contents                                                                                                                                                                           | In git?                                          |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `~/.dokima/`                                | `config.json` (global defaults, provider endpoints — non-secret), `token` (0600), `packs/` (installed content packs + signatures), per-project audit high-water seqs (SC-11), logs | no                                               |
+| OS keychain                                 | provider + forge credentials (SC-06)                                                                                                                                               | no                                               |
+| `<project>/.dokima/`                        | `state.db` (events/projections/receipts — DATABASE.md), `backups/`, `worktrees/`, session scratch                                                                                  | **gitignored**                                   |
+| `<project>/docs/`, `gates/`, `DECISIONS.md` | SDLC deliverables, receipts' file twins                                                                                                                                            | **yes — the repo is the durable artifact store** |
 
-The split is deliberate: everything a teammate (or future-you) needs to *read* lands in
+The split is deliberate: everything a teammate (or future-you) needs to _read_ lands in
 the repo; everything operational/replayable lives in `state.db`; everything secret lives
 in the keychain.
 
@@ -82,6 +86,7 @@ in the keychain.
 ## 4. Backup story
 
 Two things constitute a full backup, both plain files:
+
 1. **The repo** — push it (dual-remote if you like); docs, receipts' file twins, and
    DECISIONS.md are already in it.
 2. **`.dokima/state.db`** — one SQLite file. Safe copy while running:
@@ -99,12 +104,13 @@ providers. `dokima export` bundles board + receipts + ledgers to portable JSON
 
 Default sandbox is a restricted process — zero dependencies (SC-07). When Podman/Docker
 is available and the project opts in (`sandbox: container` in project settings):
+
 - Verify/test runs execute in a per-run container: project worktree mounted rw at
   `/work`, `--network=none` (opt-in relaxation per project), non-root UID, cleaned env,
   CPU/mem/pids limits, tmpfs scratch.
 - Image: `node:22-slim`-based default; projects can pin their own image (recorded in
   project settings; new-image adoption is an ordinary reviewed change).
-- The container profile changes *isolation strength only* — receipts note which profile
+- The container profile changes _isolation strength only_ — receipts note which profile
   attested the run, nothing else differs.
 
 ## 6. Run modes & environment
@@ -125,13 +131,13 @@ is available and the project opts in (`sandbox: container` in project settings):
 binds anything but `127.0.0.1` (SC-08). Add new local listeners inside this
 block; do not reach for a "default" port.
 
-| Port | Owner | Pinned in |
-|---|---|---|
-| 4317 | the core (Fastify + Canvas), overridable by `DOKIMA_PORT` | `apps/server/src/bootstrap/cli.ts`, `apps/server/src/api/main.ts` |
-| 4318 | `pnpm --filter @dokima/web dev` (Vite HMR) | `apps/web/vite.config.ts` (`strictPort: true`) |
-| 4402 | Playwright e2e server | `apps/web/e2e/env-paths.ts` |
-| 4407 / 4408 | capture-tour light / dark pass | `apps/web/scripts/capture-tour/index.mjs` |
-| 4409 | capture-acceptance | `apps/web/scripts/capture-acceptance.mjs` |
+| Port        | Owner                                                     | Pinned in                                                         |
+| ----------- | --------------------------------------------------------- | ----------------------------------------------------------------- |
+| 4317        | the core (Fastify + Canvas), overridable by `DOKIMA_PORT` | `apps/server/src/bootstrap/cli.ts`, `apps/server/src/api/main.ts` |
+| 4318        | `pnpm --filter @dokima/web dev` (Vite HMR)                | `apps/web/vite.config.ts` (`strictPort: true`)                    |
+| 4402        | Playwright e2e server                                     | `apps/web/e2e/env-paths.ts`                                       |
+| 4407 / 4408 | capture-tour light / dark pass                            | `apps/web/scripts/capture-tour/index.mjs`                         |
+| 4409        | capture-acceptance                                        | `apps/web/scripts/capture-acceptance.mjs`                         |
 
 Ad-hoc cores (a packaged-install smoke test, a second core for a browser
 check) take `DOKIMA_PORT` and belong in **4380–4399**. Sessions have picked
@@ -153,25 +159,25 @@ shape). Check 4402 is free before blaming a red e2e run.
 
 Environment variables (all optional — config file is primary):
 
-| Var | Effect |
-|---|---|
-| `DOKIMA_PORT` | override port (still binds 127.0.0.1 only — SC-08) |
-| `DOKIMA_HOME` | relocate `~/.dokima/` (CI, tests) |
-| `GOOGLE_APPLICATION_CREDENTIALS` | Vertex ADC service-account path (D-007) |
-| `DOKIMA_NO_KEYCHAIN` | headless/WSL fallback: encrypted file vault instead of OS keychain, key prompted or from `DOKIMA_VAULT_KEY` |
-| `DOKIMA_LOG_LEVEL` | `info` default; `debug` adds per-pass loop telemetry to logs |
+| Var                              | Effect                                                                                                      |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `DOKIMA_PORT`                    | override port (still binds 127.0.0.1 only — SC-08)                                                          |
+| `DOKIMA_HOME`                    | relocate `~/.dokima/` (CI, tests)                                                                           |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Vertex ADC service-account path (D-007)                                                                     |
+| `DOKIMA_NO_KEYCHAIN`             | headless/WSL fallback: encrypted file vault instead of OS keychain, key prompted or from `DOKIMA_VAULT_KEY` |
+| `DOKIMA_LOG_LEVEL`               | `info` default; `debug` adds per-pass loop telemetry to logs                                                |
 
 ## 7. Troubleshooting local model endpoints
 
-| Symptom | Cause | Fix (mostly automatic) |
-|---|---|---|
-| First call times out | LM Studio cold model load | gateway sends a warm-up ping on provider connect and before first real call; raise warm-up timeout in provider settings for big models |
-| Calls queue up / feel serial | local endpoints serve one request at a time | by design: the gateway queues per endpoint rather than thrash (BLUEPRINT §3.3); effective berth parallelism is capped by gateway capacity — add endpoints/hosts to widen |
-| "model crashed" errors | LM Studio transient | bounded retry + warm-up between attempts; persistent ⇒ ticket escalates a rung with the failure receipt |
-| Truncated/garbled long outputs | advertised max output ≫ real throughput | packets and expected outputs are sized for ~10k real output tokens on local models (TECH_STACK traps); don't raise chunk sizes to "use" headroom |
-| Wrong/missing models listed | endpoint discovery stale | `dokima providers refresh`; Ollama and LM Studio expose different discovery routes — the adapter handles both, but a proxy in between often strips them |
-| Vertex 403/404 | ADC missing or wrong region | provider status shows the failing ADC step; set `GOOGLE_APPLICATION_CREDENTIALS` or `gcloud auth application-default login`; models are regional — check `location` |
-| Copilot 401 mid-run | short-lived Copilot bearer expired | adapter auto-refreshes from the stored GitHub token; if the device-auth grant was revoked, re-run onboarding |
+| Symptom                        | Cause                                       | Fix (mostly automatic)                                                                                                                                                   |
+| ------------------------------ | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| First call times out           | LM Studio cold model load                   | gateway sends a warm-up ping on provider connect and before first real call; raise warm-up timeout in provider settings for big models                                   |
+| Calls queue up / feel serial   | local endpoints serve one request at a time | by design: the gateway queues per endpoint rather than thrash (BLUEPRINT §3.3); effective berth parallelism is capped by gateway capacity — add endpoints/hosts to widen |
+| "model crashed" errors         | LM Studio transient                         | bounded retry + warm-up between attempts; persistent ⇒ ticket escalates a rung with the failure receipt                                                                  |
+| Truncated/garbled long outputs | advertised max output ≫ real throughput     | packets and expected outputs are sized for ~10k real output tokens on local models (TECH_STACK traps); don't raise chunk sizes to "use" headroom                         |
+| Wrong/missing models listed    | endpoint discovery stale                    | `dokima providers refresh`; Ollama and LM Studio expose different discovery routes — the adapter handles both, but a proxy in between often strips them                  |
+| Vertex 403/404                 | ADC missing or wrong region                 | provider status shows the failing ADC step; set `GOOGLE_APPLICATION_CREDENTIALS` or `gcloud auth application-default login`; models are regional — check `location`      |
+| Copilot 401 mid-run            | short-lived Copilot bearer expired          | adapter auto-refreshes from the stored GitHub token; if the device-auth grant was revoked, re-run onboarding                                                             |
 
 ## 8. Health & diagnostics
 

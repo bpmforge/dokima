@@ -99,7 +99,7 @@ export function isExecutableCriterion(text: string): boolean {
  *
  * Found while writing this chapter's fixture, and it is the larger half of the
  * defect. `node --test 'src/crypto/*.spec.ts'` against a directory with no
- * spec files prints `# tests 0` and exits ZERO. So PLAN-vault-002's criterion
+ * spec files prints `# tests 0` (`ℹ tests 0` on Node 24) and exits ZERO. So PLAN-vault-002's criterion
  * would have passed even if the gate had run it: the placeholder password hash
  * would have landed anyway, endorsed by a green check.
  *
@@ -109,7 +109,10 @@ export function isExecutableCriterion(text: string): boolean {
  */
 export function ranZeroTests(output: string): boolean {
   return (
-    /^#\s*tests\s+0\s*$/m.test(output) ||
+    // `#` is node:test's TAP summary (Node 22 when piped); `ℹ` is its spec
+    // reporter, the default on Node 24 even when piped. Matching only `#` let
+    // an empty run through as green on 24 (v1.0.1).
+    /^[#ℹ]\s*tests\s+0\s*$/m.test(output) ||
     /\bno tests? (ran|found|were found)\b/i.test(output) ||
     /\bNo test files found\b/i.test(output)
   );

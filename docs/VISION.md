@@ -14,7 +14,7 @@ development on a stack that cannot be trusted or afforded end-to-end:
    AI extensions act — three tools with no shared state and no receipts.
 2. **The economics gap.** Frontier-model agents charge frontier prices for every
    keystroke, including the 80% of work a cheap or local model handles fine. Nothing
-   routes each task to the cheapest capable model and *proves* the cheap tier was
+   routes each task to the cheapest capable model and _proves_ the cheap tier was
    honest.
 3. **The guidance gap.** Agents write code; nobody runs the program. There is no
    product manager in the loop turning an idea into vision, scope, requirements, a
@@ -57,12 +57,12 @@ delegation all become safe.
 
 Expanded in USER_PERSONAS.md; summary from BLUEPRINT §1.2:
 
-| Persona | Need Dokima serves |
-|---|---|
-| P1 Solo builder / indie hacker | An idea and no team — Dokima is the PM, architect, security reviewer, and dev crew. |
-| P2 Professional dev | The discipline (gates, threat model, coverage) without the ceremony; agents do bulk work under supervision. |
-| P3 Small team lead | Replaces Jira + GitHub + scattered AI extensions with one surface where agents and humans share the same board. |
-| P4 Local-LLM enthusiast | Maximum work from owned hardware, frontier spend only where receipts prove it's needed. |
+| Persona                        | Need Dokima serves                                                                                              |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| P1 Solo builder / indie hacker | An idea and no team — Dokima is the PM, architect, security reviewer, and dev crew.                             |
+| P2 Professional dev            | The discipline (gates, threat model, coverage) without the ceremony; agents do bulk work under supervision.     |
+| P3 Small team lead             | Replaces Jira + GitHub + scattered AI extensions with one surface where agents and humans share the same board. |
+| P4 Local-LLM enthusiast        | Maximum work from owned hardware, frontier spend only where receipts prove it's needed.                         |
 
 ## Product principles (BLUEPRINT §1.4)
 
@@ -98,7 +98,7 @@ Expanded in USER_PERSONAS.md; summary from BLUEPRINT §1.2:
 
 Full landscape in COMPETITIVE_ANALYSIS.md.
 
-- vs Jira/Linear + Copilot stacks: they track *or* act; Dokima is one canvas
+- vs Jira/Linear + Copilot stacks: they track _or_ act; Dokima is one canvas
   where chat, board, and artifacts are projections of one execution state.
 - vs Devin/Factory-class autonomous agents: they ask you to trust the agent;
   Dokima assumes agents are untrusted and shows receipts (C-2, C-3).
@@ -109,13 +109,15 @@ Full landscape in COMPETITIVE_ANALYSIS.md.
 - vs opencode: shared lineage, different product — opencode is a terminal agent;
   Dokima is the platform (board, receipts, morning queue) an agent runs inside.
 
-## Naming (D-001)
+## Naming (D-021)
 
-**Dokima**: the master builder who takes a vision from blueprint to launch and
-won't let an unseaworthy product ship. Known collision with the CNCF dokima.io
-image-build project (distinct domain); a branding pass (`dokima.dev`-style or a
-qualifier) is required before public launch — tracked in RISKS.md R-4. Metaphor
-budget is capped (BLUEPRINT §10): tickets are tickets, gates are gates, receipts are
+**Dokima** (Greek δόκιμος — "tested and approved; proven genuine"): a product
+that won't let unproven work ship. It replaced the founding name _Shipwright_
+(D-001), whose collision was with `shipwright.io` — CNCF's container-image build
+framework, an adjacent market rather than the "distinct domain" D-001 assumed —
+and with the long-held npm `shipwright` package. D-021 resolved both by renaming
+before any public release; ships as `@bpmforge/dokima`, home `dokima.sh`. Formal
+trademark clearance remains open (RISKS.md R-4). Metaphor budget is capped (BLUEPRINT §10): tickets are tickets, gates are gates, receipts are
 receipts.
 
 ## Non-goals

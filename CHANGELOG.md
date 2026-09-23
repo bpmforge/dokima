@@ -13,6 +13,61 @@ name what a change means for that boundary, not just what moved.
 
 Nothing yet.
 
+## [1.0.1] — 2026-09-23
+
+A packaging fix release that also closes one gate bypass. v1.0.0's tarball
+could not start, so the guard the boundary relies on — "the CLI refuses an
+unsupported Node before anything native loads" — never ran for an installed
+user: the module that implements it was not in the package. And on Node 24,
+newly supported here, the close gate's empty-run check was blind (below): a
+verify command that executed zero tests would have been recorded as a pass.
+Both are closed; no verb, receipt or event shape changed.
+
+### Fixed
+
+- **The published tarball could not start.** `files` listed the `bin` entry
+  (`apps/server/src/bootstrap/cli-entry.mjs`) but not the two modules it
+  imports: `node-abi-guard.mjs` (static — every command died with
+  `ERR_MODULE_NOT_FOUND`) and `bundle-age.mjs` (dynamic, swallowed by a catch,
+  so the stale-bundle notice silently never printed). Both now ship; test files
+  beside them do not.
+- **On Node 24, a verify command that ran zero tests passed the gate.**
+  `node --test` on Node 24 prints its summary with the spec reporter even when
+  piped (`ℹ tests 0`), and the empty-run detector only recognised TAP's
+  `# tests 0` — so an acceptance criterion whose glob matched nothing exited
+  zero and was recorded as green. Both shapes are now refused.
+- A better-sqlite3 binary built under the other supported Node (installed on
+  22, run on 24 — the npx cache and a project's `node_modules` are shared
+  across Node versions) printed the raw `NODE_MODULE_VERSION` trace on the
+  first command that opened a database. The CLI entry now loads the module
+  before the bundle and names the fix — rebuild, not "switch back to 22".
+  Other load failures are left to the command that needs the module, so
+  `--help` still works on an install without the native binary.
+
+### Added
+
+- **Node 24 support.** `engines.node` is `22.x || 24.x`; the version guard
+  accepts every line the range names and still refuses the rest. CI runs lint,
+  typecheck and the full suite on both.
+- **Pack → install smoke gate** (`pnpm smoke:pack`, CI job `pack-smoke` on
+  Node 22 and 24): builds, runs `npm pack`, installs the tarball into an empty
+  directory, then runs the installed `dokima --help`, `dokima doctor`, and an
+  explicit better-sqlite3 load (`doctor` on a fresh home never opens a
+  database). An offline check in `pnpm test` walks every relative import of the
+  `bin` entry — static and dynamic, transitively — and fails when `files` does
+  not cover one; the smoke alone could not see the swallowed dynamic import.
+- `pretest` loads the native module before the suite runs, so a checkout
+  installed under one supported Node and tested under the other is refused by
+  name instead of failing ~50 tests with a raw ABI error.
+- The W8 dogfood receipts (`docs/dogfood/` report and JSON) ship in the
+  package, as VISION's dogfood gate says they do.
+
+### Known gaps
+
+- An npm client configured with `ignore-scripts=true` installs without the
+  better-sqlite3 native binary, and `doctor` still reports OK on a fresh
+  home. Documented in the release handoff; not changed here.
+
 ## [1.0.0] — 2026-09-03
 
 The first public release. Every milestone gate in `docs/RELEASE_TRACKER.md`
@@ -165,6 +220,7 @@ reach a registry — this section is kept for the history it records.
   named `kind-not-constructible` refusal rather than falling back to localhost
   or fabricating a $0 cost. Local kinds work today.
 
-[Unreleased]: https://github.com/bpmforge/dokima/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/bpmforge/dokima/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/bpmforge/dokima/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/bpmforge/dokima/releases/tag/v1.0.0
 [0.1.0]: https://github.com/bpmforge/dokima/releases/tag/v0.1.0

@@ -12,7 +12,7 @@ boundaries in §4 are lint-enforced (**enforcement ticket W3-10 — not yet acti
 flowchart TB
     subgraph Local["User's machine (trusted)"]
       WEB["apps/web — Canvas SPA<br/>chat · board · artifacts · settings"]
-      subgraph Core["apps/server — Dokima Core (Node 22, Fastify)"]
+      subgraph Core["apps/server — Dokima Core (Node 22/24, Fastify)"]
         API["API Gateway<br/>REST /api/v1 + WS"]
         HM["Harbormaster<br/>claims tickets · holds gates<br/>· routes models · berths"]
         PIPE["pipeline<br/>phases 0–5 · interview ·<br/>slates · research · Challenger"]
