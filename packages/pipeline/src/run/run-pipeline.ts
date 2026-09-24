@@ -28,13 +28,12 @@
  */
 import { assertDecisionComplete } from '../blueprint/gate.js';
 import { synthesizeBlueprint } from '../blueprint/synth.js';
-import { isPathDeliverable, PHASES } from '../phases/topology.js';
-import type { TicketDraftInput } from '../decompose/types.js';
 import { buildTechnicalSlate } from '../decisions/technical-slate.js';
 import { decompose } from '../decompose/decompose.js';
 import { deriveRequirementIds } from '../assembler/ledger.js';
 import type { DecomposedPlan } from '../decompose/types.js';
 import { collectDrafts, isInterviewComplete } from '../interview/session.js';
+import { deliverableDrafts } from './deliverable-drafts.js';
 import type { PipelinePort, RunPipelineInput } from './types.js';
 
 /** The Locked-phase (3/4, FR-P7) this run's decompose step gates on. Build
@@ -61,81 +60,6 @@ export class IncompleteInterviewSessionError extends Error {
  * rejects its input, or if the blueprint's decision-complete gate
  * (FR-P7) refuses phase 4.
  */
-
-/**
- * A ticket per phase deliverable the project does not already have.
- *
- * THE GATE WAS RIGHT AND NOTHING FED IT (W21-76). `runPipeline` synthesizes a
- * blueprint and the interview produces implementation tickets; neither writes
- * `docs/VISION.md`, which is what phase 0 declares. So the gate refused on
- * every run for a stated, correct reason, and the project's Fleet card
- * honestly read "Not started" while real work landed.
- *
- * PERSISTING THE BLUEPRINT WOULD NOT HAVE FIXED IT, which is worth recording
- * because it was the cheaper theory: the blueprint is ONE markdown document
- * with a title and sections, not the named files the gate checks for.
- *
- * A TICKET RATHER THAN A SILENT WRITE: the gate exists so a phase is entered
- * on evidence, and the evidence should be something a ticket was actually
- * asked to produce — visible, orderable work a person can read, reorder or
- * delete. Same argument as W21-97's quality tickets, which this sits beside.
- *
- * EVERY PHASE, NOT JUST IDEA (W22-11). W21-76 emitted phase 0 alone because a
- * later phase's gate is unreachable until phase 0 clears, and filing work
- * nobody can start is worse than filing none. Phase 0 clears now.
- *
- * FILTERED BY `isPathDeliverable`, NOT BY A PHASE NUMBER. Phases 4 and 5
- * declare `ticket-board`, `fix-backlog` and `release-notes` — outputs of a
- * run, not documents anyone authors, with no file to write. That is the same
- * rule the phase gate itself applies when reading deliverables off disk, and
- * it now lives once, beside the topology. A phase that later gains a document
- * is picked up here with no change.
- */
-function deliverableDrafts(existing: readonly string[]): readonly TicketDraftInput[] {
-  const have = new Set(existing);
-  const drafts: TicketDraftInput[] = [];
-  // PHASES is already in gate order, which is the order these must appear in:
-  // a phase cannot be entered before its own documents exist.
-  for (const phase of PHASES) {
-    for (const deliverable of phase.deliverables) {
-      if (!isPathDeliverable(deliverable.id)) continue;
-      if (have.has(deliverable.id)) continue;
-      drafts.push({
-        id: `PHASE${phase.id}-${deliverableSlug(deliverable.id)}`,
-        type: 'task' as const,
-        title: `Write ${deliverable.id}`,
-        writeScope: [deliverable.id],
-        dependsOn: [],
-        acceptance: [
-          `${deliverable.id} exists and is written for a reader who has not seen this project before`,
-          'It reflects what the interview actually established, not a template',
-        ],
-        // The phase gate re-checks existence itself; the ticket's own verify
-        // asserts the file is there and not empty, so a close cannot claim it.
-        verify: `test -s ${deliverable.id}`,
-        // A doc-only ticket: no package, no code, no seams. Stated explicitly
-        // rather than left off, because each is a seam the decomposer reasons
-        // about and an omitted one is a guess.
-        ownPackage: null,
-        importsWorkspacePackages: [],
-        providesInterfaces: [],
-        consumesInterfaces: [],
-      });
-    }
-  }
-  return drafts;
-}
-
-/**
- * `docs/design/UX_SPEC.md` -> `design-UX_SPEC`. Keeps the id readable and
- * unique across phases: two phases could otherwise both yield `ARCHITECTURE`.
- */
-function deliverableSlug(id: string): string {
-  return id
-    .replace(/^docs\//, '')
-    .replace(/\.[^./]+$/, '')
-    .replace(/\//g, '-');
-}
 
 export function runPipeline(input: RunPipelineInput, port: PipelinePort): DecomposedPlan {
   if (!isInterviewComplete(input.interviewSession)) {
@@ -168,7 +92,8 @@ export function runPipeline(input: RunPipelineInput, port: PipelinePort): Decomp
   const ticketDrafts = [
     // W21-76: FIRST, so the documents a phase gate checks for are the first
     // thing the board asks for rather than an afterthought below the features.
-    ...deliverableDrafts(input.existingDeliverables ?? []),
+    // W23-37: with the blueprint, so each verify can refuse boilerplate.
+    ...deliverableDrafts(input.existingDeliverables ?? [], blueprint.document.markdown),
     ...port.model.ticketDraftsFrom(blueprint, technicalSlate),
   ];
   // W21-97: a plan built from someone's IDEA carries its quality work. This is

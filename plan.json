@@ -16763,7 +16763,7 @@
       "id": "W23-36",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-801"
       ],
@@ -16773,9 +16773,13 @@
       "points": 3,
       "title": "the Fleet view shows a card for a project whose directory has vanished \u2014 decide whether it hides, prunes or marks it, and say so in the UI",
       "write_scope": [
-        "apps/web/src/fleet/FleetGrid.tsx",
-        "apps/web/src/fleet/FleetGrid.test.tsx",
-        "apps/web/e2e/fleet.spec.ts"
+        "apps/web/src/fleet/ProjectCard.tsx",
+        "apps/web/src/fleet/ProjectCard.test.tsx",
+        "apps/web/e2e/fleet.spec.ts",
+        "apps/web/e2e/notifications.spec.ts",
+        "apps/web/e2e/roster.spec.ts",
+        "apps/web/e2e/global-teardown.ts",
+        "docs/ARCHITECTURE.md"
       ],
       "acceptance": [
         "A project registered in the fleet whose directory no longer exists renders in ONE decided way \u2014 hidden, pruned with a ledgered record, or shown as unavailable with the reason \u2014 and the choice is written down beside the code, not left to whichever surface reads the registry first",
@@ -16787,14 +16791,21 @@
         "DROPPED FINDING, filed 2026-09-20 during a P13 sweep of validate-plan's report-only list. Named TWICE and filed NOWHERE: first by W9-14, in global-setup.ts's own header \u2014 'Whether the Fleet view should itself hide or prune projects whose directory has vanished is a real question, but it is a product question and belongs in its own ticket' \u2014 and again by W22-15, which hit it head-on.",
         "W22-15 IS THE EVIDENCE AND THE WORKAROUND. It implemented the obvious e2e cleanup (each suite removes its own temp projects in afterAll) and that turned notifications.spec.ts and roster.spec.ts RED: 'getByRole(heading, {name: Fleet}) resolved to 3 elements'. The projects stay in the SHARED fleet registry after their directory is gone, so later specs enumerate a card whose directory has vanished, and an unavailable card renders its name as a heading where an available one does not. A stash-and-rerun control passed 76/76 against the same registry, which ruled out accumulation and pinned it on the removal.",
         "SO THE TEST SUITE IS CURRENTLY SHAPED AROUND THE UNANSWERED QUESTION. W22-15 moved removal into a global teardown that runs after the last spec, where nothing can observe the gap \u2014 honest, and explicitly not an answer: its own note says 'A2's each suite removes cannot be honoured literally without answering it'. Answering it here is what would let per-suite cleanup be written the obvious way.",
-        "NOT A TEST TICKET. The observable behaviour is a product one: a user whose project directory moved or was deleted sees a Fleet card that cannot be opened, and nothing tells them why."
+        "NOT A TEST TICKET. The observable behaviour is a product one: a user whose project directory moved or was deleted sees a Fleet card that cannot be opened, and nothing tells them why.",
+        "CLAIMED 2026-09-24 (fix/v1-wave5). SCOPE CORRECTED AT THE READ (Law 1): the filed scope names apps/web/src/fleet/FleetGrid.tsx and its test, which do not exist \u2014 the card is ProjectCard.tsx (+ test). Widened to notifications.spec.ts and roster.spec.ts (the two suites that broke, see below), global-teardown.ts (its header states the mechanism wrongly), and docs/ARCHITECTURE.md (acceptance 4). All unowned by an open ticket.",
+        "THE RECORDED MECHANISM IS WRONG, found by reading the source before choosing a fix. W22-15 and global-teardown.ts say 'an unavailable card renders its name as a heading where an available one does not'. ProjectCard.tsx renders `<h2>{card.name}</h2>` in BOTH branches. The three matches come from the NAME: every fleet.spec temp project is called 'Fleet E2E <uuid>' (temp-project.ts), and `getByRole('heading', { name: 'Fleet' })` is a case-insensitive SUBSTRING match, so each such card's heading matches the page's <h1>Fleet</h1> query. Removing a project's directory mid-run leaves its card in the active list (unavailable is never archived), where an archived available one had been hidden \u2014 that is why removal, and not availability, exposed it.",
+        "DECISION: MARK, as W9-15 already does \u2014 not hide, not prune. Hiding would make a vanished project indistinguishable from one never registered and leave the user no way to learn why it went; pruning would forget a project on a transient absence (an unmounted external drive, a folder mid-rename) and silently rewrite the registry the user owns. The unavailable card keeps its one useful action (Remove from Fleet) and the bulk remove, both registry-only, both explicit. What this ticket adds is the part that was missing: the state is carried by the ACCESSIBLE NAME, not only by a chip and a class.",
+        "DONE. PROVEN RED FIRST, both layers: ProjectCard.test.tsx's two new fixtures failed 2/2 against the unchanged card (no article carried an accessible name at all), and fleet.spec.ts's W9-15 test failed at the new assertion \u2014 getByRole('article', { name: '<name> \u2014 unavailable, \u2026' }) found nothing \u2014 through the real server and a registry entry whose directory was removed mid-test. GREEN: web fleet unit tests 43/43; fleet + notifications + roster e2e 13/13.",
+        "WHAT CHANGED: the unavailable card's article is named '<name> \u2014 unavailable, not found on disk' and its heading '<name> (unavailable)' (aria-label on the h2, so the visible text and the visible 'Unavailable' chip are unchanged); an available card's article is named by the project alone. The three suites' page-heading queries are exact now \u2014 `getByRole('heading', { name: 'Fleet', exact: true })` \u2014 because the defect was a substring match on a project NAME, which the accessible-name change alone could not fix ('Fleet E2E <id> (unavailable)' still contains 'Fleet'). global-teardown.ts's header now gives the real mechanism. docs/ARCHITECTURE.md \u00a76 records the decision in one paragraph.",
+        "TWO TRAPS THE SUITE CAUGHT, worth knowing: the first wording, '\u2014 unavailable, folder gone', collided with notifications.spec's getByLabel('Folder') \u2014 Playwright's label match is a substring too, and aria-label counts as a label \u2014 so 5 specs went red; reworded to 'not found on disk'. And a visually-hidden '(unavailable)' span inside the h2 made W9-15's getByText('Unavailable') resolve to two elements; an aria-label on the heading carries the name without adding text.",
+        "NOT DONE, deliberately: per-suite cleanup was not rewritten back to the 'obvious' afterAll shape. It is now WRITABLE (exact heading queries, a named unavailable state), but the global teardown works, is measured (W22-15), and changing it is not this ticket's acceptance. No follow-up is owed \u2014 the teardown is not a defect."
       ]
     },
     {
       "id": "W23-37",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-402"
       ],
@@ -16805,7 +16816,9 @@
       "title": "every deliverable ticket demands grounding the gate cannot check \u2014 `test -s <path>` is the verify behind 'it reflects what the interview actually established'",
       "write_scope": [
         "packages/pipeline/src/deliverable-drafts.ts",
-        "packages/pipeline/src/deliverable-drafts.test.ts"
+        "packages/pipeline/src/deliverable-drafts.test.ts",
+        "packages/pipeline/src/run/run-pipeline.ts",
+        "packages/pipeline/src/run/run-pipeline.test.ts"
       ],
       "acceptance": [
         "A deliverable ticket's verify command can FAIL for a file that is non-empty boilerplate about no particular product \u2014 the current `test -s <path>` cannot, so the close gate mints receipts against a criterion that reads 'It reflects what the interview actually established, not a template'",
@@ -16817,14 +16830,23 @@
         "DROPPED FINDING, filed 2026-09-20 during a P13 sweep. W22-26 wrote it down in its own closing note and filed nothing: 'Fixing the blindness does not fix the check; that asymmetry is still there and is worth its own ticket if anyone wants the gate to mean what the criterion says.' Law 1: a follow-up that names no ticket id is a dropped finding, not a deferral.",
         "W22-26 FIXED THE OTHER HALF, and fixed it well. The maker was blind \u2014 the synthesized blueprint existed in memory for one function and was discarded \u2014 so it now persists to .dokima/blueprint.md and is pinned first in the handoff's core block. Verified by re-running the same journey: VISION.md went from generic boilerplate to the user's own words including their scope split.",
         "WHAT REMAINS IS THE GATE, and it is the sharper half. deliverableDrafts writes 'It reflects what the interview actually established, not a template' onto EVERY deliverable ticket, and sets verify to `test -s <path>` \u2014 a command whose only possible failure is an empty file. So the board states a criterion the gate cannot evaluate, and a receipt minted against it claims more than it earned. That is the exact shape CLAUDE.md law 3 names: a real check nobody runs decays into a check nobody can trust.",
-        "MEASURE BEFORE CHOOSING (L-56): a grounding check is cheap to state and easy to make vacuous. W23-33 refuses a verify script that manufactures its own evidence and W21-87 refuses one that runs nothing \u2014 a grounding command must survive both, or it is the same defect wearing a new command."
+        "MEASURE BEFORE CHOOSING (L-56): a grounding check is cheap to state and easy to make vacuous. W23-33 refuses a verify script that manufactures its own evidence and W21-87 refuses one that runs nothing \u2014 a grounding command must survive both, or it is the same defect wearing a new command.",
+        "CLAIMED 2026-09-24 (fix/v1-wave5). SCOPE AT THE READ (Law 1): deliverable-drafts.ts does not exist \u2014 deliverableDrafts lives in packages/pipeline/src/run/run-pipeline.ts. It moves into the filed file (packages/pipeline/src/run/deliverable-drafts.ts, as the scope already names it), and run-pipeline.ts + its test widen to take the import and the fixture that already pins the verify string.",
+        "MEASURED BEFORE CHOOSING (the ticket's own L-56 note), and the measurement rules out DEMOTE as a change: the criterion 'It reflects what the interview actually established, not a template' begins 'It', so isExecutableCriterion already sends it to needsHumanCheck and every close receipt already carries humanCheckNotice for it (loop-gates.ts, acceptanceNeedsHumanCheck). Demoting it would change no behaviour, and its red fixture would be a test that cannot fail. So the ticket's real defect is the other half: a verify of `test -s` that passes any non-empty file.",
+        "DECISION: MAKE IT CHECKABLE. runPipeline holds the synthesized blueprint in memory at the moment it builds the drafts, so each deliverable's verify is built from it: `test -s <path>` AND at least two distinct terms drawn from the blueprint (title words weighted, generic software and English words excluded) appear in the file. Deterministic, no model call, and it runs in the worktree without reading .dokima/blueprint.md \u2014 which a sandboxed verify in a ticket worktree cannot rely on reaching. When a blueprint yields fewer than three usable terms, the verify stays `test -s` and the grounding criterion says outright that no machine checks it: never a grep that always passes. Survives W21-87 (a no-match grep prints nothing and exits 1 \u2014 it cannot 'run nothing' and pass) and W23-33 (a command, not a package script, and it creates no file).",
+        "DONE. PROVEN RED FIRST: run-pipeline.test.ts's W23-37 red fixture \u2014 the measured 2026-08-31 VISION.md ('This project aims to deliver a clear, maintainable, and well-documented codebase\u2026') for an expense-tracker blueprint \u2014 was run through the PHASE0-VISION ticket's own verify and exited 0 against the unchanged code: `test -s` passed it. After: exit non-zero; the W22-26 after-state VISION.md ('# Expense Ledger \u2014 Vision / A simple personal expense tracker\u2026') exits 0; an empty file still fails. Also run once under the REAL process sandbox via reRunVerify (sandbox-exec, cleaned env): grounded file exit 0, boilerplate exit 1 \u2014 grep/tr/sed/sort/awk are all reachable there. GREEN: packages/pipeline 525/525.",
+        "WHAT THE CHECK IS: groundingTerms takes up to 8 words from the synthesized blueprint (title words weighted x3, then frequency; the Open Questions section, file paths, English function words, software-in-general vocabulary and common product verbs excluded \u2014 the measured boilerplate's own words are exactly what must never count), and the verify requires at least 2 DISTINCT of them as whole words, plurals folded. For the expense fixture: expense, ledger, monthly, personal, tracker, spending, \u2026 A blueprint yielding fewer than 3 terms keeps `test -s` and its criterion now says 'NO MACHINE CHECKS THIS' \u2014 never a pattern that matches anything.",
+        "WHAT IT DOES NOT PROVE, recorded beside the code as well: a file that names the product's terms can still be thin or wrong. The check separates 'about this product' from 'about software in general' \u2014 the measured failure \u2014 and the prose criterion stays for the person accepting the ticket (it remains non-executable, so humanCheckNotice still names it on the receipt). A maker that can read the verify could satisfy it by naming two terms; that is a document which at least names the product, which the measured artefact did not.",
+        "WHY NOT .dokima/blueprint.md: the acceptance allowed 'a command that reads the persisted .dokima/blueprint.md'. The terms are taken from the same blueprint, at the one moment runPipeline holds it, and baked into the verify \u2014 because a verify runs sandboxed in the ticket's worktree, where .dokima/ (the main checkout's, untracked) is not guaranteed reachable, and a verify that cannot find its reference must not be the thing deciding grounding.",
+        "MOVED, not rewritten: deliverableDrafts left run-pipeline.ts for deliverable-drafts.ts (the filename the ticket was filed with), unchanged apart from the blueprint parameter. The two existing tests that pinned `verify` to the literal `test -s <path>` now pin its prefix.",
+        "CORRECTED AFTER CLOSE, same session, by a review before push \u2014 and the correction is the more important half. The first version weighted TITLE words x3, so a VISION.md made of `# Expense Ledger` over the measured boilerplate body carried two terms and PASSED \u2014 the vacuity the ticket's own note warned about, in the one shape a maker who is shown the blueprint would produce. Proven RED with exactly that fixture (the title heading + the 2026-08-31 body: exit 0 on the first version), then fixed: title words are EXCLUDED from the terms, so the check asks for what the product DOES (for the expense fixture: monthly, personal, tracker, spending, summary, money, total, category). And the grounded verify is restricted to .md deliverables: of the 19 path deliverables one is structured (docs/api/openapi.yaml), whose identifiers (`expense_id`) a whole-word match would never find \u2014 an unwinnable verify, the W21-80 shape. It keeps `test -s` and says NO MACHINE CHECKS THIS. Also red-then-green. packages/pipeline/src/run 36/36."
       ]
     },
     {
       "id": "W23-38",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-402"
       ],
@@ -16848,14 +16870,21 @@
       "notes": [
         "FOUND 2026-09-20 while landing W23-35, filed at the moment it was found rather than in that ticket's closing note (Law 1). The derived path is correctness-neutral \u2014 every execution is real and the gate's is the one that decides \u2014 but it is pure added wall-clock on exactly the path W23-35 exists for: a 27B model on Apple Silicon whose session already burned its leash.",
         "THE CONSTRAINT THAT MAKES THIS NON-TRIVIAL, and the reason it is a measure-first ticket rather than an optimisation: the close gate's value is that it re-derives ground truth itself. Feeding it silentCompletion's earlier result would make the harness the source of the gate's evidence, which is the trust boundary inverted (C-2, Law 4). Any saving must come from the HARNESS's two runs, never the gate's.",
-        "CHEAPEST HONEST WIN, if one is wanted: deriveManifest's verify re-run exists so the manifest reports an exit the harness actually observed rather than asserting 0. It is the one of the three that could be dropped in favour of stating the command and letting the gate be the sole observer \u2014 but that makes the derived manifest an assertion rather than an observation, which is the distinction its evidence line currently claims. Decide it deliberately."
+        "CHEAPEST HONEST WIN, if one is wanted: deriveManifest's verify re-run exists so the manifest reports an exit the harness actually observed rather than asserting 0. It is the one of the three that could be dropped in favour of stating the command and letting the gate be the sole observer \u2014 but that makes the derived manifest an assertion rather than an observation, which is the distinction its evidence line currently claims. Decide it deliberately.",
+        "CLAIMED 2026-09-24 (fix/v1-wave5). THRESHOLD WRITTEN DOWN BEFORE MEASURING (L-56): the harness's two redundant executions \u2014 silentCompletion's criteria run and deriveManifest's verify re-run \u2014 are MATERIAL if together they cost at least 54 s per derived landing, i.e. 1% of the 5400 s session leash the derived path exists to serve, or at least 25% of that landing's total command wall-clock. Below both, the outcome is a measured no. The gate's own runs (verify, criteria, W21-50's base probe) are out of bounds for any saving whatever the numbers say: Law 4.",
+        "METHOD: the real Vault ticket PLAN-vault-002a (verify `npm run lint && npm run typecheck`, AC-1 `node --test src/crypto/argon2id.spec.ts`), its worktree copied as it stands into a scratch clone so nothing writes to the founder's ~/Dokima/vault state.db; the three phases timed with the real harbormaster functions (silentCompletion, deriveManifest, runGateChecks with the base probe), each repeated, on this machine (Apple M5 Max, 18 cores, 128 GB, macOS 27, Node 22.23.2). The founder's recorded slow host for this path is the M-series laptop running a 27B local model; the commands themselves do not touch the model, so the measurement is of the commands.",
+        "DONE \u2014 A MEASURED NO; no behaviour changed. Real tickets, harbormaster's own functions, 5 repetitions each, medians (all five runs within ~1% of the median after a first warm-up): VAULT PLAN-vault-002a \u2014 silentCompletion 347 ms (AC-1 `node --test src/crypto/argon2id.spec.ts`), deriveManifest 771 ms (git + `npm run lint && npm run typecheck`), the gate's runGateChecks 1100 ms without the base probe and 1187 ms with it. TALLY PLAN-tally-01 (AC-1 `npm run build`, verify derived as lint+typecheck+test) \u2014 138 ms, 775 ms, 896 ms, 1077 ms. So the harness's two redundant executions cost 1.12 s and 0.91 s per derived landing.",
+        "AGAINST THE THRESHOLD WRITTEN DOWN AT CLAIM: the absolute arm (54 s, 1% of the 5400 s leash) is missed by a factor of ~50 \u2014 about 0.02% of the leash. The relative arm (25% of the landing's command time) is MET, at ~48% and ~46% \u2014 and I am recording that rather than dropping it quietly, because it was a design error in my own threshold: the harness runs the same commands the gate runs, so its share sits near 50% on every ticket BY CONSTRUCTION and cannot discriminate a material cost from a trivial one. Measured nothing; should not have been written. The call rests on the absolute arm, which is the ticket's own concern (wall-clock on a path that fires only after a session has burned its leash). If the founder reads the pre-declared OR literally, this is the place to overrule it.",
+        "WHAT A SAVING COULD EVEN BE: silentCompletion's run is the precondition that decides whether the derived path is taken at all, so it cannot go. The only candidate is deriveManifest's verify (0.77 s here), and dropping it turns the derived manifest's evidence line from an observation into an assertion \u2014 the distinction the ticket's own note says to decide deliberately. Decided: keep it. The gate's runs were never candidates (Law 4).",
+        "RECORDED BESIDE THE CODE (acceptance 4): loop-land-session-acceptance.ts now carries the numbers, the decision, why the gate's re-run is not a cache, and the condition to re-measure (a project whose verify is minutes, not seconds \u2014 Dokima's own suite would be one). Comment-only change: no test was written because no behaviour changed, and a test of a comment would be one that cannot fail.",
+        "WHERE: scratch clones of ~/Dokima/vault and ~/Dokima/tally with each worktree copied as it stands (uncommitted spec edit included) \u2014 nothing ran against the founder's real state.db. Machine: Apple M5 Max, 18 cores, 128 GB, macOS 27, Node 22.23.2."
       ]
     },
     {
       "id": "W23-39",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "done",
       "stories": [
         "US-201"
       ],
@@ -16881,7 +16910,13 @@
         "THE CARRY-FORWARD CASE IS THE SHARPEST and should be fixed first: the check's own header says \"name the ticket in the note ... which is both a better note and invisible to this check, which is the incentive it should create\". Three tickets followed that instruction exactly and are reported anyway, because their carrier landed. The incentive the check means to create is currently undone by the carrier succeeding.",
         "AND IT FIRES ON ITS OWN FIX: W23-36 and W23-37, filed today to discharge the two real findings, are reported by P13 because their notes quote the deferrals they exist to discharge. The check cannot distinguish \"I am deferring this\" from \"I am the filing for that deferral\".",
         "DO NOT MAKE IT A GATE while doing this. P13 is report-only by design and its own header says so; raising precision is not an argument for raising teeth, and a gate on note prose would be a new way to fail for the wrong reason.",
-        "TRIAGE FIRST, THEN THE REST OF THE BACKLOG. Whatever survives a precision fix is the real dropped-findings list, and it should be worked from a list a person can trust rather than one they have learned to scroll past."
+        "TRIAGE FIRST, THEN THE REST OF THE BACKLOG. Whatever survives a precision fix is the real dropped-findings list, and it should be worked from a list a person can trust rather than one they have learned to scroll past.",
+        "CLAIMED 2026-09-24 (fix/v1-wave5). BASELINE RE-MEASURED at f0f9cb82 before any board edit: P13 reports 24, the same 24 the filing counted. Hand-read every hit, not sampled: 7 owe nothing and fall in the ticket's three kinds \u2014 (a) discharged carry-forwards W21-73, W21-76, W21-77, W21-90, W22-02 (carriers W22-10..14, all done); (b) scope-widen records W21-36, W21-95 ('part of this change and not a follow-up' / 'rather than a follow-up' \u2014 the deferral phrase is NEGATED); (c) quotations W23-36, W23-37 (each quotes the deferral it was filed to discharge). Three more are false positives of a kind the ticket does not name and this change does not touch: W13-18 ('a follow-up' is an interview follow-up QUESTION), W21-48 ('right for its own ticket'), W22-05 ('Deliberately its own ticket rather than folded into W22-01'). The remaining 12 read as genuine unfiled deferrals (W0-02, W3-07, W5-15, W7-01, W7-02, W7-03, W8-07, W12-02, W12-06, W13-27, W21-37, W21-96).",
+        "TRAP FOUND AT THE READ, and it shapes the quotation rule: W22-15's live deferral is ITSELF a quotation \u2014 it adopts W9-14's words ('...belongs in its own ticket.') inside quote marks. So 'ignore quoted deferrals' would silently drop one of the two confirmed live reports acceptance 4 protects. The rule must be: a quoted deferral is suppressed only when the same note records a discharge (DROPPED FINDING/FOLLOW-UP ... filed, 'filed <date>', 'THIS ticket is', 'NOT a deferral'), and never when an unquoted deferral phrase remains.",
+        "DONE. PROVEN RED FIRST: the three new behaviour fixtures ((a) carried forward to a done carrier, (b) a scope-widen record, (c) a filing note quoting the deferral it discharges) failed 3/3 against the unchanged validator; the four guards (unknown carrier, widen-that-also-defers, quote-plus-own-deferral, and the two live fixtures) passed before and after, as guards should. GREEN: 25/25 in validate-plan.test.mjs.",
+        "MEASURED BEFORE AND AFTER on the real board (L-56): 24 -> 13. Every one of the 13 re-read: 11 genuine unfiled deferrals (W0-02, W3-07, W5-15, W7-01, W7-02, W7-03, W8-07, W12-02, W12-06, W13-27, W21-37) and 2 word-sense false positives this change does not touch (W13-18's 'a follow-up' is an interview question; W22-05's 'Deliberately its own ticket rather than folded into W22-01'). Precision by hand-count: 11/24 (46%) -> 11/13 (85%). No genuine report was lost. The 11 removed: (a) W21-73, W21-76, W21-77, W21-90, W22-02; (b) W21-36, W21-95; (c) W23-36, W23-37; plus two the carry rule found that my claim-time triage had not: W21-96 ('filed separately' \u2014 its successors ARE named, 'filed as W22-07 (gateway) and W22-08 (ui)'), and W21-48, a word-sense false positive ('right for its own ticket') that is silenced only because the same ticket names an unrelated carry ('filed as W21-49'). That last one is right for the wrong reason and is recorded here rather than claimed.",
+        "ONE RULE THE FILING DID NOT ANTICIPATE: W23-37 still reported after (c) because it cites Law 1's maxim unquoted \u2014 'a follow-up that names no ticket id is a dropped finding'. The rule being quoted is not work being promised, so that exact phrase is stripped. Loophole guards are fixtures, not intentions: a widen that also defers the rest, and a filing note that quotes a deferral AND defers in its own words, both still report.",
+        "STILL REPORT-ONLY, as the ticket required: P13 fails nothing. The 11 genuine deferrals are old (W0..W21) and are the list to work from; this ticket files none of them, because triaging each one's current truth (several may have been discharged by later tickets that do not name them) is its own sweep."
       ]
     },
     {
@@ -17478,20 +17513,40 @@
       "write_scope": [
         "apps/server/src/cli/sandbox-preflight.ts",
         "packages/harbormaster/src/sandbox/index.ts",
-        "packages/harbormaster/src/sandbox/index.test.ts"
+        "packages/harbormaster/src/sandbox/index.test.ts",
+        "apps/server/src/cli/sandbox-preflight.test.ts",
+        "apps/server/src/cli/run-build-preflight.ts",
+        "apps/server/src/cli/close-evidence.ts",
+        "apps/server/src/cli/close-evidence.test.ts",
+        "apps/server/src/api/pipeline/onboard-security-checks.ts",
+        "apps/server/src/scheduler/wave-automations-wiring.ts",
+        "docs/DEPLOYMENT.md",
+        "docs/SECURITY_CONTROLS.md",
+        "apps/server/src/cli/run-build.test.ts",
+        "apps/server/src/scheduler/wave-automations-wiring.test.ts"
       ],
       "depends_on": [
         "W23-54"
       ],
       "acceptance": [
-        "A project whose settings choose the container profile has its sandboxed runs (verify, close gate, security tools) executed under it, and the receipt names the profile",
-        "A project that chose it on a host with no container runtime fails closed with the reason, never a silent process-profile run",
-        "Red fixture: settings `sandbox: container` reaches runSandboxed as profile \"container\""
+        "NARROWED 2026-09-24 under the founder's v1 brief ('either wire the setting to a real production caller, or remove/deprecate it \u2014 pick the honest one'), recorded here as W23-56 recorded its own: the setting is DEPRECATED TO A REFUSAL, not wired. The original criteria 1 and 3 ('sandboxed runs executed under the container profile, and the receipt names the profile'; 'settings reach runSandboxed as profile \"container\"') are carried unchanged by W23-61.",
+        "A project whose effective settings name `sandbox` as anything but \"process\" is REFUSED with a reason naming the setting and W23-61 at every door that runs sandboxed work for it \u2014 the build-run preflight (before anything is claimed), `dokima close` and the HTTP close (measureCloseEvidence, before verify runs), onboard's security scans (every scanner UNAVAILABLE with the reason), and the scheduler's post-merge smoke \u2014 never a silent process-profile run",
+        "`sandbox: process` and no setting behave exactly as before; an unknown value is refused rather than coerced",
+        "DEPLOYMENT.md \u00a75 and SECURITY_CONTROLS SC-07 stop telling users to set it, and say what happens if they do",
+        "Red fixtures: settings `sandbox: container` makes measureCloseEvidence refuse and the verify never run; makes executeBuildRun exit 2 with nothing claimed; makes the post-merge smoke fail with the reason and run nothing"
       ],
       "points": 3,
-      "status": "todo",
+      "status": "done",
       "notes": [
-        "FILED 2026-09-23 (Law 1) while claiming W23-54: `grep -rn \"profile: 'container'\"` over apps/ and packages/ finds no production caller; runSandboxed defaults to \"process\"; sandboxedToolRunner passes no profile. W23-54 makes the SECURITY TOOLS correct under the container profile when it is selected; this ticket is the selection."
+        "FILED 2026-09-23 (Law 1) while claiming W23-54: `grep -rn \"profile: 'container'\"` over apps/ and packages/ finds no production caller; runSandboxed defaults to \"process\"; sandboxedToolRunner passes no profile. W23-54 makes the SECURITY TOOLS correct under the container profile when it is selected; this ticket is the selection.",
+        "CLAIMED 2026-09-24 (fix/v1-wave5). DECISION: DEPRECATE AND FAIL CLOSED, do not wire \u2014 the founder's brief allowed either and asked for the honest one. Reasons, each checked in the code rather than assumed: (1) the only selection pattern in this code is a PROCESS-GLOBAL switch (setUnsandboxedVerifyWaiver), fine for a host-level waiver and wrong for a per-project choice, because one core serves N projects over HTTP and a global would leak project A's profile into project B's close; (2) real wiring means threading a profile through ~10 call sites (reRunVerify under the close gate, the acceptance runs, W21-50's base probe, the review scanners, onboard scans, `dokima close`, the HTTP close, the scheduler's post-merge smoke, the agent-session verify tool) plus a receipt field that does not exist \u2014 no receipt today names ANY profile; (3) on this machine (podman, applehv) a macOS worktree's node_modules are darwin binaries, so a Node project's verify inside the default node:22-slim Linux image fails on the first native module \u2014 the profile is unproven for verify, and wiring it would ship a mode that reds real tickets. What is dishonest TODAY is the documentation plus the silence: DEPLOYMENT \u00a75 tells a user to set `sandbox: container`, and doing so changes nothing and says nothing.",
+        "SO: a project whose settings name `sandbox` as anything but \"process\" is REFUSED, with the reason, at every door that runs sandboxed work for it \u2014 the build-run preflight, `dokima close` and the HTTP close (both via measureCloseEvidence), onboard's security scans, and the scheduler's post-merge smoke. DEPLOYMENT \u00a75 and SECURITY_CONTROLS SC-07 are corrected to say the profile exists as a library option and is not selectable. The real wiring is filed as W23-61 with the three blockers above, so it is a ticket and not a sentence (Law 1).",
+        "SCOPE WIDENED AT THE READ (Law 1): the filed scope (sandbox-preflight.ts, sandbox/index.ts + test) reaches the build-run door only, and acceptance 2 \u2014 'never a silent process-profile run' \u2014 is violated by every other door. Added: run-build-preflight.ts (calls the new check), close-evidence.ts + test (CLI and HTTP close), onboard-security-checks.ts, scheduler/wave-automations-wiring.ts, sandbox-preflight.test.ts, docs/DEPLOYMENT.md, docs/SECURITY_CONTROLS.md. All unowned by an open ticket.",
+        "DONE. PROVEN RED FIRST at the door that already existed: close-evidence.test.ts's W23-57 fixture failed against the unchanged code \u2014 'expected true to be false': a project with `sandbox: container` CLOSED, its verify run under the process profile. The two doors whose tests had to be written after their seam existed were proven the other way, break-and-restore: removing the refusal from run-build-preflight.ts turns its call-site fixture red ('expected +0 to be 2' \u2014 the run started and exited 0 under the process profile), and removing it from runPostMergeSmoke turns the smoke fixture red (the verify ran and created its file). Both restored and green.",
+        "WHY THE NEW CODE LIVES WHERE IT DOES: the check is one function over the settings (sandboxSettingRefusalFrom) with one async wrapper, in sandbox-preflight.ts beside the waiver it mirrors, so the five doors cannot disagree about what counts as a refusal. The onboard door reuses sandboxedToolRunner's own error path (refusedToolRunner) so each scanner reports UNAVAILABLE with the reason \u2014 coverage missing, never clean \u2014 rather than inventing a second shape. SandboxUnavailableError is not in harbormaster's barrel, so a plain Error carries the message; the runner reads only err.message.",
+        "NOT TOUCHED, deliberately: the agent-session verify tool and the derived-manifest path run only INSIDE a build run, which the preflight now refuses before it starts. SRS FR-I4 still states the container profile as a requirement; it is a requirement, and W23-61 is what satisfies it.",
+        "Tests: the affected directories (apps/server cli, scheduler, api/pipeline) 555/555; the full gate is recorded in the wave's closing commit.",
+        "DOORS TRACED AFTER CLOSE (review before push): one grep over the sandboxed primitives (runSandboxed, reRunVerify, sandboxedToolRunner, runSecurityChecks, runCloseGate, runGateChecks, runAcceptanceCriteria) outside tests. Every production caller reaches them through one of the five refusals: review-pass.ts is called only from run-build.ts and build-repair.ts (itself only from build-verify.ts, only from run-build.ts), so it sits behind the build preflight; the HTTP runs route calls executeBuildRun, which runs runBuildPreflight first; packages/pipeline/src/plans/lifecycle.ts names reRunVerify in a comment only. No sixth door."
       ],
       "stories": [
         "US-402"
@@ -17549,6 +17604,41 @@
         "DONE 2026-09-23 (fix/v1-review-gaps). vitest.network-guard.ts (every package's setup file) pins DOKIMA_SAST_RULES to /nonexistent/dokima-test-suite/no-sast-rules unless DOKIMA_TEST_REAL_SCANNERS=1; CLI spawns inherit it. RED on this machine: sast-rules-isolation.test.ts 'expected undefined to be truthy' and, with the env assertion removed, 'expected { ...(4) } to be null' (the founder's real 3-pack ruleset resolved). After: the full suite ran in 60 s with no opengrep process started. Gate (Node 22): lint 0, typecheck 0, 5517 tests (625 files, 3 skipped) in 60 s, 76 e2e, 6 validators + temp-leaks clean. The 11 orphaned scans from the broken run were killed by hand and the 7 temp dirs they re-created (.dokima/telemetry.jsonl written after their worker's cleanup) removed by exact path."
       ],
       "stories": []
+    },
+    {
+      "id": "W23-61",
+      "title": "wire the container sandbox profile for real: per-project selection threaded through every sandboxed door, the profile on the receipt, and a verify that can actually run in the image",
+      "phase": 23,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/sandbox/index.ts",
+        "packages/harbormaster/src/sandbox/index.test.ts",
+        "packages/harbormaster/src/loop-gates-verify.ts",
+        "packages/harbormaster/src/loop-gates.ts",
+        "apps/server/src/cli/sandbox-preflight.ts",
+        "apps/server/src/cli/close-evidence.ts",
+        "docs/DEPLOYMENT.md"
+      ],
+      "depends_on": [
+        "W23-57"
+      ],
+      "acceptance": [
+        "A project whose settings choose `sandbox: container` has its verify, acceptance criteria, base probe and security tools executed under the container profile, and the close receipt names the profile that ran",
+        "The selection is per PROJECT, never process-global: two projects served by one core, one on each profile, each run under their own (fixture)",
+        "A Node project whose worktree was installed on a macOS host either runs its verify in the container (dependencies installed inside it) or is refused with the reason before claiming \u2014 never a verify that fails on a foreign native binary and reads as the ticket's fault",
+        "W23-57's refusal is removed only in the same change that makes the above true"
+      ],
+      "points": 8,
+      "status": "todo",
+      "notes": [
+        "FILED 2026-09-24 by W23-57 (Law 1), which deprecated the documented `sandbox: container` setting to a fail-closed refusal because none of this exists yet. The three blockers W23-57 recorded are this ticket's shape: the only selection pattern is process-global (setUnsandboxedVerifyWaiver) and one core serves N projects; ~10 call sites and no receipt field; darwin node_modules inside a Linux image. W23-54 already made the security tools correct under the profile once it is selected.",
+        "NEEDS A FOUNDER CALL BEFORE IT IS WORTH CLAIMING: whether v1.x promises a container profile at all. SC-07's process profile already denies network and cleans the env on macOS and Linux; the container adds isolation strength, not a missing guarantee.",
+        "RENUMBERED 2026-09-24 from W23-60 to W23-61, same session it was filed: the founder assigned W23-60 to the bundled open SAST baseline. Every reference (W23-57's notes and acceptance, sandbox-preflight.ts's refusal text and its tests, DEPLOYMENT \u00a75, SECURITY_CONTROLS SC-07, sandbox/index.ts) was renamed in the same commit; the earlier commit messages on fix/v1-wave5 that say W23-60 for this ticket predate the renumber."
+      ],
+      "stories": [
+        "US-402"
+      ]
     }
   ]
 }

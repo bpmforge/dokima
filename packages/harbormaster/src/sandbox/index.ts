@@ -5,6 +5,11 @@
  * to — `SandboxRunResult.profile` and `.networkAllowed` are the fields a
  * future close-gate wiring records onto the receipt payload (out of this
  * ticket's write-scope: `packages/harbormaster/src/sandbox/**` only).
+ *
+ * W23-57: NO PRODUCTION CALLER SELECTS `'container'`. Every door passes no
+ * profile and gets `'process'`; a project whose settings ask for the container
+ * is refused in `apps/server` (`sandbox-preflight.ts`) rather than given the
+ * process profile silently. Selecting it per project is W23-61.
  */
 
 import { isContainerRuntimeAvailable, runInContainerSandbox } from './container.js';

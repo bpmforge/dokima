@@ -13,10 +13,18 @@
  * it: notifications.spec.ts and roster.spec.ts went red with
  * "getByRole('heading', { name: 'Fleet' }) resolved to 3 elements". A removed
  * project stays in the SHARED fleet registry, so later specs enumerate a card
- * whose directory has vanished, and an unavailable card renders its name as a
- * heading where an available one does not. A control run with the removal
- * stashed passed 76/76 against the same registry, which pins it on the
- * removal rather than on accumulation.
+ * whose directory has vanished. A control run with the removal stashed passed
+ * 76/76 against the same registry, which pins it on the removal rather than on
+ * accumulation.
+ *
+ * W23-36 CORRECTED THE MECHANISM this header first gave ("an unavailable card
+ * renders its name as a heading where an available one does not" — both
+ * branches of ProjectCard always rendered `<h2>{name}</h2>`). The matches came
+ * from the NAME: fleet.spec's projects are called "Fleet E2E <uuid>", and a
+ * non-exact role query is a case-insensitive substring match. An archived card
+ * is hidden; an unavailable one is not, so removal is what exposed it. The
+ * page-heading queries are exact now, and an unavailable card's accessible
+ * name says so — which is what makes per-suite removal writable, if wanted.
  *
  * W9-14 had already named the underlying question in `global-setup.ts`:
  * whether the Fleet view should hide or prune projects whose directory is
@@ -44,7 +52,8 @@ import { HOME } from './env-paths.js';
 import { removeTempProject } from './temp-project.js';
 
 /** `dokima-<label>-e2e-<uuid>` — what `freshProjectPath` produces, and what A1 names. */
-const TEMP_PROJECT = /^dokima-.+-e2e-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const TEMP_PROJECT =
+  /^dokima-.+-e2e-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export default async function globalTeardown(): Promise<void> {
   const tmp = os.tmpdir();

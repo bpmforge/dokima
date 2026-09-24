@@ -17,7 +17,7 @@ test('Fleet home renders the header actions (empty-state affordances, UX_SPEC §
 }) => {
   await page.goto('/');
   const header = page.locator('.fleet__header');
-  await expect(page.getByRole('heading', { name: 'Fleet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Fleet', exact: true })).toBeVisible();
   await expect(
     header.getByRole('button', { name: 'New project', exact: true }),
   ).toBeVisible();
@@ -97,7 +97,7 @@ test('opening a project switches to its workspace; "Fleet" breadcrumb returns', 
   await expect(page).toHaveURL(/[?&]project=/);
 
   await page.getByRole('button', { name: '← Fleet' }).click();
-  await expect(page.getByRole('heading', { name: 'Fleet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Fleet', exact: true })).toBeVisible();
 
   // Leave the fixture archived rather than lingering in the active list across local re-runs.
   await page
@@ -147,6 +147,18 @@ test('W9-15: a project whose directory vanished shows as unavailable, and Remove
   await expect(goneCard.getByText('Ready')).toHaveCount(0);
   await expect(goneCard.getByRole('button', { name: 'Open' })).toHaveCount(0);
 
+  // W23-36 RED: the state is in the ACCESSIBLE NAME, not only the chip — and
+  // the page heading stays one heading. A card named "Fleet E2E <id>" used to
+  // be a third match for getByRole('heading', { name: 'Fleet' }).
+  await expect(
+    page.getByRole('article', { name: `${gone.name} — unavailable, not found on disk` }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: `${gone.name} (unavailable)`, exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole('article', { name: kept.name, exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Fleet', exact: true })).toHaveCount(1);
+
   // The healthy one is still an ordinary card.
   const keptCard = page.locator('.project-card', { hasText: kept.name });
   await expect(keptCard).not.toHaveAttribute('data-unavailable', 'true');
@@ -161,7 +173,9 @@ test('W9-15: a project whose directory vanished shows as unavailable, and Remove
   // never touch the OTHER project's directory or its state.db.
   await expect(page.locator('.project-card', { hasText: kept.name })).toBeVisible();
   await expect(fs.stat(kept.dir)).resolves.toBeDefined();
-  await expect(fs.stat(path.join(kept.dir, '.dokima', 'state.db'))).resolves.toBeDefined();
+  await expect(
+    fs.stat(path.join(kept.dir, '.dokima', 'state.db')),
+  ).resolves.toBeDefined();
 
   await fs.rm(kept.dir, { recursive: true, force: true });
 });

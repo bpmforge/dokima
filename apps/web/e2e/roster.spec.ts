@@ -16,7 +16,7 @@ function freshProjectPath(): { dir: string; name: string } {
 
 test('Roster nav toggles the Agent Roster screen and back to Fleet', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Fleet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Fleet', exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Roster', exact: true }).click();
   await expect(page.getByTestId('roster-view')).toBeVisible();
@@ -26,7 +26,7 @@ test('Roster nav toggles the Agent Roster screen and back to Fleet', async ({ pa
   // other, so you return to it by choosing it. Label is Fleet with no
   // project open, Board with one.
   await page.getByRole('button', { name: 'Fleet', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Fleet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Fleet', exact: true })).toBeVisible();
 });
 
 test('lists real content/experts grouped by cluster; a role with no model gets an ACTION, not a diagnosis (W13-49)', async ({
@@ -82,7 +82,10 @@ test('per-agent history loads (zero counts, honest empty) when a project is open
   await page.getByRole('button', { name: 'choose the location' }).click();
   await page.getByLabel('Folder').fill(dir);
   await page.getByLabel('Project name').fill(name);
-  await page.locator('.fleet__form').getByRole('button', { name: 'Create project' }).click();
+  await page
+    .locator('.fleet__form')
+    .getByRole('button', { name: 'Create project' })
+    .click();
   // W17-09: creating a project auto-opens it — the workspace, not the grid.
   await expect(page.getByTestId('split-pane-workspace')).toBeVisible();
 

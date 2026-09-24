@@ -23,6 +23,9 @@
 //       the whole defect this field was added to fix
 //   P13 REPORT ONLY (never fails): a note that defers work to a later ticket
 //        while naming no ticket id — the work that gets promised and dropped.
+//        W23-39: a named carry discharges it even once the carrier is done; a
+//        negated deferral ("not a follow-up") and a quoted one in a filing note
+//        are not deferrals. 24 reported -> 13, no confirmed-live report lost.
 //   P12 REPORT ONLY (never fails): acceptance criteria that name a rendered UI
 //        surface on a ticket whose write_scope cannot reach apps/web. See the
 //        block at the bottom for the measurement that decided report-vs-fail.
@@ -35,6 +38,7 @@
 // Exit 1 on any violation; prints the violation list. Exit 0 prints OK + report.
 
 import { readdirSync, readFileSync } from 'node:fs';
+import { deferredWorkNotes } from './validate-plan-deferrals.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -267,56 +271,10 @@ console.log(`Claimable now: ${claimable.join(', ') || '(none)'}`);
   }
 }
 
-// ---- P13 deferred work that named no ticket: a REPORT (2026-08-29)
-/**
- * A note that says "worth a follow-up" or "its own ticket" and names none.
- *
- * FOUND BY BEING CAUGHT. Across one long session I deferred work in ticket
- * notes five times — cross-run gate evidence (W21-73), deliverable tickets
- * beyond phase 0 (W21-76), the e2e teardown retry (W21-77), the Decide-card
- * half of the rejection notice (W21-90), the first real @unreached marker
- * (W22-02) — and filed none of them. Every one was written down honestly, in
- * the right place, and still lost, because writing it down was the last thing
- * that happened to it. The founder asked what was watching for that. Nothing
- * was.
- *
- * MEASURED before wiring, as P12 and W22-09 both were: 17 deferral-shaped
- * notes across the whole board, 7 naming an existing ticket and 10 not. Hand
- * reading the 10, roughly half are genuine unfiled work and the rest are scope
- * or closure notes that merely read like deferrals. ~50% is far better than
- * P12's 13% and still not a gate — a validator wrong half the time teaches
- * people to skim it (D-014, W21-38). So it reports.
- *
- * THE CHEAP ANSWER IS ALSO THE RIGHT ONE: name the ticket in the note. A
- * deferral that says "filed as W22-10" is both a better note and invisible to
- * this check, which is the incentive it should create.
- */
+// ---- P13 deferred work that named no ticket: a REPORT (2026-08-29; W23-39)
+// The rule and its reasoning live in validate-plan-deferrals.mjs.
 {
-  const DEFER =
-    /\b(worth (its own |a )?(ticket|follow-?up)|its own ticket|needs its own ticket|filed (separately|as its own)|a follow-?up|left for (a|its own) (ticket|follow-?up))\b/i;
-  // A CARRIER IS OPEN WORK. Referencing a done ticket is history — this
-  // repo's notes cite W-ids constantly, so "mentions any ticket" matched
-  // almost everything and the check reported ZERO, which is the L-47 failure
-  // it was written to prevent. Only a ticket that can still be worked can
-  // carry a deferral.
-  const carriers = new Set(T.filter((t) => t.status !== 'done').map((t) => t.id));
-  const notes = [];
-  // DONE TICKETS INCLUDED, and that is the point: a deferral is made at CLOSE
-  // time — "this half is a follow-up" is the last thing written before a
-  // ticket stops being looked at. Skipping done tickets would skip every case.
-  for (const t of T) {
-    // Not every ticket stores notes as an array — guard rather than assume.
-    const all = (Array.isArray(t.notes) ? t.notes : []).filter((n) => typeof n === 'string');
-    // PER TICKET, not per note. A deferral recorded in one note and its
-    // carrier named in another is exactly how a ticket SHOULD read, and an
-    // earlier draft of this check reported all five of the ones I had just
-    // filed carriers for — a validator that cannot see the fix it asked for.
-    const refs = all.join(' ').match(/\bW\d+-\d{2}[a-c]?\b/g) ?? [];
-    if (refs.some((r) => r !== t.id && carriers.has(r))) continue;
-    const deferral = all.find((n) => DEFER.test(n));
-    if (deferral === undefined) continue;
-    notes.push(`${t.id} defers work and names no ticket for it\n      note: ${deferral.slice(0, 150)}`);
-  }
+  const notes = deferredWorkNotes(T);
   if (notes.length) {
     console.log(`REPORT: P13 (${notes.length}) — work deferred in a note with no ticket to carry it:`);
     for (const n of notes) for (const line of ('- ' + n).split('\n')) console.log('REPORT-CONT: ' + line);

@@ -55,7 +55,10 @@ import {
   type VerifyResult,
 } from '@dokima/tickets';
 import { PROJECT_STATE_DIR } from './db.js';
-import { unsandboxedWaiverRequested } from './sandbox-preflight.js';
+import {
+  sandboxSettingRefusal,
+  unsandboxedWaiverRequested,
+} from './sandbox-preflight.js';
 
 /** The close gate's own verify ceiling (DEFAULT_VERIFY_TIMEOUT_MS, loop-gates-types.ts). */
 const CLOSE_VERIFY_TIMEOUT_MS = 10 * 60 * 1000;
@@ -132,6 +135,10 @@ export async function measureCloseEvidence(
   // `dokima close` is the documented human exit from a local-model park, so
   // refusing it where a build run would proceed left the human no way out on
   // exactly the host the waiver exists for. The receipt says so.
+  // W23-57: a project that chose a profile no run honours is refused, never
+  // quietly given the process profile. Before any command runs.
+  const profileRefusal = await sandboxSettingRefusal(root);
+  if (profileRefusal) return { ok: false, reasons: [profileRefusal] };
   const isolated = isSandboxProfileAvailable('process');
   if (!isolated) {
     if (!claim.unsandboxedWaiver) {

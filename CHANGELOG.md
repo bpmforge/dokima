@@ -84,6 +84,24 @@ name what a change means for that boundary, not just what moved.
 - **Security tools under the container sandbox profile** mount the pinned
   ruleset and the bundled secrets scanner read-only. A tool the image doesn't
   have now reports NOT RUN and names the profile and image.
+- **`sandbox: container` in project settings is refused, not ignored.** The
+  setting was documented (DEPLOYMENT §5) and read nowhere, so every run used
+  the process sandbox whatever the project chose, silently. A project whose
+  settings name any `sandbox` other than `"process"` is now refused with the
+  reason at every door that runs sandboxed work: build runs (before anything is
+  claimed), `dokima close` and the HTTP close, onboard's security scans, and the
+  post-merge smoke. Remove the key to proceed. Selecting the container profile
+  for real is tracked as W23-61.
+- **A document ticket's verify can fail for boilerplate.** Tickets that ask
+  for `docs/VISION.md` and the other phase documents verified `test -s <path>`,
+  which passes any non-empty file. The verify now also requires at least two
+  of the product's own terms, taken from the synthesized blueprint. A
+  blueprint too thin to yield terms keeps `test -s`, and the ticket says that
+  no machine checks the grounding.
+- **An unavailable Fleet card says so in its accessible name.** A project
+  whose folder has vanished is still shown, marked, with Remove from Fleet
+  (never hidden or pruned). Its card is now named "<name> — unavailable, not
+  found on disk" for assistive technology, not only styled differently.
 
 ### Removed
 
