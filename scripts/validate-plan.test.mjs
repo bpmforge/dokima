@@ -50,6 +50,10 @@ function runValidator(
   roots.push(root);
   mkdirSync(join(root, 'scripts'));
   cpSync(join(here, 'validate-plan.mjs'), join(root, 'scripts', 'validate-plan.mjs'));
+  cpSync(
+    join(here, 'validate-plan-deferrals.mjs'),
+    join(root, 'scripts', 'validate-plan-deferrals.mjs'),
+  );
   mkdirSync(join(root, 'content', 'experts'), { recursive: true });
   for (const e of experts)
     writeFileSync(join(root, 'content', 'experts', `${e}.md`), '# expert\n');
