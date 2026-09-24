@@ -2738,6 +2738,6 @@ Both need the founder directly.
   teardown named it, and it was removed by hand after `pnpm validate` reported
   it.
 
-Gate on Node 22.23.2: lint 0, typecheck 0, **5566 tests** (627 files,
+Gate on Node 22.23.2: lint 0, typecheck 0, **5568 tests** (627 files,
 3 skipped), **76 e2e**, 6 validators + temp-leaks clean (after the sighting
 above). **Board: 554 done · 2 todo (W23-58, W23-61) · 1 blocked (W12-44).**
