@@ -2680,7 +2680,9 @@ were projects named "Fleet E2E <uuid>" substring-matching a non-exact
 **W23-37 done.** Demoting was measured first and would have changed nothing:
 the grounding criterion is prose, so every receipt already names it as needing
 a human check. The unchecked half was the verify. Each deliverable ticket's
-verify is now `test -s <path>` plus at least two distinct blueprint terms. The
+verify is now `test -s <path>` plus at least two distinct blueprint terms, taken
+from the body and never the title (a title pasted over boilerplate passed the
+first version; caught before push), and only for `.md` deliverables. The
 measured 2026-08-31 boilerplate VISION.md passed on main and is refused now,
 under the real sandbox as well. `deliverableDrafts` moved to
 `packages/pipeline/src/run/deliverable-drafts.ts`.

@@ -464,6 +464,22 @@ describe('a deliverable verify can FAIL for boilerplate about no particular prod
     expect(await runVerify(visionTicket().verify!, boilerplate)).not.toBe(0);
   });
 
+  it('RED FIXTURE: the product’s TITLE pasted over the same boilerplate is still refused — the maker sees the title', async () => {
+    const titled =
+      '# Expense Ledger\n\nThis project aims to deliver a clear, maintainable, and ' +
+      'well-documented codebase that serves as a foundation for future development.\n';
+    expect(await runVerify(visionTicket().verify!, titled)).not.toBe(0);
+  });
+
+  it('a structured deliverable keeps `test -s` — a YAML spec names identifiers, not prose', () => {
+    const plan = runPipeline(
+      ideaInput(),
+      fakePort({ blueprintInputFrom: () => EXPENSE_BLUEPRINT() }).port,
+    );
+    const openapi = plan.tickets.find((t) => t.id === 'PHASE3-api-openapi')!;
+    expect(openapi.verify).toBe('test -s docs/api/openapi.yaml');
+  });
+
   it('the same verify passes a VISION.md about THIS product — W22-26’s after-state', async () => {
     const grounded =
       '# Expense Ledger — Vision\n\nA simple personal expense tracker that records ' +

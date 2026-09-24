@@ -47,8 +47,6 @@ export const GROUNDING_MIN_MATCHES = 2;
 /** Fewer candidate terms than this, and there is nothing honest to check. */
 const MIN_TERMS = 3;
 const MAX_TERMS = 8;
-/** Title words say what the product IS; they outrank a word the body repeats. */
-const TITLE_WEIGHT = 3;
 
 /**
  * Words that appear in documents about any product, so finding them proves
@@ -98,24 +96,29 @@ function singular(word: string): string {
 }
 
 /**
- * The product's own vocabulary, most distinctive first: title words weighted,
- * then frequency, then first appearance. The Open Questions section is left
- * out — it is the gate's bookkeeping, not the product.
+ * The product's own vocabulary from the blueprint's BODY, most frequent first,
+ * then first appearance. The Open Questions section is left out — it is the
+ * gate's bookkeeping, not the product.
+ *
+ * TITLE WORDS ARE EXCLUDED, not weighted. The maker is shown the blueprint, so
+ * a heading of `# Expense Ledger` over the measured boilerplate would otherwise
+ * carry two terms and pass; the check has to ask for what the product DOES,
+ * which the title does not say. (An earlier draft weighted the title and was
+ * refuted by exactly that fixture.)
  */
 export function groundingTerms(blueprintMarkdown: string): readonly string[] {
   const body = blueprintMarkdown.split(/^## Open Questions\b/m)[0] ?? '';
-  const title = /^# (.+)$/m.exec(body)?.[1] ?? '';
-  const score = new Map<string, number>();
+  const title = new Set(termsIn(/^# (.+)$/m.exec(body)?.[1] ?? ''));
+  const count = new Map<string, number>();
   const order: string[] = [];
-  const add = (word: string, weight: number): void => {
-    if (!score.has(word)) order.push(word);
-    score.set(word, (score.get(word) ?? 0) + weight);
-  };
-  for (const word of termsIn(title)) add(word, TITLE_WEIGHT);
-  for (const word of termsIn(body.replace(/^#.*$/gm, ''))) add(word, 1);
+  for (const word of termsIn(body.replace(/^#.*$/gm, ''))) {
+    if (title.has(word)) continue;
+    if (!count.has(word)) order.push(word);
+    count.set(word, (count.get(word) ?? 0) + 1);
+  }
   return order
-    .map((word, index) => ({ word, index, weight: score.get(word)! }))
-    .sort((a, b) => b.weight - a.weight || a.index - b.index)
+    .map((word, index) => ({ word, index, n: count.get(word)! }))
+    .sort((a, b) => b.n - a.n || a.index - b.index)
     .slice(0, MAX_TERMS)
     .map((t) => t.word);
 }
@@ -149,7 +152,11 @@ export function deliverableDrafts(
     for (const deliverable of phase.deliverables) {
       if (!isPathDeliverable(deliverable.id)) continue;
       if (have.has(deliverable.id)) continue;
-      const grounded = groundedVerify(deliverable.id, terms);
+      // Prose only: a structured file (openapi.yaml) names identifiers such as
+      // `expense_id`, which a whole-word match would never find.
+      const grounded = deliverable.id.endsWith('.md')
+        ? groundedVerify(deliverable.id, terms)
+        : null;
       drafts.push({
         id: `PHASE${phase.id}-${deliverableSlug(deliverable.id)}`,
         type: 'task' as const,
@@ -163,8 +170,8 @@ export function deliverableDrafts(
               `requires at least ${GROUNDING_MIN_MATCHES} of the blueprint's own terms ` +
               `(${terms.join(', ')}); whether it says something true about them is for the person accepting it`
             : 'It reflects what the interview actually established, not a template — NO MACHINE ' +
-              'CHECKS THIS: the blueprint was too thin to derive terms from, so verify only ' +
-              'asserts the file is not empty',
+              'CHECKS THIS: verify only asserts the file is not empty (the blueprint was too ' +
+              'thin to derive terms from, or the file is not prose)',
         ],
         // The phase gate re-checks existence itself; the ticket's own verify
         // asserts the file is there, not empty, and about this product.

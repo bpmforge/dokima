@@ -22,10 +22,13 @@ const EXPENSE = [
 ].join('\n\n');
 
 describe('groundingTerms (W23-37)', () => {
-  it('draws the product’s own words, title first, and none of software-in-general', () => {
+  it('draws the product’s own words from the body — never the title — and none of software-in-general', () => {
     const terms = groundingTerms(EXPENSE);
-    expect(terms.slice(0, 2)).toEqual(['expense', 'ledger']);
+    // A title pasted over boilerplate must not satisfy the check.
+    expect(terms).not.toContain('expense');
+    expect(terms).not.toContain('ledger');
     expect(terms).toContain('monthly');
+    expect(terms).toContain('spending');
     // The measured boilerplate's vocabulary is exactly what must never count.
     for (const generic of [
       'project',
@@ -74,6 +77,6 @@ describe('deliverableDrafts (W23-37)', () => {
   it('a real blueprint names its terms in the criterion the person reads', () => {
     const vision = deliverableDrafts([], EXPENSE).find((d) => d.id === 'PHASE0-VISION')!;
     expect(vision.verify).toContain('grep -oiwE');
-    expect(vision.acceptance[1]).toMatch(/expense, ledger/);
+    expect(vision.acceptance[1]).toMatch(/monthly/);
   });
 });
