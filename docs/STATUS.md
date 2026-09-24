@@ -2583,6 +2583,9 @@ Other items for the founder:
   on any other install tool-sast reports NOT RUN and nothing can be
   machine-accepted. Keeping the v1 unattended promise for other users needs a
   ruleset decision, for example a public-teaser subset or a separate download.
+  **RESOLVED by founder decision 2026-09-24** ("go with bundled open baseline
+  for SAST"): W23-60 ships a clean-room Apache-2.0 baseline in the package and
+  falls back to it. See the 2026-09-24 section below.
 - **Local-only projects.** tool-deps is unavailable without a local advisory
   snapshot, which also blocks machine acceptance. Vault ran network-allowed
   because its settings have no `modelPolicy.localOnly` key.
@@ -2652,10 +2655,10 @@ that has the fix is 2026-09-24 ~09:08Z (main is 225f48be).
 - The unchanged-dependencies answer and the waiver key
   (`security.unauditedDependencies`) are new semantics. They apply only where
   the audit cannot run: W23-56 acceptance 1 was narrowed to local-only. Please
-  ratify. **RATIFIED 2026-09-24** (see the 2026-09-24 ratification section).
+  ratify. **RATIFIED 2026-09-24** (see the 2026-09-24 founder-decisions section).
 - W23-55 acceptance 1 (a mask-based key) was deliberately not met as written,
   because masks collide. Please ratify the fingerprint key. **RATIFIED
-  2026-09-24** (see the 2026-09-24 ratification section).
+  2026-09-24** (see the 2026-09-24 founder-decisions section).
 - A real review now runs opengrep on the head and again on the base when the
   head has findings. Each scan is about 5.5 s on this machine, mostly rule
   loading.
@@ -2744,7 +2747,7 @@ Gate on Node 22.23.2: lint 0, typecheck 0, **5568 tests** (627 files,
 3 skipped), **76 e2e**, 6 validators + temp-leaks clean (after the sighting
 above). **Board: 554 done · 2 todo (W23-58, W23-61) · 1 blocked (W12-44).**
 
-## 2026-09-24 — founder ratifies W23-55 and W23-56 (`feat/w23-60-sast-baseline`)
+## 2026-09-24 — founder decisions: W23-55/56 ratified, SAST baseline (`feat/w23-60-sast-baseline`)
 
 The founder gave two decisions directly in the coordinator session on
 2026-09-24, and that session relayed them verbatim to the implementing agent:
@@ -2757,3 +2760,48 @@ The founder gave two decisions directly in the coordinator session on
 
 Both tickets carry a note naming this channel. Neither is on the pending-founder
 list any more.
+
+**W23-60 filed, claimed and done: the bundled open SAST baseline.** This
+resolves "Ruleset distribution" by the founder's decision of 2026-09-24.
+`rules/sast-baseline/` ships in the package with 25 Opengrep rules (13 JS/TS,
+12 Python). They cover SQL, command and eval injection, path traversal,
+hardcoded credentials, insecure deserialization, weak crypto and disabled TLS
+verification. Every rule was written clean-room for this ticket; nothing came
+from bpm-rulepacks or the Semgrep registry. The directory carries an
+Apache-2.0 LICENSE, and README and DEPLOYMENT §6 say so.
+
+- **Resolution order.** `DOKIMA_SAST_RULES` when set, then
+  `~/.dokima/rules/sast`, then the baseline. A set `DOKIMA_SAST_RULES` with no
+  rules is still NOT RUN, never a silent fallback, so the W23-59 suite pin
+  still holds. `dokima doctor` is OK on the baseline, names it, and says where
+  a richer pack plugs in.
+- **RED → GREEN, hermetic** (its own empty HOME, no env var). Before:
+  `expected 'unavailable' to be 'passed'`. After: tool-sast runs with
+  `--config <package>/rules/sast-baseline`.
+- **Fixtures.** Every rule has a `ruleid:` and an `ok:` fixture, and
+  `opengrep test` passes for all 16 rule files. CI now fetches opengrep v1.25.0
+  by sha256 so the test runs there. pack-smoke fails if the tarball lacks the
+  baseline.
+- **False positives on Dokima's own source.** The first run had 93 hits. 92
+  were false positives, and all were fixed by narrowing the rules:
+  - SQL splicing a WHERE clause built from fixed fragments. The rule now needs a
+    quoted interpolation, and request data reaching a query is caught by a new
+    taint rule.
+  - Made-up keys in tests. Test and fixture files are excluded.
+  - The SHA-1 that RFC 6455 requires for the WebSocket handshake.
+
+  One true positive remains and is **filed as W23-62**: the model bench runs
+  model-written code in `node:vm` inside the core, reached through
+  `POST /models/bench` with a real provider. Dokima has no Python, so the
+  Python rules were swept over ai-daytrader instead, and the same SQL
+  false-positive family was fixed.
+
+- A real sandboxed smoke (network denied) on the baseline passed the clean tree
+  and reported the planted command injection as findings.
+
+`packages/harbormaster/src/sandbox/index.ts` already said W23-61 on main
+(54b0a7c0), so it needed no change.
+
+Gate on Node 22.23.2: lint 0, typecheck 0, **5578 tests** (628 files,
+5 skipped), **76 e2e**, 6 validators + temp-leaks clean. **Board: 555 done ·
+3 todo (W23-58, W23-61, W23-62) · 1 blocked (W12-44).**

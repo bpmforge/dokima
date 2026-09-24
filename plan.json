@@ -17630,7 +17630,8 @@
         "README.md",
         "docs/DEPLOYMENT.md",
         "docs/STATUS.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "apps/server/src/cli/review-pass.ts"
       ],
       "depends_on": [
         "W23-59"
@@ -17644,9 +17645,13 @@
         "`dokima doctor` names the active ruleset and its source, does not warn when the bundled baseline is in use, and says a richer pack can be plugged in via DOKIMA_SAST_RULES or ~/.dokima/rules/sast"
       ],
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "notes": [
-        "FILED AND CLAIMED 2026-09-24 (feat/w23-60-sast-baseline) on the founder's decision \"go with bundled open baseline for SAST\", given directly in the coordinator session on 2026-09-24 and relayed verbatim to this agent. The id was reserved by W23-61's renumber (54b0a7c0). It resolves STATUS.md's \"Ruleset distribution\" item. DEPLOYMENT.md is also in W23-61's scope; both are lane orchestrator, so they never run in parallel."
+        "FILED AND CLAIMED 2026-09-24 (feat/w23-60-sast-baseline) on the founder's decision \"go with bundled open baseline for SAST\", given directly in the coordinator session on 2026-09-24 and relayed verbatim to this agent. The id was reserved by W23-61's renumber (54b0a7c0). It resolves STATUS.md's \"Ruleset distribution\" item. DEPLOYMENT.md is also in W23-61's scope; both are lane orchestrator, so they never run in parallel.",
+        "WIDENED 2026-09-24, when found: apps/server/src/cli/review-pass.ts carried a comment naming only DOKIMA_SAST_RULES or ~/.dokima/rules/sast; that one comment line now names the baseline too. Owned by no open ticket.",
+        "DONE 2026-09-24 (feat/w23-60-sast-baseline). rules/sast-baseline/: 25 rules in 16 files. JS/TS 13: js-eval-dynamic, js-new-function-dynamic, js-vm-run-dynamic, js-child-process-shell-dynamic, js-spawn-shell-true-dynamic, js-sql-string-built, js-sql-request-data, js-request-path-traversal, js-hardcoded-credential, js-unsafe-deserialization, js-weak-hash, js-weak-cipher, js-tls-verification-disabled. Python 12: py-eval-exec-dynamic, py-os-system-dynamic, py-subprocess-shell-dynamic, py-sql-string-built, py-sql-request-data, py-request-path-traversal, py-hardcoded-credential, py-unsafe-deserialization, py-yaml-unsafe-load, py-weak-hash, py-weak-cipher, py-tls-verification-disabled. Each file is headed clean-room + Apache-2.0, with LICENSE beside them; nothing was opened from bpm-rulepacks and nothing taken from the Semgrep registry. Fixtures live in rules/sast-baseline-fixtures/ (not shipped; eslint- and prettier-ignored). opengrep 1.25.0 `test` passes for all 16 rule files (17 fixture files). `opengrep test` with a DIRECTORY config checks every rule file against every fixture, so the suite runs it per rule file. Mutation check: deleting py-eval-exec-dynamic's pattern-not made its ok: line fail. RED (hermetic: own empty HOME, no DOKIMA_SAST_RULES): 'expected unavailable to be passed' (tool-sast NOT RUN) and 'expected null to match object { source: bundled }'; GREEN after.",
+        "FALSE POSITIVES ON DOKIMA (1694 files, fixtures excluded). The first run had 93 hits; the 92 false positives were fixed by narrowing the rule. js-sql-string-built 33 (11 lines x3; better-sqlite3 templates splicing a WHERE clause built from fixed fragments): the rule now needs a value interpolated INSIDE a quoted SQL string, or a SQL literal joined with +; request data reaching a query is the new taint rule js-sql-request-data. js-hardcoded-credential 58: test files and *-fixtures.* are excluded (every hit was a made-up key in a test). js-weak-hash 1 (ws-socket.ts SHA-1, which RFC 6455 fixes): the WebSocket handshake GUID is excluded. FINAL: 1 hit, a TRUE positive. packages/gateway/src/fitness/scoring.ts:86 runs model-written code in node:vm inside the core, reached from POST /models/bench with a real provider. Filed as W23-62. Python: Dokima has no .py. A signal sweep over ~/Code/ai-daytrader (244 files) found the same splice FP family in py-sql-string-built (fixed the same way) and an api_key=\"not-needed\" placeholder (excluded); what remains there is eval/exec of LLM-written formulas and pickle.load.",
+        "doctor: OK on the baseline; it names the baseline and where a richer pack plugs in. A set-but-empty DOKIMA_SAST_RULES is still WARN. Real sandboxed smoke (DOKIMA_TEST_REAL_SCANNERS=1, network denied) on the baseline: the clean tree passed and a planted command injection was findings. CI: the gate job fetches opengrep v1.25.0 by sha256 (no installer script), and pack-smoke fails without rules/sast-baseline/LICENSE or a rule file. Gate (Node 22.23.2): lint 0, typecheck 0, 5578 tests passed (628 files, 5 skipped), 76 e2e, 6 validators + temp-leaks clean."
       ],
       "stories": [
         "US-402"
@@ -17682,6 +17687,32 @@
         "FILED 2026-09-24 by W23-57 (Law 1), which deprecated the documented `sandbox: container` setting to a fail-closed refusal because none of this exists yet. The three blockers W23-57 recorded are this ticket's shape: the only selection pattern is process-global (setUnsandboxedVerifyWaiver) and one core serves N projects; ~10 call sites and no receipt field; darwin node_modules inside a Linux image. W23-54 already made the security tools correct under the profile once it is selected.",
         "NEEDS A FOUNDER CALL BEFORE IT IS WORTH CLAIMING: whether v1.x promises a container profile at all. SC-07's process profile already denies network and cleans the env on macOS and Linux; the container adds isolation strength, not a missing guarantee.",
         "RENUMBERED 2026-09-24 from W23-60 to W23-61, same session it was filed: the founder assigned W23-60 to the bundled open SAST baseline. Every reference (W23-57's notes and acceptance, sandbox-preflight.ts's refusal text and its tests, DEPLOYMENT \u00a75, SECURITY_CONTROLS SC-07, sandbox/index.ts) was renamed in the same commit; the earlier commit messages on fix/v1-wave5 that say W23-60 for this ticket predate the renumber."
+      ],
+      "stories": [
+        "US-402"
+      ]
+    },
+    {
+      "id": "W23-62",
+      "title": "the model bench runs model-written code in node:vm inside the core process: POST /models/bench scores a real provider's function-behavior answers with vm.Script, which is not a security boundary",
+      "phase": 23,
+      "module": "gateway",
+      "lane": "gateway",
+      "write_scope": [
+        "packages/gateway/src/fitness/scoring.ts",
+        "packages/gateway/src/fitness/scoring.test.ts",
+        "packages/gateway/src/fitness/bench.ts"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "Code a real model wrote is never evaluated in the core process: function-behavior cases for a real provider run in a separate, sandboxed process with a deadline (the SC-07 profile), or are refused with a named reason",
+        "Red fixture: a candidate that reaches the host through the vm context (process, or require via a constructor escape) does so before the change, and cannot after",
+        "The scripted-fake CI path keeps its speed and its verdicts"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": [
+        "FILED 2026-09-24 by W23-60 (Law 1). The bundled baseline's js-vm-run-dynamic reported packages/gateway/src/fitness/scoring.ts:86 on Dokima's own source. The file's header says real model code is only evaluated by scripts/fitness-live.mjs. In fact apps/server/src/api/server/models-bench-route.ts wires runFitnessBench to providerForConfig, so a real model's answer reaches vm.Script in the core process."
       ],
       "stories": [
         "US-402"
