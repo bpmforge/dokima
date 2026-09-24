@@ -16855,7 +16855,7 @@
       "id": "W23-39",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [
         "US-201"
       ],
@@ -16881,7 +16881,9 @@
         "THE CARRY-FORWARD CASE IS THE SHARPEST and should be fixed first: the check's own header says \"name the ticket in the note ... which is both a better note and invisible to this check, which is the incentive it should create\". Three tickets followed that instruction exactly and are reported anyway, because their carrier landed. The incentive the check means to create is currently undone by the carrier succeeding.",
         "AND IT FIRES ON ITS OWN FIX: W23-36 and W23-37, filed today to discharge the two real findings, are reported by P13 because their notes quote the deferrals they exist to discharge. The check cannot distinguish \"I am deferring this\" from \"I am the filing for that deferral\".",
         "DO NOT MAKE IT A GATE while doing this. P13 is report-only by design and its own header says so; raising precision is not an argument for raising teeth, and a gate on note prose would be a new way to fail for the wrong reason.",
-        "TRIAGE FIRST, THEN THE REST OF THE BACKLOG. Whatever survives a precision fix is the real dropped-findings list, and it should be worked from a list a person can trust rather than one they have learned to scroll past."
+        "TRIAGE FIRST, THEN THE REST OF THE BACKLOG. Whatever survives a precision fix is the real dropped-findings list, and it should be worked from a list a person can trust rather than one they have learned to scroll past.",
+        "CLAIMED 2026-09-24 (fix/v1-wave5). BASELINE RE-MEASURED at f0f9cb82 before any board edit: P13 reports 24, the same 24 the filing counted. Hand-read every hit, not sampled: 7 owe nothing and fall in the ticket's three kinds \u2014 (a) discharged carry-forwards W21-73, W21-76, W21-77, W21-90, W22-02 (carriers W22-10..14, all done); (b) scope-widen records W21-36, W21-95 ('part of this change and not a follow-up' / 'rather than a follow-up' \u2014 the deferral phrase is NEGATED); (c) quotations W23-36, W23-37 (each quotes the deferral it was filed to discharge). Three more are false positives of a kind the ticket does not name and this change does not touch: W13-18 ('a follow-up' is an interview follow-up QUESTION), W21-48 ('right for its own ticket'), W22-05 ('Deliberately its own ticket rather than folded into W22-01'). The remaining 12 read as genuine unfiled deferrals (W0-02, W3-07, W5-15, W7-01, W7-02, W7-03, W8-07, W12-02, W12-06, W13-27, W21-37, W21-96).",
+        "TRAP FOUND AT THE READ, and it shapes the quotation rule: W22-15's live deferral is ITSELF a quotation \u2014 it adopts W9-14's words ('...belongs in its own ticket.') inside quote marks. So 'ignore quoted deferrals' would silently drop one of the two confirmed live reports acceptance 4 protects. The rule must be: a quoted deferral is suppressed only when the same note records a discharge (DROPPED FINDING/FOLLOW-UP ... filed, 'filed <date>', 'THIS ticket is', 'NOT a deferral'), and never when an unquoted deferral phrase remains."
       ]
     },
     {
