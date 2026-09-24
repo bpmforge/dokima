@@ -2652,9 +2652,10 @@ that has the fix is 2026-09-24 ~09:08Z (main is 225f48be).
 - The unchanged-dependencies answer and the waiver key
   (`security.unauditedDependencies`) are new semantics. They apply only where
   the audit cannot run: W23-56 acceptance 1 was narrowed to local-only. Please
-  ratify.
+  ratify. **RATIFIED 2026-09-24** (see the 2026-09-24 ratification section).
 - W23-55 acceptance 1 (a mask-based key) was deliberately not met as written,
-  because masks collide. Please ratify the fingerprint key.
+  because masks collide. Please ratify the fingerprint key. **RATIFIED
+  2026-09-24** (see the 2026-09-24 ratification section).
 - A real review now runs opengrep on the head and again on the base when the
   head has findings. Each scan is about 5.5 s on this machine, mostly rule
   loading.
@@ -2732,7 +2733,8 @@ Both need the founder directly.
   promises a container profile at all.
 - W23-38's call rests on the absolute arm of its threshold. If you read the
   pre-declared OR literally, overrule it there.
-- The SAST baseline and the W23-55/56 ratifications, as above.
+- The SAST baseline and the W23-55/56 ratifications, as above. **Both decided
+  by the founder 2026-09-24** (see the sections below).
 - Suite-home leak sighting: one `dokima-suite-home-*` with only `global.db` and
   no marker (the W23-29 shape) came from this wave's first full run. The
   teardown named it, and it was removed by hand after `pnpm validate` reported
@@ -2741,3 +2743,17 @@ Both need the founder directly.
 Gate on Node 22.23.2: lint 0, typecheck 0, **5568 tests** (627 files,
 3 skipped), **76 e2e**, 6 validators + temp-leaks clean (after the sighting
 above). **Board: 554 done · 2 todo (W23-58, W23-61) · 1 blocked (W12-44).**
+
+## 2026-09-24 — founder ratifies W23-55 and W23-56 (`feat/w23-60-sast-baseline`)
+
+The founder gave two decisions directly in the coordinator session on
+2026-09-24, and that session relayed them verbatim to the implementing agent:
+"ratify W23-55 and W23-56" and "go with bundled open baseline for SAST".
+
+- **W23-55 ratified as shipped.** The key is category + path + an in-memory
+  fingerprint of the value, not the mask-based key acceptance 1 asked for.
+- **W23-56 ratified as shipped.** The unchanged-dependencies answer is
+  scoped to local-only, and `security.unauditedDependencies` is the waiver key.
+
+Both tickets carry a note naming this channel. Neither is on the pending-founder
+list any more.
