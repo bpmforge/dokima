@@ -17484,7 +17484,15 @@
       "write_scope": [
         "apps/server/src/cli/sandbox-preflight.ts",
         "packages/harbormaster/src/sandbox/index.ts",
-        "packages/harbormaster/src/sandbox/index.test.ts"
+        "packages/harbormaster/src/sandbox/index.test.ts",
+        "apps/server/src/cli/sandbox-preflight.test.ts",
+        "apps/server/src/cli/run-build-preflight.ts",
+        "apps/server/src/cli/close-evidence.ts",
+        "apps/server/src/cli/close-evidence.test.ts",
+        "apps/server/src/api/pipeline/onboard-security-checks.ts",
+        "apps/server/src/scheduler/wave-automations-wiring.ts",
+        "docs/DEPLOYMENT.md",
+        "docs/SECURITY_CONTROLS.md"
       ],
       "depends_on": [
         "W23-54"
@@ -17495,9 +17503,12 @@
         "Red fixture: settings `sandbox: container` reaches runSandboxed as profile \"container\""
       ],
       "points": 3,
-      "status": "todo",
+      "status": "in_progress",
       "notes": [
-        "FILED 2026-09-23 (Law 1) while claiming W23-54: `grep -rn \"profile: 'container'\"` over apps/ and packages/ finds no production caller; runSandboxed defaults to \"process\"; sandboxedToolRunner passes no profile. W23-54 makes the SECURITY TOOLS correct under the container profile when it is selected; this ticket is the selection."
+        "FILED 2026-09-23 (Law 1) while claiming W23-54: `grep -rn \"profile: 'container'\"` over apps/ and packages/ finds no production caller; runSandboxed defaults to \"process\"; sandboxedToolRunner passes no profile. W23-54 makes the SECURITY TOOLS correct under the container profile when it is selected; this ticket is the selection.",
+        "CLAIMED 2026-09-24 (fix/v1-wave5). DECISION: DEPRECATE AND FAIL CLOSED, do not wire \u2014 the founder's brief allowed either and asked for the honest one. Reasons, each checked in the code rather than assumed: (1) the only selection pattern in this code is a PROCESS-GLOBAL switch (setUnsandboxedVerifyWaiver), fine for a host-level waiver and wrong for a per-project choice, because one core serves N projects over HTTP and a global would leak project A's profile into project B's close; (2) real wiring means threading a profile through ~10 call sites (reRunVerify under the close gate, the acceptance runs, W21-50's base probe, the review scanners, onboard scans, `dokima close`, the HTTP close, the scheduler's post-merge smoke, the agent-session verify tool) plus a receipt field that does not exist \u2014 no receipt today names ANY profile; (3) on this machine (podman, applehv) a macOS worktree's node_modules are darwin binaries, so a Node project's verify inside the default node:22-slim Linux image fails on the first native module \u2014 the profile is unproven for verify, and wiring it would ship a mode that reds real tickets. What is dishonest TODAY is the documentation plus the silence: DEPLOYMENT \u00a75 tells a user to set `sandbox: container`, and doing so changes nothing and says nothing.",
+        "SO: a project whose settings name `sandbox` as anything but \"process\" is REFUSED, with the reason, at every door that runs sandboxed work for it \u2014 the build-run preflight, `dokima close` and the HTTP close (both via measureCloseEvidence), onboard's security scans, and the scheduler's post-merge smoke. DEPLOYMENT \u00a75 and SECURITY_CONTROLS SC-07 are corrected to say the profile exists as a library option and is not selectable. The real wiring is filed as W23-60 with the three blockers above, so it is a ticket and not a sentence (Law 1).",
+        "SCOPE WIDENED AT THE READ (Law 1): the filed scope (sandbox-preflight.ts, sandbox/index.ts + test) reaches the build-run door only, and acceptance 2 \u2014 'never a silent process-profile run' \u2014 is violated by every other door. Added: run-build-preflight.ts (calls the new check), close-evidence.ts + test (CLI and HTTP close), onboard-security-checks.ts, scheduler/wave-automations-wiring.ts, sandbox-preflight.test.ts, docs/DEPLOYMENT.md, docs/SECURITY_CONTROLS.md. All unowned by an open ticket."
       ],
       "stories": [
         "US-402"
@@ -17555,6 +17566,40 @@
         "DONE 2026-09-23 (fix/v1-review-gaps). vitest.network-guard.ts (every package's setup file) pins DOKIMA_SAST_RULES to /nonexistent/dokima-test-suite/no-sast-rules unless DOKIMA_TEST_REAL_SCANNERS=1; CLI spawns inherit it. RED on this machine: sast-rules-isolation.test.ts 'expected undefined to be truthy' and, with the env assertion removed, 'expected { ...(4) } to be null' (the founder's real 3-pack ruleset resolved). After: the full suite ran in 60 s with no opengrep process started. Gate (Node 22): lint 0, typecheck 0, 5517 tests (625 files, 3 skipped) in 60 s, 76 e2e, 6 validators + temp-leaks clean. The 11 orphaned scans from the broken run were killed by hand and the 7 temp dirs they re-created (.dokima/telemetry.jsonl written after their worker's cleanup) removed by exact path."
       ],
       "stories": []
+    },
+    {
+      "id": "W23-60",
+      "title": "wire the container sandbox profile for real: per-project selection threaded through every sandboxed door, the profile on the receipt, and a verify that can actually run in the image",
+      "phase": 23,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/sandbox/index.ts",
+        "packages/harbormaster/src/sandbox/index.test.ts",
+        "packages/harbormaster/src/loop-gates-verify.ts",
+        "packages/harbormaster/src/loop-gates.ts",
+        "apps/server/src/cli/sandbox-preflight.ts",
+        "apps/server/src/cli/close-evidence.ts",
+        "docs/DEPLOYMENT.md"
+      ],
+      "depends_on": [
+        "W23-57"
+      ],
+      "acceptance": [
+        "A project whose settings choose `sandbox: container` has its verify, acceptance criteria, base probe and security tools executed under the container profile, and the close receipt names the profile that ran",
+        "The selection is per PROJECT, never process-global: two projects served by one core, one on each profile, each run under their own (fixture)",
+        "A Node project whose worktree was installed on a macOS host either runs its verify in the container (dependencies installed inside it) or is refused with the reason before claiming \u2014 never a verify that fails on a foreign native binary and reads as the ticket's fault",
+        "W23-57's refusal is removed only in the same change that makes the above true"
+      ],
+      "points": 8,
+      "status": "todo",
+      "notes": [
+        "FILED 2026-09-24 by W23-57 (Law 1), which deprecated the documented `sandbox: container` setting to a fail-closed refusal because none of this exists yet. The three blockers W23-57 recorded are this ticket's shape: the only selection pattern is process-global (setUnsandboxedVerifyWaiver) and one core serves N projects; ~10 call sites and no receipt field; darwin node_modules inside a Linux image. W23-54 already made the security tools correct under the profile once it is selected.",
+        "NEEDS A FOUNDER CALL BEFORE IT IS WORTH CLAIMING: whether v1.x promises a container profile at all. SC-07's process profile already denies network and cleans the env on macOS and Linux; the container adds isolation strength, not a missing guarantee."
+      ],
+      "stories": [
+        "US-402"
+      ]
     }
   ]
 }
