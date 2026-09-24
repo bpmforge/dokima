@@ -288,7 +288,8 @@ describe('a board carries the documents its own phase gate checks for (W21-76)',
     const plan = runPipeline(ideaInput(), fakePort().port);
     const vision = plan.tickets.find((t) => t.id === 'PHASE0-VISION')!;
     expect(vision.writeScope).toEqual(['docs/VISION.md']);
-    expect(vision.verify).toBe('test -s docs/VISION.md');
+    // W23-37: the path first, then (when the blueprint allows) its grounding.
+    expect(vision.verify).toMatch(/^test -s docs\/VISION\.md( && |$)/);
   });
 
   it('a deliverable that ALREADY exists gains no duplicate ticket', () => {
@@ -379,7 +380,7 @@ describe('every phase that declares documents gets tickets for them (W22-11)', (
   it('each writes exactly the path its gate looks for', () => {
     const t = plan().tickets.find((x) => x.id === 'PHASE3-api-openapi')!;
     expect(t.writeScope).toEqual(['docs/api/openapi.yaml']);
-    expect(t.verify).toBe('test -s docs/api/openapi.yaml');
+    expect(t.verify).toMatch(/^test -s docs\/api\/openapi\.yaml( && |$)/);
   });
 });
 
@@ -403,5 +404,74 @@ describe('the plan carries the product map (P6-04)', () => {
     const plan = runPipeline(ideaInput(), fakePort().port);
     expect(plan.features).toBeDefined();
     expect(plan.productMap).toContain('Unmapped');
+  });
+});
+
+/**
+ * W23-37: every deliverable ticket said "It reflects what the interview
+ * actually established, not a template" and verified `test -s <path>` — a
+ * command whose only possible failure is an empty file. The measured artefact
+ * of 2026-08-31 is the fixture: an expense tracker's VISION.md that never
+ * mentions expenses.
+ */
+describe('a deliverable verify can FAIL for boilerplate about no particular product (W23-37)', () => {
+  const EXPENSE_BLUEPRINT = (): SynthesizeBlueprintInput => ({
+    title: 'Expense Ledger',
+    sections: [
+      {
+        heading: 'Vision',
+        body:
+          'A simple personal expense tracker that records spending and shows a ' +
+          'monthly summary, for someone who just wants to know where their money went.',
+      },
+      {
+        heading: 'Scope',
+        body:
+          'In scope: add an expense, list expenses, monthly total by category. ' +
+          'Out of scope: bank sync, multi-user, mobile app.',
+      },
+    ],
+    openQuestions: [],
+  });
+
+  async function runVerify(verify: string, vision: string): Promise<number> {
+    const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const path = await import('node:path');
+    const { spawnSync } = await import('node:child_process');
+    const dir = mkdtempSync(path.join(tmpdir(), 'dokima-w2337-'));
+    try {
+      mkdirSync(path.join(dir, 'docs'));
+      writeFileSync(path.join(dir, 'docs', 'VISION.md'), vision);
+      return spawnSync('sh', ['-c', verify], { cwd: dir }).status ?? 1;
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  function visionTicket() {
+    const plan = runPipeline(
+      ideaInput(),
+      fakePort({ blueprintInputFrom: () => EXPENSE_BLUEPRINT() }).port,
+    );
+    return plan.tickets.find((t) => t.id === 'PHASE0-VISION')!;
+  }
+
+  it('RED FIXTURE: the measured 2026-08-31 boilerplate VISION.md is REFUSED by the ticket’s own verify', async () => {
+    const boilerplate =
+      '# Vision\n\nThis project aims to deliver a clear, maintainable, and ' +
+      'well-documented codebase that serves as a foundation for future development.\n';
+    expect(await runVerify(visionTicket().verify!, boilerplate)).not.toBe(0);
+  });
+
+  it('the same verify passes a VISION.md about THIS product — W22-26’s after-state', async () => {
+    const grounded =
+      '# Expense Ledger — Vision\n\nA simple personal expense tracker that records ' +
+      'spending and shows a monthly summary.\n';
+    expect(await runVerify(visionTicket().verify!, grounded)).toBe(0);
+  });
+
+  it('an empty file still fails, as before', async () => {
+    expect(await runVerify(visionTicket().verify!, '')).not.toBe(0);
   });
 });
