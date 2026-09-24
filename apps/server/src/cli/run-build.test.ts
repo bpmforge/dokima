@@ -613,6 +613,40 @@ describe(
       },
       30_000,
     );
+
+    it(
+      'W23-57 CALL-SITE FIXTURE: a stored `sandbox: container` refuses the real run ' +
+        'with exit 2 and the reason — never a run under the process profile it did ' +
+        'not choose',
+      async () => {
+        project = await gitRepoProject();
+        const log = openWritableLog(resolveDbPath(project.cwd));
+        seedTicket(log);
+        await writeProjectSetting(project.cwd, {
+          key: 'sandbox',
+          value: 'container',
+          actorId: 'test',
+        });
+        const io = collectIO();
+        try {
+          const code = await withSigningKey(() =>
+            executeBuildRun(log, { projectId: 'p', actorId: 'worker-1' }, 'run-1', {
+              cwd: project.cwd,
+              ...io.io,
+              now: NOW,
+            }),
+          );
+          expect(code).toBe(2);
+          expect(io.stderr.join('\n')).toMatch(/sandbox: container.*W23-60/s);
+          expect(listEvents(log).some((e) => e.eventType === 'ticket.claimed')).toBe(
+            false,
+          );
+        } finally {
+          log.close();
+        }
+      },
+      30_000,
+    );
   },
   SUBPROCESS_TIMEOUT_MS,
 );

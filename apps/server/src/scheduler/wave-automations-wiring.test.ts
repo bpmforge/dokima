@@ -14,6 +14,7 @@ import {
   fleetAdvisoryTick,
   parseAdvisoryFindings,
   parseAuditFindings,
+  runPostMergeSmoke,
   runProjectDepsAudit,
   startFleetWaveAutomations,
 } from './wave-automations-wiring.js';
@@ -117,5 +118,29 @@ describe('P6-14 — dependency sweep + post-merge smoke are STARTED', () => {
     expect(src).toContain("tier: 'review'");
     expect(src).toContain("tier: 'decide'");
     expect(src).not.toMatch(/git\(.+\bmerge\b/);
+  });
+});
+
+describe('W23-57 — the post-merge smoke honours the refused sandbox choice', () => {
+  it('a project whose settings choose `sandbox: container` fails the smoke with the reason and runs nothing', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-smoke-sandbox-'));
+    try {
+      await fs.mkdir(path.join(dir, '.dokima'));
+      await fs.writeFile(
+        path.join(dir, '.dokima', 'settings.json'),
+        JSON.stringify({ sandbox: 'container' }),
+      );
+      await fs.writeFile(path.join(dir, 'package-lock.json'), '{}');
+      await fs.writeFile(
+        path.join(dir, 'package.json'),
+        JSON.stringify({ scripts: { test: 'touch ran.txt' } }),
+      );
+      const result = await runPostMergeSmoke(dir);
+      expect(result.ok).toBe(false);
+      expect(result.detail).toMatch(/sandbox: container/);
+      await expect(fs.stat(path.join(dir, 'ran.txt'))).rejects.toThrow();
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
   });
 });

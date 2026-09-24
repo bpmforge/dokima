@@ -100,18 +100,28 @@ twins survive in the repo. Losing the keychain loses credentials only — re-onb
 providers. `dokima export` bundles board + receipts + ledgers to portable JSON
 (BLUEPRINT §12.8, fast-follow).
 
-## 5. Optional container profile (sandbox)
+## 5. Optional container profile (sandbox) — NOT SELECTABLE in this release
 
-Default sandbox is a restricted process — zero dependencies (SC-07). When Podman/Docker
-is available and the project opts in (`sandbox: container` in project settings):
+Every sandboxed run — verify, the close gate's acceptance criteria and base probe,
+review and onboard security scans, `dokima close`, the HTTP close, the scheduler's
+post-merge smoke — executes under the restricted-process profile (SC-07): cleaned env,
+network denied, zero dependencies.
 
-- Verify/test runs execute in a per-run container: project worktree mounted rw at
-  `/work`, `--network=none` (opt-in relaxation per project), non-root UID, cleaned env,
-  CPU/mem/pids limits, tmpfs scratch.
-- Image: `node:22-slim`-based default; projects can pin their own image (recorded in
-  project settings; new-image adoption is an ordinary reviewed change).
-- The container profile changes _isolation strength only_ — receipts note which profile
-  attested the run, nothing else differs.
+**`sandbox: container` in project settings is refused, not honoured (W23-57).** This
+section used to tell you to set it; nothing ever read it, so a project that chose it
+ran under the process profile anyway and was told nothing. A project whose settings
+name `sandbox` as anything but `"process"` is now refused, with the reason, at every
+one of the doors above — nothing is claimed and no verify runs. Remove the key (or set
+it to `"process"`) to proceed.
+
+The container profile itself exists as a library option
+(`packages/harbormaster/src/sandbox/container.ts`: per-run Podman/Docker container,
+worktree at `/work`, `--network=none`, non-root, CPU/mem/pids limits; W23-54 mounts the
+scanners it needs). Making it selectable is **W23-60**, and it is blocked on three
+things W23-57 recorded: a per-project selection threaded through every door (the only
+existing switch is process-global, and one core serves many projects), a receipt field
+naming the profile that ran, and a verify that can run in the image at all (a macOS
+worktree's native `node_modules` do not load in a Linux container).
 
 ## 6. Run modes & environment
 

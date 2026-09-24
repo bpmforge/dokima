@@ -7,7 +7,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createIdentity, listEvents, openEventLog, type EventLog } from '@dokima/events';
-import { assertSandboxOrWaiver } from './sandbox-preflight.js';
+import {
+  assertSandboxOrWaiver,
+  refusedToolRunner,
+  sandboxSettingRefusal,
+} from './sandbox-preflight.js';
 
 vi.mock('@dokima/harbormaster', async () => {
   const actual =
@@ -103,4 +107,56 @@ describe('assertSandboxOrWaiver (W13-25)', () => {
       expect(setUnsandboxedVerifyWaiver).toHaveBeenCalledWith(true);
     },
   );
+});
+
+/**
+ * W23-57: DEPLOYMENT §5 told users to set `sandbox: container`, and no
+ * production caller ever read it — every run went through the process profile
+ * whatever the project chose, silently. Until the profile is wired for real
+ * (W23-60) the choice is REFUSED with the reason at every door, never ignored.
+ */
+describe('sandboxSettingRefusal (W23-57)', () => {
+  async function projectWith(settings: Record<string, unknown> | null): Promise<string> {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dokima-sandbox-setting-'));
+    dirs.push(dir);
+    if (settings) {
+      await fs.mkdir(path.join(dir, '.dokima'));
+      await fs.writeFile(
+        path.join(dir, '.dokima', 'settings.json'),
+        JSON.stringify(settings),
+      );
+    }
+    return dir;
+  }
+
+  it('RED FIXTURE: settings `sandbox: container` is refused by name — never read as "process"', async () => {
+    const refusal = await sandboxSettingRefusal(
+      await projectWith({ sandbox: 'container' }),
+    );
+    expect(refusal).toMatch(/sandbox: container/);
+    expect(refusal).toMatch(/W23-60/);
+  });
+
+  it('no setting, or `process`, is the default and proceeds', async () => {
+    expect(await sandboxSettingRefusal(await projectWith(null))).toBeNull();
+    expect(
+      await sandboxSettingRefusal(await projectWith({ sandbox: 'process' })),
+    ).toBeNull();
+  });
+
+  it('an unknown value is refused rather than coerced to the default', async () => {
+    expect(await sandboxSettingRefusal(await projectWith({ sandbox: 'vm' }))).toMatch(
+      /"vm"/,
+    );
+  });
+
+  it('the refused tool runner runs nothing and says why', async () => {
+    const out = await refusedToolRunner('the reason')(
+      { executable: 'touch' } as never,
+      ['x'],
+      { cwd: '.', allowNetwork: false, timeoutMs: 1000 } as never,
+    );
+    expect(out.exitCode).toBeNull();
+    expect(out.stderr).toContain('the reason');
+  });
 });

@@ -18,8 +18,14 @@
 import { appendEvent, type EventLog } from '@dokima/events';
 import {
   isSandboxProfileAvailable,
+  sandboxedToolRunner,
   setUnsandboxedVerifyWaiver,
 } from '@dokima/harbormaster';
+import {
+  getEffectiveSettings,
+  resolveEffectiveValue,
+  type ScopedSettings,
+} from '@dokima/shared';
 import type { RunCliIO } from './run-types.js';
 
 /**
@@ -72,4 +78,56 @@ export function unsandboxedWaiverRequested(
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
   return Boolean(env.DOKIMA_ALLOW_UNSANDBOXED_VERIFY);
+}
+
+/** The settings key DEPLOYMENT.md §5 documented for choosing a sandbox profile. */
+export const SANDBOX_SETTINGS_KEY = 'sandbox';
+
+/**
+ * W23-57: THE SETTING WAS READ NOWHERE. DEPLOYMENT.md §5 told a user to put
+ * `sandbox: container` in project settings; no production caller passed a
+ * profile, so every verify, gate and scan ran under the process profile
+ * whatever the project chose — and said nothing.
+ *
+ * DEPRECATED TO A REFUSAL, NOT WIRED, and the reasons are recorded on the board
+ * (W23-57) and carried by W23-60: the only selection pattern here is
+ * process-global while one core serves many projects; wiring means threading a
+ * profile through every sandboxed call site plus a receipt field that does not
+ * exist; and a macOS worktree's native node_modules do not run in the default
+ * Linux image. Until that lands, a project that asks for anything but the
+ * process profile is REFUSED with this reason at every door that runs
+ * sandboxed work for it — never quietly given the process profile instead.
+ *
+ * Returns null when the run may proceed (no setting, or `"process"`).
+ */
+export function sandboxSettingRefusalFrom(settings: ScopedSettings): string | null {
+  const chosen = resolveEffectiveValue(SANDBOX_SETTINGS_KEY, settings)?.value;
+  if (chosen === undefined || chosen === null || chosen === 'process') return null;
+  const named =
+    chosen === 'container' ? 'sandbox: container' : `sandbox: ${JSON.stringify(chosen)}`;
+  return (
+    `this project's settings choose \`${named}\`, and no run in this release ` +
+    `executes under any profile but the process sandbox (SC-07) — the container ` +
+    `profile is not selectable yet (W23-60). Refusing rather than running under ` +
+    `the process profile in its place. Remove the "${SANDBOX_SETTINGS_KEY}" key ` +
+    `from .dokima/settings.json (or set it to "process") to use the process sandbox.`
+  );
+}
+
+/** `sandboxSettingRefusalFrom` over a project directory's effective settings. */
+export async function sandboxSettingRefusal(projectDir: string): Promise<string | null> {
+  return sandboxSettingRefusalFrom(await getEffectiveSettings({ projectDir }));
+}
+
+/**
+ * A security-tool runner that runs nothing and says why (W23-57). Through
+ * `sandboxedToolRunner`'s own error path, so every scanner reports UNAVAILABLE
+ * with the refusal as its reason — coverage missing, never clean.
+ */
+export function refusedToolRunner(
+  reason: string,
+): ReturnType<typeof sandboxedToolRunner> {
+  return sandboxedToolRunner({
+    run: () => Promise.reject(new Error(reason)),
+  });
 }

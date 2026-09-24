@@ -17492,23 +17492,31 @@
         "apps/server/src/api/pipeline/onboard-security-checks.ts",
         "apps/server/src/scheduler/wave-automations-wiring.ts",
         "docs/DEPLOYMENT.md",
-        "docs/SECURITY_CONTROLS.md"
+        "docs/SECURITY_CONTROLS.md",
+        "apps/server/src/cli/run-build.test.ts",
+        "apps/server/src/scheduler/wave-automations-wiring.test.ts"
       ],
       "depends_on": [
         "W23-54"
       ],
       "acceptance": [
-        "A project whose settings choose the container profile has its sandboxed runs (verify, close gate, security tools) executed under it, and the receipt names the profile",
-        "A project that chose it on a host with no container runtime fails closed with the reason, never a silent process-profile run",
-        "Red fixture: settings `sandbox: container` reaches runSandboxed as profile \"container\""
+        "NARROWED 2026-09-24 under the founder's v1 brief ('either wire the setting to a real production caller, or remove/deprecate it \u2014 pick the honest one'), recorded here as W23-56 recorded its own: the setting is DEPRECATED TO A REFUSAL, not wired. The original criteria 1 and 3 ('sandboxed runs executed under the container profile, and the receipt names the profile'; 'settings reach runSandboxed as profile \"container\"') are carried unchanged by W23-60.",
+        "A project whose effective settings name `sandbox` as anything but \"process\" is REFUSED with a reason naming the setting and W23-60 at every door that runs sandboxed work for it \u2014 the build-run preflight (before anything is claimed), `dokima close` and the HTTP close (measureCloseEvidence, before verify runs), onboard's security scans (every scanner UNAVAILABLE with the reason), and the scheduler's post-merge smoke \u2014 never a silent process-profile run",
+        "`sandbox: process` and no setting behave exactly as before; an unknown value is refused rather than coerced",
+        "DEPLOYMENT.md \u00a75 and SECURITY_CONTROLS SC-07 stop telling users to set it, and say what happens if they do",
+        "Red fixtures: settings `sandbox: container` makes measureCloseEvidence refuse and the verify never run; makes executeBuildRun exit 2 with nothing claimed; makes the post-merge smoke fail with the reason and run nothing"
       ],
       "points": 3,
-      "status": "in_progress",
+      "status": "done",
       "notes": [
         "FILED 2026-09-23 (Law 1) while claiming W23-54: `grep -rn \"profile: 'container'\"` over apps/ and packages/ finds no production caller; runSandboxed defaults to \"process\"; sandboxedToolRunner passes no profile. W23-54 makes the SECURITY TOOLS correct under the container profile when it is selected; this ticket is the selection.",
         "CLAIMED 2026-09-24 (fix/v1-wave5). DECISION: DEPRECATE AND FAIL CLOSED, do not wire \u2014 the founder's brief allowed either and asked for the honest one. Reasons, each checked in the code rather than assumed: (1) the only selection pattern in this code is a PROCESS-GLOBAL switch (setUnsandboxedVerifyWaiver), fine for a host-level waiver and wrong for a per-project choice, because one core serves N projects over HTTP and a global would leak project A's profile into project B's close; (2) real wiring means threading a profile through ~10 call sites (reRunVerify under the close gate, the acceptance runs, W21-50's base probe, the review scanners, onboard scans, `dokima close`, the HTTP close, the scheduler's post-merge smoke, the agent-session verify tool) plus a receipt field that does not exist \u2014 no receipt today names ANY profile; (3) on this machine (podman, applehv) a macOS worktree's node_modules are darwin binaries, so a Node project's verify inside the default node:22-slim Linux image fails on the first native module \u2014 the profile is unproven for verify, and wiring it would ship a mode that reds real tickets. What is dishonest TODAY is the documentation plus the silence: DEPLOYMENT \u00a75 tells a user to set `sandbox: container`, and doing so changes nothing and says nothing.",
         "SO: a project whose settings name `sandbox` as anything but \"process\" is REFUSED, with the reason, at every door that runs sandboxed work for it \u2014 the build-run preflight, `dokima close` and the HTTP close (both via measureCloseEvidence), onboard's security scans, and the scheduler's post-merge smoke. DEPLOYMENT \u00a75 and SECURITY_CONTROLS SC-07 are corrected to say the profile exists as a library option and is not selectable. The real wiring is filed as W23-60 with the three blockers above, so it is a ticket and not a sentence (Law 1).",
-        "SCOPE WIDENED AT THE READ (Law 1): the filed scope (sandbox-preflight.ts, sandbox/index.ts + test) reaches the build-run door only, and acceptance 2 \u2014 'never a silent process-profile run' \u2014 is violated by every other door. Added: run-build-preflight.ts (calls the new check), close-evidence.ts + test (CLI and HTTP close), onboard-security-checks.ts, scheduler/wave-automations-wiring.ts, sandbox-preflight.test.ts, docs/DEPLOYMENT.md, docs/SECURITY_CONTROLS.md. All unowned by an open ticket."
+        "SCOPE WIDENED AT THE READ (Law 1): the filed scope (sandbox-preflight.ts, sandbox/index.ts + test) reaches the build-run door only, and acceptance 2 \u2014 'never a silent process-profile run' \u2014 is violated by every other door. Added: run-build-preflight.ts (calls the new check), close-evidence.ts + test (CLI and HTTP close), onboard-security-checks.ts, scheduler/wave-automations-wiring.ts, sandbox-preflight.test.ts, docs/DEPLOYMENT.md, docs/SECURITY_CONTROLS.md. All unowned by an open ticket.",
+        "DONE. PROVEN RED FIRST at the door that already existed: close-evidence.test.ts's W23-57 fixture failed against the unchanged code \u2014 'expected true to be false': a project with `sandbox: container` CLOSED, its verify run under the process profile. The two doors whose tests had to be written after their seam existed were proven the other way, break-and-restore: removing the refusal from run-build-preflight.ts turns its call-site fixture red ('expected +0 to be 2' \u2014 the run started and exited 0 under the process profile), and removing it from runPostMergeSmoke turns the smoke fixture red (the verify ran and created its file). Both restored and green.",
+        "WHY THE NEW CODE LIVES WHERE IT DOES: the check is one function over the settings (sandboxSettingRefusalFrom) with one async wrapper, in sandbox-preflight.ts beside the waiver it mirrors, so the five doors cannot disagree about what counts as a refusal. The onboard door reuses sandboxedToolRunner's own error path (refusedToolRunner) so each scanner reports UNAVAILABLE with the reason \u2014 coverage missing, never clean \u2014 rather than inventing a second shape. SandboxUnavailableError is not in harbormaster's barrel, so a plain Error carries the message; the runner reads only err.message.",
+        "NOT TOUCHED, deliberately: the agent-session verify tool and the derived-manifest path run only INSIDE a build run, which the preflight now refuses before it starts. SRS FR-I4 still states the container profile as a requirement; it is a requirement, and W23-60 is what satisfies it.",
+        "Tests: the affected directories (apps/server cli, scheduler, api/pipeline) 555/555; the full gate is recorded in the wave's closing commit."
       ],
       "stories": [
         "US-402"

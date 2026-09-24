@@ -173,4 +173,39 @@ describe('measureCloseEvidence (W23-42)', () => {
     if (!result.ok)
       expect(result.reasons[0]).toContain('DOKIMA_ALLOW_UNSANDBOXED_VERIFY');
   });
+
+  it('RED FIXTURE (W23-57): a project whose settings choose `sandbox: container` is refused with the reason, and its verify never runs under the process profile', async () => {
+    const { root, sha } = await repoWithFile();
+    await fs.mkdir(path.join(root, '.dokima'), { recursive: true });
+    await fs.writeFile(
+      path.join(root, '.dokima', 'settings.json'),
+      JSON.stringify({ sandbox: 'container' }),
+    );
+
+    const result = await measureCloseEvidence(
+      root,
+      { verify: null },
+      { files: ['x.txt'], commits: [sha], verifyCommand: 'touch ran.txt' },
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reasons.join('\n')).toMatch(/sandbox: container/);
+    // The silent-process-profile run is exactly what this refuses.
+    await expect(fs.stat(path.join(root, 'ran.txt'))).rejects.toThrow();
+  });
+
+  it('W23-57: `sandbox: process` is the default spelled out, and closes as before', async () => {
+    const { root, sha } = await repoWithFile();
+    await fs.mkdir(path.join(root, '.dokima'), { recursive: true });
+    await fs.writeFile(
+      path.join(root, '.dokima', 'settings.json'),
+      JSON.stringify({ sandbox: 'process' }),
+    );
+    const result = await measureCloseEvidence(
+      root,
+      { verify: null },
+      { files: ['x.txt'], commits: [sha], verifyCommand: 'true' },
+    );
+    expect(result.ok).toBe(true);
+  });
 });

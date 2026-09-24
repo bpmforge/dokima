@@ -33,6 +33,7 @@ import {
 } from '@dokima/harbormaster';
 import { resolveAsset } from '@dokima/shared';
 import { OPERATOR_ACTOR_ID } from '../server/board-actor.js';
+import { refusedToolRunner, sandboxSettingRefusal } from '../../cli/sandbox-preflight.js';
 
 export const SECURITY_CHECKS_EVENT = 'security.checks_completed';
 
@@ -146,6 +147,9 @@ export async function runOnboardSecurityChecks(
   log: EventLog,
   runId: string,
 ): Promise<OnboardSecurityChecksResult> {
+  // W23-57: a project that chose a sandbox profile no run honours gets every
+  // scanner UNAVAILABLE with that reason — never a process-profile scan.
+  const profileRefusal = await sandboxSettingRefusal(projectPath);
   const evidence = await runSecurityChecks({
     cwd: projectPath,
     // Onboard analyses a working tree rather than a committed range; the
@@ -158,7 +162,7 @@ export async function runOnboardSecurityChecks(
     secretsValidatorPath: await bundledSecretsScanner(),
     // W23-51: Opengrep over the pinned ruleset — never registry rules.
     sastRules: await resolveSastRules(process.env),
-    runTool: sandboxedToolRunner(),
+    runTool: profileRefusal ? refusedToolRunner(profileRefusal) : sandboxedToolRunner(),
     isInstalled: executableIsInstalled,
   });
 

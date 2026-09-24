@@ -32,7 +32,7 @@ import { DEFAULT_MAX_SESSION_SECONDS } from '@dokima/harbormaster';
 import { ROLE_CODING_AGENT } from '@dokima/gateway';
 import { approvedBuildPreflight } from './approved-build.js';
 import { countReceipts } from './run-build-support.js';
-import { assertSandboxOrWaiver } from './sandbox-preflight.js';
+import { assertSandboxOrWaiver, sandboxSettingRefusalFrom } from './sandbox-preflight.js';
 import { signingKeyOrRefusal } from './signing-key.js';
 import { resolveVaultOrRefusal } from './run-vault.js';
 import {
@@ -95,6 +95,12 @@ export async function runBuildPreflight(
 
   // W12-18: the policy the user chose, read for the first time.
   const policyScoped = await getEffectiveSettings({ projectDir: io.cwd });
+  // W23-57: the documented `sandbox: container` choice is refused, not ignored.
+  const profileRefusal = sandboxSettingRefusalFrom(policyScoped);
+  if (profileRefusal) {
+    io.stderr(`${runId} did not start: ${profileRefusal} Nothing was claimed.`);
+    return { refused: 2 };
+  }
   const policyRaw = resolveEffectiveValue(ESCALATION_POLICY_SETTINGS_KEY, policyScoped)
     ?.value as JsonValue | undefined;
   const policyResult = resolvePolicyScope(policyRaw, ROLE_CODING_AGENT);

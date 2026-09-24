@@ -32,6 +32,7 @@ import { resolveModelTarget } from '../api/pipeline/model-resolution.js';
 import { providerForConfig } from '../api/pipeline/gateway-model-port/provider.js';
 import { targetToConfig } from '../api/pipeline/gateway-model-port/config.js';
 import { stateDbPath } from '../api/server/board-project.js';
+import { sandboxSettingRefusal } from '../cli/sandbox-preflight.js';
 import {
   createMemoryBranchCursor,
   pollBranchAdvisoryReviews,
@@ -189,6 +190,22 @@ export function parseAuditFindings(raw: string): AuditFinding[] {
   }
 }
 
+/**
+ * The post-merge smoke's one verify run (P6-14). W23-57: a project that chose
+ * a sandbox profile no run honours fails the smoke with that reason rather
+ * than being verified under the process profile it did not choose.
+ */
+export async function runPostMergeSmoke(
+  projectPath: string,
+): Promise<{ ok: boolean; detail: string }> {
+  const refusal = await sandboxSettingRefusal(projectPath);
+  if (refusal) return { ok: false, detail: refusal };
+  const command = await deriveVerifyCommand(projectPath);
+  if (!command) return { ok: false, detail: 'no verify command derivable' };
+  const r = await reRunVerify(projectPath, command, 10 * 60_000);
+  return { ok: r.exitCode === 0, detail: `${command} exit ${r.exitCode}` };
+}
+
 /** Landed-feature events newer than the cursor — the smoke trigger. */
 export function featureLandingsSince(log: EventLog, afterSeq: number): number {
   const row = log.db
@@ -273,15 +290,7 @@ export function fleetAdvisoryTick(opts: {
           const state = smokeStates.get(project.path) ?? { consecutiveFailures: 0 };
           smokeStates.set(project.path, state);
           await postMergeSmoke({
-            runSmoke: async () => {
-              const command = await deriveVerifyCommand(project.path);
-              if (!command) return { ok: false, detail: 'no verify command derivable' };
-              const r = await reRunVerify(project.path, command, 10 * 60_000);
-              return {
-                ok: r.exitCode === 0,
-                detail: `${command} exit ${r.exitCode}`,
-              };
-            },
+            runSmoke: () => runPostMergeSmoke(project.path),
             state,
             notify: (m) => opts.notify(`smoke [${project.path}]: ${m}`),
             escalateToHuman: (m) => {
