@@ -16763,7 +16763,7 @@
       "id": "W23-36",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [
         "US-801"
       ],
@@ -16773,9 +16773,13 @@
       "points": 3,
       "title": "the Fleet view shows a card for a project whose directory has vanished \u2014 decide whether it hides, prunes or marks it, and say so in the UI",
       "write_scope": [
-        "apps/web/src/fleet/FleetGrid.tsx",
-        "apps/web/src/fleet/FleetGrid.test.tsx",
-        "apps/web/e2e/fleet.spec.ts"
+        "apps/web/src/fleet/ProjectCard.tsx",
+        "apps/web/src/fleet/ProjectCard.test.tsx",
+        "apps/web/e2e/fleet.spec.ts",
+        "apps/web/e2e/notifications.spec.ts",
+        "apps/web/e2e/roster.spec.ts",
+        "apps/web/e2e/global-teardown.ts",
+        "docs/ARCHITECTURE.md"
       ],
       "acceptance": [
         "A project registered in the fleet whose directory no longer exists renders in ONE decided way \u2014 hidden, pruned with a ledgered record, or shown as unavailable with the reason \u2014 and the choice is written down beside the code, not left to whichever surface reads the registry first",
@@ -16787,7 +16791,10 @@
         "DROPPED FINDING, filed 2026-09-20 during a P13 sweep of validate-plan's report-only list. Named TWICE and filed NOWHERE: first by W9-14, in global-setup.ts's own header \u2014 'Whether the Fleet view should itself hide or prune projects whose directory has vanished is a real question, but it is a product question and belongs in its own ticket' \u2014 and again by W22-15, which hit it head-on.",
         "W22-15 IS THE EVIDENCE AND THE WORKAROUND. It implemented the obvious e2e cleanup (each suite removes its own temp projects in afterAll) and that turned notifications.spec.ts and roster.spec.ts RED: 'getByRole(heading, {name: Fleet}) resolved to 3 elements'. The projects stay in the SHARED fleet registry after their directory is gone, so later specs enumerate a card whose directory has vanished, and an unavailable card renders its name as a heading where an available one does not. A stash-and-rerun control passed 76/76 against the same registry, which ruled out accumulation and pinned it on the removal.",
         "SO THE TEST SUITE IS CURRENTLY SHAPED AROUND THE UNANSWERED QUESTION. W22-15 moved removal into a global teardown that runs after the last spec, where nothing can observe the gap \u2014 honest, and explicitly not an answer: its own note says 'A2's each suite removes cannot be honoured literally without answering it'. Answering it here is what would let per-suite cleanup be written the obvious way.",
-        "NOT A TEST TICKET. The observable behaviour is a product one: a user whose project directory moved or was deleted sees a Fleet card that cannot be opened, and nothing tells them why."
+        "NOT A TEST TICKET. The observable behaviour is a product one: a user whose project directory moved or was deleted sees a Fleet card that cannot be opened, and nothing tells them why.",
+        "CLAIMED 2026-09-24 (fix/v1-wave5). SCOPE CORRECTED AT THE READ (Law 1): the filed scope names apps/web/src/fleet/FleetGrid.tsx and its test, which do not exist \u2014 the card is ProjectCard.tsx (+ test). Widened to notifications.spec.ts and roster.spec.ts (the two suites that broke, see below), global-teardown.ts (its header states the mechanism wrongly), and docs/ARCHITECTURE.md (acceptance 4). All unowned by an open ticket.",
+        "THE RECORDED MECHANISM IS WRONG, found by reading the source before choosing a fix. W22-15 and global-teardown.ts say 'an unavailable card renders its name as a heading where an available one does not'. ProjectCard.tsx renders `<h2>{card.name}</h2>` in BOTH branches. The three matches come from the NAME: every fleet.spec temp project is called 'Fleet E2E <uuid>' (temp-project.ts), and `getByRole('heading', { name: 'Fleet' })` is a case-insensitive SUBSTRING match, so each such card's heading matches the page's <h1>Fleet</h1> query. Removing a project's directory mid-run leaves its card in the active list (unavailable is never archived), where an archived available one had been hidden \u2014 that is why removal, and not availability, exposed it.",
+        "DECISION: MARK, as W9-15 already does \u2014 not hide, not prune. Hiding would make a vanished project indistinguishable from one never registered and leave the user no way to learn why it went; pruning would forget a project on a transient absence (an unmounted external drive, a folder mid-rename) and silently rewrite the registry the user owns. The unavailable card keeps its one useful action (Remove from Fleet) and the bulk remove, both registry-only, both explicit. What this ticket adds is the part that was missing: the state is carried by the ACCESSIBLE NAME, not only by a chip and a class."
       ]
     },
     {
