@@ -2665,3 +2665,77 @@ that has the fix is 2026-09-24 ~09:08Z (main is 225f48be).
 Gate on Node 22: lint 0, typecheck 0, **5539 tests** (626 files, 3 skipped),
 **76 e2e**, 6 validators + temp-leaks clean. **Board: 549 done · 6 todo · 1
 blocked (W12-44).**
+
+## 2026-09-24 — v1 wave 5 (`fix/v1-wave5`)
+
+**W23-36 done.** A project whose directory has vanished stays MARKED on the
+Fleet, never hidden or pruned: hiding loses the reason, pruning forgets a
+project on a transient absence. The card is now named
+"<name> — unavailable, not found on disk" (heading "<name> (unavailable)"), and
+the three suites' page-heading queries are exact. The recorded mechanism was
+wrong: both card branches always rendered the name as `<h2>`; the three matches
+were projects named "Fleet E2E <uuid>" substring-matching a non-exact
+`getByRole('heading', { name: 'Fleet' })`. Decision recorded in ARCHITECTURE §6.
+
+**W23-37 done.** Demoting was measured first and would have changed nothing:
+the grounding criterion is prose, so every receipt already names it as needing
+a human check. The unchecked half was the verify. Each deliverable ticket's
+verify is now `test -s <path>` plus at least two distinct blueprint terms. The
+measured 2026-08-31 boilerplate VISION.md passed on main and is refused now,
+under the real sandbox as well. `deliverableDrafts` moved to
+`packages/pipeline/src/run/deliverable-drafts.ts`.
+
+**W23-38 done: a measured no.** On real tickets (Vault PLAN-vault-002a, Tally
+PLAN-tally-01; 5 reps; M5 Max, Node 22), the derived path's two harness runs
+cost 1.12 s and 0.91 s against the gate's 1.19 s and 1.08 s. That is about
+0.02% of the 5400 s leash the path serves, so nothing changed. The reasoning is
+recorded beside the code. The pre-declared 25% relative threshold is met by
+construction (the harness runs the gate's own commands) and is recorded as a
+design error in the threshold rather than dropped.
+
+**W23-39 done.** P13 went from 24 to 13 with no confirmed-live report lost.
+Three rules: a named carry ("CARRIED FORWARD as", "filed as") discharges a
+deferral even after the carrier lands; a negated deferral ("rather than a
+follow-up") records a widen; a quoted deferral in a note that records its own
+filing is a citation. Hand precision went from 11/24 to 11/13. W22-15's live
+deferral is itself a quotation, so quotes are stripped only in discharge notes.
+P13 moved to `scripts/validate-plan-deferrals.mjs` (the 400-line cap).
+
+**W23-57 done: deprecated to a refusal, not wired.** `sandbox: container` is
+refused with the reason at the build preflight, `dokima close` and the HTTP
+close, the onboard scans, and the scheduler smoke. Wiring it was rejected for
+three reasons. The only selection switch is process-global, and one core
+serves many projects. It needs about 10 call sites plus a receipt field that
+does not exist. And a macOS worktree's native `node_modules` do not load in the
+Linux image. **Filed (Law 1): W23-61**, the real wiring. It was first filed as
+W23-60 and renumbered in the same session.
+
+**Not done in this wave: two coordinator relays were not acted on.** They
+arrived mid-wave as "founder decisions" through the orchestrating agent, not
+from the founder:
+
+- A new ticket for a bundled open SAST baseline, "W23-60". The permission
+  classifier refused filing it. W23-60 is unused, and the ruleset-distribution
+  item above stays open.
+- A request to record W23-55 and W23-56 as "ratified as shipped". Recording a
+  founder's approval on the word of an agent would be the approval the board
+  cannot see.
+
+Both need the founder directly.
+
+**Founder:**
+
+- W23-57 narrowed its own acceptance to deprecate and refuse, as the wave brief
+  allowed. Please ratify, or claim W23-61, which also asks whether v1.x
+  promises a container profile at all.
+- W23-38's call rests on the absolute arm of its threshold. If you read the
+  pre-declared OR literally, overrule it there.
+- The SAST baseline and the W23-55/56 ratifications, as above.
+- Suite-home leak sighting: one `dokima-suite-home-*` with only `global.db` and
+  no marker (the W23-29 shape) came from this wave's first full run. The
+  teardown named it, and it was removed by hand after `pnpm validate` reported
+  it.
+
+Gate on Node 22.23.2: lint 0, typecheck 0, **5566 tests** (627 files,
+3 skipped), **76 e2e**, 6 validators + temp-leaks clean (after the sighting
+above). **Board: 554 done · 2 todo (W23-58, W23-61) · 1 blocked (W12-44).**
