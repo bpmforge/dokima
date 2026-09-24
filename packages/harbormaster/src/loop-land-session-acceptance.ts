@@ -176,6 +176,21 @@ export async function deriveManifest(input: {
   // The gate re-runs the ticket's verify and compares nothing to the claim, but
   // a derived claim should still be OBSERVED rather than asserted: run the same
   // command `verifyCommandFor` will hand the gate, and report what it returned.
+  //
+  // W23-38: THIS PATH RUNS THE SAME COMMANDS THREE TIMES — `silentCompletion`'s
+  // criteria, this verify, then `runCloseGate`'s verify + criteria + base probe
+  // — and that is KEPT, on a measurement. Real tickets, 5 reps, M5 Max:
+  // Vault PLAN-vault-002a spends 0.35 s (criteria) + 0.77 s (this verify) in
+  // the harness against 1.19 s in the gate; Tally PLAN-tally-01 0.14 + 0.78 s
+  // against 1.08 s. About one second of harness duplication on a path that
+  // only fires after a session has burned its 5400 s leash — 0.02%. The one
+  // run that could go is this one, and dropping it would turn the derived
+  // manifest from an observation into an assertion to save under a second.
+  // The GATE's runs were never candidates: it re-derives ground truth itself
+  // (W21-50's base probe, W21-87's ran-nothing, W23-33's fabricated-evidence
+  // checks all hang off its own execution), and a result carried forward from
+  // here would make the harness the source of the gate's evidence (Law 4).
+  // Re-measure before revisiting if a project's verify is minutes, not seconds.
   const verifyCommand = await verifyCommandFor(
     input.worktreePath,
     input.ticketVerify ?? null,
