@@ -1,0 +1,56 @@
+# Dokima SAST baseline. Copyright 2026 Bradford Matthews. Apache-2.0 (see LICENSE).
+# Written clean-room for Dokima; not derived from any other rule collection.
+rules:
+  - id: js-sql-string-built
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      A SQL statement is built by concatenation or template interpolation and
+      passed to a query method. Input in it changes the statement. Use bound
+      parameters (? or $1) and pass the values separately.
+    metadata:
+      category: security
+      cwe: 'CWE-89: SQL Injection'
+      confidence: MEDIUM
+    patterns:
+      - pattern: $DB.$METHOD($SQL, ...)
+      - metavariable-regex:
+          metavariable: $METHOD
+          regex: ^(query|execute|raw|prepare|exec|all|get|run|each|unsafe|\$queryRawUnsafe|\$executeRawUnsafe)$
+      # Two shapes, both unambiguous: a template that interpolates a value
+      # into a quoted SQL string ('${x}'), and a SQL literal joined to
+      # something with +. A template that splices a clause the code assembled
+      # from its own fragments (`... ${where}`) is how parameterised query
+      # builders work, and is left alone; request data reaching a query is
+      # js-sql-request-data's job.
+      - metavariable-regex:
+          metavariable: $SQL
+          regex: (?is)^(?:`\s*(?:select\s.+?\sfrom|insert\s+into|update\s+\S+\s+set|delete\s+from|replace\s+into)[^`]*'\$\{|["']\s*(?:select\s.+?\sfrom|insert\s+into|update\s+\S+\s+set|delete\s+from|replace\s+into).*["']\s*\+)
+
+  - id: js-sql-request-data
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      Request data (params, query or body) reaches the text of a SQL query.
+      Pass it as a bound parameter instead.
+    metadata:
+      category: security
+      cwe: 'CWE-89: SQL Injection'
+      confidence: HIGH
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $REQ.params
+              - pattern: $REQ.query
+              - pattern: $REQ.body
+          - metavariable-regex:
+              metavariable: $REQ
+              regex: ^(req|request)$
+    pattern-sinks:
+      - patterns:
+          - pattern: $DB.$METHOD($SQL, ...)
+          - metavariable-regex:
+              metavariable: $METHOD
+              regex: ^(query|execute|raw|prepare|exec|unsafe|\$queryRawUnsafe|\$executeRawUnsafe)$
+          - focus-metavariable: $SQL

@@ -1,0 +1,36 @@
+# Dokima SAST baseline. Copyright 2026 Bradford Matthews. Apache-2.0 (see LICENSE).
+# Written clean-room for Dokima; not derived from any other rule collection.
+rules:
+  - id: js-unsafe-deserialization
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      node-serialize's unserialize() revives functions, so a crafted payload
+      runs code when it is read. Exchange data as JSON and validate it.
+    metadata:
+      category: security
+      cwe: 'CWE-502: Deserialization of Untrusted Data'
+      confidence: HIGH
+    pattern-either:
+      - pattern: require('node-serialize').unserialize(...)
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  $S = require('node-serialize');
+                  ...
+              - pattern-inside: |
+                  import $S from 'node-serialize';
+                  ...
+              - pattern-inside: |
+                  import * as $S from 'node-serialize';
+                  ...
+          - pattern: $S.unserialize(...)
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  const { ..., unserialize, ... } = require('node-serialize');
+                  ...
+              - pattern-inside: |
+                  import { ..., unserialize, ... } from 'node-serialize';
+                  ...
+          - pattern: unserialize(...)

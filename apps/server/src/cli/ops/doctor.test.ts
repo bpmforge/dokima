@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { appendEvent, createIdentity, openEventLog } from '@dokima/events';
+import { resolveSastRules } from '@dokima/harbormaster';
 import { createInMemoryCredentialStore, type CredentialStore } from '@dokima/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CliIO } from '../../bootstrap/cli.js';
@@ -429,6 +430,61 @@ describe('sast (W23-51)', () => {
     const check = await checkSast(io(), { sastProbe: SAST_READY });
     expect(check).toMatchObject({ name: 'sast', status: 'ok' });
     expect(check.detail).toMatch(/3 rule file\(s\) from \/rules\/packs \(sha256:aaaa/);
+  });
+});
+
+/**
+ * W23-60 — with nothing configured, the bundled open baseline is the ruleset.
+ * Hermetic: the probe resolves with its own empty HOME and no
+ * DOKIMA_SAST_RULES, never this machine's ~/.dokima/rules/sast.
+ */
+describe('sast on the bundled baseline (W23-60)', () => {
+  const homes: string[] = [];
+  afterEach(async () => {
+    await Promise.all(
+      homes.splice(0).map((d) => fs.rm(d, { recursive: true, force: true })),
+    );
+  });
+
+  async function bundledProbe(): Promise<{ io: CliIO; probe: SastProbe }> {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), 'sw-doctor-sast-home-'));
+    homes.push(home);
+    const env = { HOME: home };
+    return {
+      io: { stdout: vi.fn(), stderr: vi.fn(), cwd: '/tmp', env },
+      probe: async (e) => ({ opengrepInstalled: true, rules: await resolveSastRules(e) }),
+    };
+  }
+
+  it('is OK, not a warning, names the baseline as the active ruleset, and says a richer pack can be plugged in', async () => {
+    const { io, probe } = await bundledProbe();
+    const check = await checkSast(io, { sastProbe: probe });
+    expect(check.status).toBe('ok');
+    expect(check.detail).toContain('the bundled open baseline');
+    expect(check.detail).toContain(path.join('rules', 'sast-baseline'));
+    expect(check.detail).toMatch(/richer rule pack can be plugged in/);
+    expect(check.detail).toMatch(/DOKIMA_SAST_RULES/);
+    expect(check.detail).toContain('~/.dokima/rules/sast');
+  });
+
+  it('a pack the user plugged in is named, with no richer-pack hint', async () => {
+    const { io } = await bundledProbe();
+    const pack = await fs.mkdtemp(path.join(os.tmpdir(), 'sw-doctor-sast-pack-'));
+    homes.push(pack);
+    await fs.writeFile(path.join(pack, 'mine.yaml'), 'rules: []');
+    const env = { ...io.env, DOKIMA_SAST_RULES: pack };
+    const check = await checkSast(
+      { ...io, env },
+      {
+        sastProbe: async (e) => ({
+          opengrepInstalled: true,
+          rules: await resolveSastRules(e),
+        }),
+      },
+    );
+    expect(check.status).toBe('ok');
+    expect(check.detail).toContain(`${pack} (DOKIMA_SAST_RULES)`);
+    expect(check.detail).not.toMatch(/richer rule pack/);
   });
 });
 

@@ -83,6 +83,7 @@
     "apps/server/src/bootstrap/bundle-age.mjs",
     "apps/web/dist",
     "content",
+    "rules/sast-baseline",
     "packages/events/migrations",
     "packages/events/src/global-db/migrations",
     "e2e/fitness-fixtures",

@@ -1,0 +1,58 @@
+# Dokima SAST baseline. Copyright 2026 Bradford Matthews. Apache-2.0 (see LICENSE).
+# Written clean-room for Dokima; not derived from any other rule collection.
+rules:
+  - id: js-eval-dynamic
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      eval() runs a value that is not a string literal. If any part of it comes
+      from input, that input runs as code. Parse the data (JSON.parse) or
+      dispatch on it instead.
+    metadata:
+      category: security
+      cwe: 'CWE-95: Eval Injection'
+      confidence: HIGH
+    patterns:
+      - pattern: eval($CODE)
+      - pattern-not: eval("...")
+
+  - id: js-new-function-dynamic
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      new Function() compiles a body that is not a string literal. If any part
+      of it comes from input, that input runs as code.
+    metadata:
+      category: security
+      cwe: 'CWE-95: Eval Injection'
+      confidence: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: new Function(..., $BODY)
+          - pattern: Function(..., $BODY)
+      - pattern-not: new Function(..., "...")
+      - pattern-not: Function(..., "...")
+      - pattern-not: new Function()
+      - pattern-not: Function()
+
+  - id: js-vm-run-dynamic
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      node:vm runs code that is not a string literal. The vm module is not a
+      security boundary, so input reaching it runs with the host's rights.
+    metadata:
+      category: security
+      cwe: 'CWE-94: Code Injection'
+      confidence: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: $VM.runInNewContext($CODE, ...)
+          - pattern: $VM.runInThisContext($CODE, ...)
+          - pattern: $VM.runInContext($CODE, ...)
+          - pattern: new $VM.Script($CODE, ...)
+      - metavariable-regex:
+          metavariable: $VM
+          regex: ^vm$
+      - pattern-not: $VM.$FN("...", ...)
+      - pattern-not: new $VM.Script("...", ...)

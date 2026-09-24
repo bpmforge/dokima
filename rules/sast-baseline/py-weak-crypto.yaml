@@ -1,0 +1,46 @@
+# Dokima SAST baseline. Copyright 2026 Bradford Matthews. Apache-2.0 (see LICENSE).
+# Written clean-room for Dokima; not derived from any other rule collection.
+rules:
+  - id: py-weak-hash
+    languages: [python]
+    severity: WARNING
+    message: >-
+      MD5 and SHA-1 are broken for collision resistance. For passwords use
+      hashlib.scrypt or argon2; for integrity use SHA-256 or better. If this
+      hash is not a security control, say so with usedforsecurity=False.
+    metadata:
+      category: security
+      cwe: 'CWE-328: Use of Weak Hash'
+      confidence: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: hashlib.md5(...)
+          - pattern: hashlib.sha1(...)
+          - patterns:
+              - pattern: hashlib.new("$ALG", ...)
+              - metavariable-regex:
+                  metavariable: $ALG
+                  regex: (?i)^(md4|md5|sha1|sha-1)$
+      - pattern-not: hashlib.$FN(..., usedforsecurity=False, ...)
+
+  - id: py-weak-cipher
+    languages: [python]
+    severity: ERROR
+    message: >-
+      DES, 3DES, RC4, Blowfish and ECB mode are broken or leak patterns. Use
+      AES-GCM (cryptography's AESGCM, or PyCryptodome's AES.MODE_GCM).
+    metadata:
+      category: security
+      cwe: 'CWE-327: Use of a Broken or Risky Cryptographic Algorithm'
+      confidence: HIGH
+    pattern-either:
+      - pattern: DES.new(...)
+      - pattern: DES3.new(...)
+      - pattern: ARC4.new(...)
+      - pattern: ARC2.new(...)
+      - pattern: Blowfish.new(...)
+      - pattern: $AES.new(..., $AES.MODE_ECB, ...)
+      - pattern: algorithms.TripleDES(...)
+      - pattern: algorithms.ARC4(...)
+      - pattern: algorithms.Blowfish(...)
+      - pattern: modes.ECB(...)

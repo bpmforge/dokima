@@ -1,0 +1,57 @@
+# Dokima SAST baseline. Copyright 2026 Bradford Matthews. Apache-2.0 (see LICENSE).
+# Written clean-room for Dokima; not derived from any other rule collection.
+rules:
+  - id: py-sql-string-built
+    languages: [python]
+    severity: ERROR
+    message: >-
+      A SQL statement is built with %, .format(), an f-string or + and passed
+      to execute(). Input in it changes the statement. Pass the values as the
+      second argument (placeholders) instead.
+    metadata:
+      category: security
+      cwe: 'CWE-89: SQL Injection'
+      confidence: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: $CUR.$EXEC($SQL, ...)
+          - patterns:
+              - pattern-inside: |
+                  $Q = $SQL
+                  ...
+              - pattern: $CUR.$EXEC($Q, ...)
+      - metavariable-regex:
+          metavariable: $EXEC
+          regex: ^(execute|executemany|executescript|raw)$
+      # The value lands inside a quoted SQL string: '{x}', '%s', '%(name)s',
+      # '{}' or '" + x. A statement that splices a clause or a placeholder
+      # list the code built itself (IN ({placeholders}), WHERE {clause}) is
+      # how parameterised builders work, and is left alone.
+      - metavariable-regex:
+          metavariable: $SQL
+          regex: (?is)^[rbuf]*["']{1,3}\s*(?:select\s.+?\sfrom|insert\s+into|update\s+\S+\s+set|delete\s+from|replace\s+into).*?(?:'\{[^}]*\}'|'%s'|'%\(|["']\s*\+)
+
+  - id: py-sql-request-data
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Request data reaches the text of a SQL statement. Pass it as a bound
+      parameter (the second argument to execute) instead.
+    metadata:
+      category: security
+      cwe: 'CWE-89: SQL Injection'
+      confidence: HIGH
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern: request.$ATTR
+          - metavariable-regex:
+              metavariable: $ATTR
+              regex: ^(args|form|values|json|cookies|GET|POST|query_params)$
+    pattern-sinks:
+      - patterns:
+          - pattern: $CUR.$EXEC($SQL, ...)
+          - metavariable-regex:
+              metavariable: $EXEC
+              regex: ^(execute|executemany|executescript|raw)$
+          - focus-metavariable: $SQL

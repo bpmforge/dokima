@@ -23,7 +23,8 @@
  *    build → `npm pack` → install into a fresh temp dir → `--help`, `doctor`,
  *    and an explicit better-sqlite3 load. `doctor` on a fresh DOKIMA_HOME
  *    never opens a database, so without the probe a missing native binary
- *    would pass.
+ *    would pass. It also fails when the tarball lacks the bundled SAST
+ *    baseline (`sastBaselineNotShipped`, W23-60).
  *
  * THE INSTALL BEHAVES LIKE A DEFAULT npm CLIENT. `--ignore-scripts=false` is
  * explicit: a machine with `ignore-scripts=true` in its user npm config (the
@@ -103,6 +104,31 @@ export function bootstrapImportsNotShipped(pkg, root = ROOT) {
   return [...new Set(missing)];
 }
 
+/** W23-60: the bundled SAST baseline, which tool-sast falls back to. */
+export const SAST_BASELINE_DIR = 'rules/sast-baseline';
+
+/**
+ * What the tarball must carry for the bundled SAST baseline to work: its
+ * LICENSE (the rules are Apache-2.0 inside an FSL package, so shipping them
+ * without it would misstate their terms) and at least one rule file. Returns
+ * what is missing, given the tarball's file list (`npm pack --json`). Empty
+ * means the baseline ships. Without it, every install reports tool-sast NOT
+ * RUN again, and no gate that runs from the source tree would notice.
+ *
+ * @param {string[]} shipped paths inside the tarball
+ * @returns {string[]}
+ */
+export function sastBaselineNotShipped(shipped) {
+  const missing = [];
+  if (!shipped.includes(`${SAST_BASELINE_DIR}/LICENSE`)) {
+    missing.push(`${SAST_BASELINE_DIR}/LICENSE`);
+  }
+  if (!shipped.some((f) => f.startsWith(`${SAST_BASELINE_DIR}/`) && /\.ya?ml$/.test(f))) {
+    missing.push(`${SAST_BASELINE_DIR}/*.yaml`);
+  }
+  return missing;
+}
+
 function run(cmd, args, opts = {}) {
   console.log(`$ ${cmd} ${args.join(' ')}`);
   return execFileSync(cmd, args, {
@@ -138,6 +164,18 @@ function main() {
     console.log(
       `packed ${packed.filename}: ${shipped.length} files, ${packed.size} bytes`,
     );
+    const baselineMissing = sastBaselineNotShipped(shipped);
+    if (baselineMissing.length > 0) {
+      console.error(
+        `smoke:pack: the SAST baseline is not in the tarball: ${baselineMissing.join(', ')}`,
+      );
+      failed = true;
+    } else {
+      const rules = shipped.filter(
+        (f) => f.startsWith(`${SAST_BASELINE_DIR}/`) && /\.ya?ml$/.test(f),
+      );
+      console.log(`SAST baseline shipped: ${rules.length} rule file(s) + LICENSE`);
+    }
     const tests = shipped.filter((f) => /\.test\.[cm]?[jt]sx?$/.test(f));
     if (tests.length > 0) {
       console.error(`smoke:pack: test files in the tarball: ${tests.join(', ')}`);

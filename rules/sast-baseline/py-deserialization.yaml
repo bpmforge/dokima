@@ -1,0 +1,51 @@
+# Dokima SAST baseline. Copyright 2026 Bradford Matthews. Apache-2.0 (see LICENSE).
+# Written clean-room for Dokima; not derived from any other rule collection.
+rules:
+  - id: py-unsafe-deserialization
+    languages: [python]
+    severity: ERROR
+    message: >-
+      pickle, marshal and dill run code while loading, so reading a crafted
+      payload runs it. Exchange data as JSON and validate it; never unpickle
+      anything that crossed a trust boundary.
+    metadata:
+      category: security
+      cwe: 'CWE-502: Deserialization of Untrusted Data'
+      confidence: HIGH
+    pattern-either:
+      - pattern: pickle.loads(...)
+      - pattern: pickle.load(...)
+      - pattern: pickle.Unpickler(...)
+      - pattern: cPickle.loads(...)
+      - pattern: cPickle.load(...)
+      - pattern: _pickle.loads(...)
+      - pattern: dill.loads(...)
+      - pattern: dill.load(...)
+      - pattern: marshal.loads(...)
+      - pattern: marshal.load(...)
+      - pattern: shelve.open(...)
+
+  - id: py-yaml-unsafe-load
+    languages: [python]
+    severity: ERROR
+    message: >-
+      yaml.load without a safe loader (or yaml.unsafe_load) builds arbitrary
+      Python objects from the document, so a crafted file runs code. Use
+      yaml.safe_load.
+    metadata:
+      category: security
+      cwe: 'CWE-502: Deserialization of Untrusted Data'
+      confidence: HIGH
+    pattern-either:
+      - pattern: yaml.unsafe_load(...)
+      - pattern: yaml.unsafe_load_all(...)
+      - patterns:
+          - pattern-either:
+              - pattern: yaml.load(...)
+              - pattern: yaml.load_all(...)
+          - pattern-not: yaml.$FN(..., Loader=yaml.SafeLoader, ...)
+          - pattern-not: yaml.$FN(..., Loader=yaml.CSafeLoader, ...)
+          - pattern-not: yaml.$FN(..., Loader=SafeLoader, ...)
+          - pattern-not: yaml.$FN(..., Loader=CSafeLoader, ...)
+          - pattern-not: yaml.$FN(..., Loader=yaml.BaseLoader, ...)
+          - pattern-not: yaml.$FN(..., Loader=BaseLoader, ...)

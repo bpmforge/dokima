@@ -18,3 +18,8 @@ plan.json
 # Reformatting it would edit someone else's document in place and make it
 # impossible to diff against the copy the work was scoped from.
 docs/work/automated-build-handoff/
+
+# W23-60: the SAST baseline's fixtures are annotated test inputs for
+# `opengrep test` (a `// ruleid:` comment must sit on the line above its
+# match), so a formatter reflowing them can silently break the pairing.
+rules/sast-baseline-fixtures/

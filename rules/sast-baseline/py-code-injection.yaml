@@ -1,0 +1,20 @@
+# Dokima SAST baseline. Copyright 2026 Bradford Matthews. Apache-2.0 (see LICENSE).
+# Written clean-room for Dokima; not derived from any other rule collection.
+rules:
+  - id: py-eval-exec-dynamic
+    languages: [python]
+    severity: ERROR
+    message: >-
+      eval()/exec() runs a value that is not a string literal. If any part of
+      it comes from input, that input runs as code. Use ast.literal_eval for
+      data, or dispatch on the value.
+    metadata:
+      category: security
+      cwe: 'CWE-95: Eval Injection'
+      confidence: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: eval($CODE, ...)
+          - pattern: exec($CODE, ...)
+      - pattern-not: eval("...", ...)
+      - pattern-not: exec("...", ...)
