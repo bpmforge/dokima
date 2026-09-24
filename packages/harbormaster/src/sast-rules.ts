@@ -1,20 +1,29 @@
 /**
- * Where the SAST ruleset comes from (W23-51).
+ * Where the SAST ruleset comes from (W23-51, W23-60).
  *
- * THE FOUNDER'S CALL, recorded 2026-09-23: static analysis runs on Opengrep
- * with the founder's own rule packs (bpm-rulepacks). Never Semgrep's registry
- * (`--config auto`, `p/*`) — those rules are licensed for internal use only —
- * and never a run that sends metrics. `--config auto` was also simply broken:
- * semgrep refuses it with `--metrics=off` ("Cannot create auto config when
- * metrics are off"), so every machine review carried an errored SAST check.
+ * THE FOUNDER'S CALLS. 2026-09-23: static analysis runs on Opengrep over local
+ * rules. Never Semgrep's registry (`--config auto`, `p/*`) — those rules are
+ * licensed for internal use only — and never a run that sends metrics.
+ * `--config auto` was also simply broken: semgrep refuses it with
+ * `--metrics=off` ("Cannot create auto config when metrics are off").
+ * 2026-09-24: ship an open baseline, so a fresh install runs SAST at all.
  *
- * THE RULES ARE NOT VENDORED. They are proprietary and this package is
- * published under FSL, so the ruleset is located on the host instead:
- * `DOKIMA_SAST_RULES` when set, else `~/.dokima/rules/sast`. A directory laid
- * out like bpm-rulepacks' `packs/` contributes its security packs only
- * (`owasp`, `secrets`, `framework`) — the code-health packs judge style, and a
- * style finding is not a security check's business. Any other directory is
- * used whole.
+ * RESOLUTION ORDER, first that applies:
+ *  1. `DOKIMA_SAST_RULES`, when set. A set path with no rules is null (NOT RUN)
+ *     — an explicit setting that does not resolve is a misconfiguration to
+ *     report, never one to paper over with the baseline. The test suite relies
+ *     on this: it pins the variable to a missing path so no test spawns a real
+ *     scan (W23-59).
+ *  2. `~/.dokima/rules/sast`, when it holds rules — where a richer pack is
+ *     plugged in (the founder links his proprietary bpm-rulepacks here).
+ *  3. The bundled baseline, `rules/sast-baseline/` in the package: rules
+ *     written clean-room for Dokima under Apache-2.0 (W23-60). The packs of
+ *     step 2 are not vendored — they are proprietary, and this package is FSL.
+ *
+ * A directory laid out like bpm-rulepacks' `packs/` contributes its security
+ * packs only (`owasp`, `secrets`, `framework`) — the code-health packs judge
+ * style, and a style finding is not a security check's business. Any other
+ * directory is used whole.
  *
  * PINNED BY CONTENT. The digest covers every rule file's path and bytes, and
  * is recorded in each SAST evidence row and in its reuse key, so a verdict
@@ -25,6 +34,7 @@ import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { resolveAsset } from '@dokima/shared';
 
 /** The rulepack subdirectories a security review runs, when the layout has them. */
 export const SAST_SECURITY_PACKS: readonly string[] = Object.freeze([
@@ -35,9 +45,14 @@ export const SAST_SECURITY_PACKS: readonly string[] = Object.freeze([
 
 export const SAST_RULES_ENV = 'DOKIMA_SAST_RULES';
 
+/** Which step of the resolution order supplied the ruleset. */
+export type SastRulesSource = 'env' | 'home' | 'bundled';
+
 export interface SastRuleset {
   /** The directory that was resolved, for messages. */
   readonly root: string;
+  /** Absent on a hand-built ruleset (tests); resolveSastRules always sets it. */
+  readonly source?: SastRulesSource;
   /** Each passed to the engine as its own `--config`. */
   readonly configPaths: readonly string[];
   /** `sha256:` over every rule file's relative path and content. */
@@ -56,11 +71,16 @@ export function sastRulesLocation(env: Readonly<Record<string, string | undefine
   return { dir: path.join(home, '.dokima', 'rules', 'sast'), fromEnv: false };
 }
 
+/** The open baseline shipped in the package (W23-60). */
+export function bundledSastRulesDir(): string {
+  return resolveAsset('rules', 'sast-baseline');
+}
+
 /** The one sentence every "no ruleset" message shares. */
 export function sastRulesFix(): string {
   return (
-    `set ${SAST_RULES_ENV} to a rulepack directory (for bpm-rulepacks, its packs/ ` +
-    `directory), or link one at ~/.dokima/rules/sast. Registry rules are never used.`
+    `set ${SAST_RULES_ENV} to a rulepack directory that exists, or unset it to use ` +
+    `~/.dokima/rules/sast or the bundled baseline. Registry rules are never used.`
   );
 }
 
@@ -86,14 +106,10 @@ async function ruleFiles(dir: string): Promise<string[]> {
   return out;
 }
 
-/**
- * Resolves the ruleset, or null when there is none — which the runner reports
- * as a check that did NOT RUN, never as a pass and never as a registry fallback.
- */
-export async function resolveSastRules(
-  env: Readonly<Record<string, string | undefined>>,
+async function rulesetAt(
+  dir: string,
+  source: SastRulesSource,
 ): Promise<SastRuleset | null> {
-  const { dir } = sastRulesLocation(env);
   if (!(await isDirectory(dir))) return null;
 
   const packs: string[] = [];
@@ -114,8 +130,23 @@ export async function resolveSastRules(
   }
   return {
     root: dir,
+    source,
     configPaths,
     digest: `sha256:${hash.digest('hex')}`,
     ruleFileCount: files.length,
   };
+}
+
+/**
+ * Resolves the ruleset in the order above, or null — which the runner reports
+ * as a check that did NOT RUN, never as a pass and never as a registry
+ * fallback. Null now means only that DOKIMA_SAST_RULES names a path with no
+ * rules (or the package lost its baseline).
+ */
+export async function resolveSastRules(
+  env: Readonly<Record<string, string | undefined>>,
+): Promise<SastRuleset | null> {
+  const { dir, fromEnv } = sastRulesLocation(env);
+  if (fromEnv) return rulesetAt(dir, 'env');
+  return (await rulesetAt(dir, 'home')) ?? rulesetAt(bundledSastRulesDir(), 'bundled');
 }

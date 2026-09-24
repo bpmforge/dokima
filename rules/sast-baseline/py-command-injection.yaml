@@ -1,0 +1,41 @@
+# Dokima SAST baseline. Copyright 2026 Bradford Matthews. Apache-2.0 (see LICENSE).
+# Written clean-room for Dokima; not derived from any other rule collection.
+rules:
+  - id: py-os-system-dynamic
+    languages: [python]
+    severity: ERROR
+    message: >-
+      os.system/os.popen hands a command built at run time to a shell. Input
+      in it can add commands. Use subprocess.run with an argument list.
+    metadata:
+      category: security
+      cwe: 'CWE-78: OS Command Injection'
+      confidence: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: os.system($CMD)
+          - pattern: os.popen($CMD, ...)
+          - pattern: subprocess.getoutput($CMD)
+          - pattern: subprocess.getstatusoutput($CMD)
+      - pattern-not: os.system("...")
+      - pattern-not: os.popen("...", ...)
+      - pattern-not: subprocess.getoutput("...")
+      - pattern-not: subprocess.getstatusoutput("...")
+
+  - id: py-subprocess-shell-dynamic
+    languages: [python]
+    severity: ERROR
+    message: >-
+      subprocess with shell=True and a command built at run time: the shell
+      parses it, so input in it can add commands. Pass an argument list and
+      drop shell=True.
+    metadata:
+      category: security
+      cwe: 'CWE-78: OS Command Injection'
+      confidence: HIGH
+    patterns:
+      - pattern: subprocess.$FN($CMD, ..., shell=True, ...)
+      - metavariable-regex:
+          metavariable: $FN
+          regex: ^(run|call|check_call|check_output|Popen)$
+      - pattern-not: subprocess.$FN("...", ..., shell=True, ...)

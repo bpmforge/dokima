@@ -176,6 +176,24 @@ Environment variables (all optional — config file is primary):
 | `GOOGLE_APPLICATION_CREDENTIALS` | Vertex ADC service-account path (D-007)                                                                     |
 | `DOKIMA_NO_KEYCHAIN`             | headless/WSL fallback: encrypted file vault instead of OS keychain, key prompted or from `DOKIMA_VAULT_KEY` |
 | `DOKIMA_LOG_LEVEL`               | `info` default; `debug` adds per-pass loop telemetry to logs                                                |
+| `DOKIMA_SAST_RULES`              | the Opengrep ruleset for the SAST check; see "SAST ruleset" below                                           |
+
+**SAST ruleset (W23-60).** The machine review's `tool-sast` check runs
+[Opengrep](https://github.com/opengrep/opengrep) over local rules, never the
+Semgrep registry. It picks the first of these that applies:
+
+1. `DOKIMA_SAST_RULES`, when set. If the path holds no rules, SAST is NOT RUN
+   and doctor says why. There is no silent fallback.
+2. `~/.dokima/rules/sast`, when it holds rules. Link a richer pack here. A
+   directory laid out like `packs/` (with `owasp/`, `secrets/`, `framework/`)
+   contributes those security packs only.
+3. The bundled baseline, `rules/sast-baseline/` in the package: 25 rules for
+   JS/TS and Python, written clean-room for Dokima and licensed
+   **Apache-2.0** (`rules/sast-baseline/LICENSE`). The rest of the package is
+   under FSL. It contains no Semgrep registry rules.
+
+The engine is not bundled. Install `opengrep` with its official installer, and
+`dokima doctor` then reports which ruleset is active.
 
 ## 7. Troubleshooting local model endpoints
 

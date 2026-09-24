@@ -11,6 +11,19 @@ name what a change means for that boundary, not just what moved.
 
 ## [Unreleased]
 
+### Added
+
+- **A bundled, open SAST baseline.** The package now ships
+  `rules/sast-baseline/`: 25 Opengrep rules for JS/TS and Python, written
+  clean-room for Dokima and licensed Apache-2.0. They cover SQL, command and
+  eval injection, path traversal, hardcoded credentials, insecure
+  deserialization, weak crypto and disabled TLS verification. When neither
+  `DOKIMA_SAST_RULES` nor `~/.dokima/rules/sast` supplies rules, `tool-sast`
+  runs on this baseline instead of reporting NOT RUN, so a fresh install with
+  `opengrep` can machine-accept a ticket. A `DOKIMA_SAST_RULES` path that holds
+  no rules is still NOT RUN, with no silent fallback. `dokima doctor` names the
+  active ruleset and where a richer pack plugs in. (W23-60)
+
 ### Changed
 
 - **`dokima close` measures its evidence instead of recording the caller's.**

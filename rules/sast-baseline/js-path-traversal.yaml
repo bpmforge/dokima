@@ -1,0 +1,35 @@
+# Dokima SAST baseline. Copyright 2026 Bradford Matthews. Apache-2.0 (see LICENSE).
+# Written clean-room for Dokima; not derived from any other rule collection.
+rules:
+  - id: js-request-path-traversal
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      A file path comes from the request (params, query or body) and reaches a
+      filesystem call. "../" in it reads or writes outside the intended
+      directory. Resolve it against a base directory and refuse any result that
+      is not inside the base.
+    metadata:
+      category: security
+      cwe: 'CWE-22: Path Traversal'
+      confidence: MEDIUM
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $REQ.params
+              - pattern: $REQ.query
+              - pattern: $REQ.body
+          - metavariable-regex:
+              metavariable: $REQ
+              regex: ^(req|request)$
+    pattern-sinks:
+      - patterns:
+          - pattern: $FS.$FN($PATH, ...)
+          - metavariable-regex:
+              metavariable: $FN
+              regex: ^(readFile|readFileSync|writeFile|writeFileSync|appendFile|appendFileSync|createReadStream|createWriteStream|unlink|unlinkSync|rm|rmSync|readdir|readdirSync|open|openSync|sendFile|download)$
+          - focus-metavariable: $PATH
+    pattern-sanitizers:
+      - pattern: path.basename(...)
+      - pattern: $P.basename(...)

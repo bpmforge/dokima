@@ -26,12 +26,32 @@ export type SastProbe = (env: NodeJS.ProcessEnv) => Promise<{
 export const OPENGREP_INSTALL_FIX =
   'curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash';
 
+/** How doctor names each step of the resolution order (sast-rules.ts). */
+function describeRuleset(rules: SastRuleset): string {
+  const where =
+    rules.source === 'bundled'
+      ? `the bundled open baseline (${rules.root})`
+      : rules.source === 'env'
+        ? `${rules.root} (DOKIMA_SAST_RULES)`
+        : `${rules.root}`;
+  return `${rules.ruleFileCount} rule file(s) from ${where} (${rules.digest.slice(0, 19)})`;
+}
+
+/** Said whenever the baseline is what runs: it is a floor, not the ceiling. */
+export const RICHER_PACK_HINT =
+  'A richer rule pack can be plugged in: set DOKIMA_SAST_RULES to its directory, or link it at ~/.dokima/rules/sast.';
+
 /**
  * W23-51: the machine review's SAST check runs Opengrep over a pinned local
  * ruleset — never registry rules. Missing either one, every review reports
  * tool-sast as NOT RUN and no ticket can be accepted without a person, so
  * doctor says which is missing and what fixes it. A warning, not a failure:
  * everything else still works, with that coverage named.
+ *
+ * W23-60: with nothing configured, the ruleset is the bundled open baseline,
+ * so a fresh install has SAST — that is not a warning. Doctor names which
+ * ruleset is active and, on the baseline, where a richer one plugs in. The
+ * one remaining "no ruleset" is DOKIMA_SAST_RULES naming a path with no rules.
  */
 export async function checkSast(
   io: CliIO,
@@ -56,18 +76,20 @@ export async function checkSast(
     );
   }
   if (problems.length > 0 || !rules) {
+    const active = rules ? ` The ruleset is ready: ${describeRuleset(rules)}.` : '';
     return {
       name: 'sast',
       status: 'warn',
       detail:
         `${problems.join('; ')}. Until then every machine review reports tool-sast ` +
-        `as NOT RUN, and no ticket is accepted without a person.`,
+        `as NOT RUN, and no ticket is accepted without a person.${active}`,
     };
   }
+  const hint = rules.source === 'bundled' ? ` ${RICHER_PACK_HINT}` : '';
   return {
     name: 'sast',
     status: 'ok',
-    detail: `opengrep installed; ${rules.ruleFileCount} rule file(s) from ${rules.root} (${rules.digest.slice(0, 19)})`,
+    detail: `opengrep installed; ${describeRuleset(rules)}.${hint}`,
   };
 }
 

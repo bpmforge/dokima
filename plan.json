@@ -17454,7 +17454,8 @@
         "FILED 2026-09-23 during W23-51 close-out (Law 1): W23-51 gave findingKeys to tool-sast and tool-deps only. The bundled secrets scanner reports '- ...' lines with no stable identity, so it is still counted whole.",
         "CLAIMED 2026-09-23 (fix/v1-review-gaps). WIDENED at claim, before any edit: the adapter interface (security-checks.ts) gives findingKeys the scanned root, because a real per-secret identity needs the flagged line re-read and re-matched in the core \u2014 the manifest-pinned content/validators/secrets-scan.sh prints only `AKIA...REDACTED(20 chars)`, identical for every AWS key, so a category|path|mask key would pass a replaced secret as pre-existing. security-tool-adapters.test.ts and security-checks.test.ts are the existing tests of the files changed, owned by no open ticket. MEASURED before claim: the scanner's stdout is `{\"validator\":\"secrets-scan\",\"gaps\":3,\"exit\":1,\"items\":[{\"category\":\"aws-access-key-id\",\"detail\":\"c.js:1 \u2014 AKIA...REDACTED(20 chars)\"},...]}`, so the adapter's `^\\s*-\\s` line count was 0 and findingCount was always max(0,1) = 1.",
         "DONE 2026-09-23 (fix/v1-review-gaps). tool-secrets gains findingKeys: category | path | sha256(match)[:32], computed in memory by secretsFindingKeys (security-baseline.ts), which re-reads the flagged line from the tree that was scanned (worktree, or the base's git-archive), re-matches the category's pattern and hashes it; a PEM block hashes through its END line. No line number (a moved secret is the same secret). A path that does not realpath to a regular file inside the scanned root, an unknown category, or a line that no longer matches returns null -> the head's findings stand. findingCount is now the envelope's items (was always 1). The key never leaves memory: reasons carry counts only. RED (old sources, new tests): 6 failed \u2014 pre-existing secret 'expected findings to be passed'; added-beside-pre-existing and second-key-in-same-file 'expected {...} to match object {status: findings, ...}' (no preexistingCount); count 'findingCount 1 vs 3'; 'secretsFindingKeys is not a function'. The REPLACEMENT negative (same mask, different key) is green both sides by design \u2014 it is the fixture that rejects a mask-based key. Tests run the REAL content/validators/secrets-scan.sh, and one plants a value per category to catch drift in the manifest-pinned scanner. Gate (Node 22): lint 0, typecheck 0, 5517 tests (625 files, 3 skipped) in 60 s, 76 e2e, 6 validators + temp-leaks clean. Suite first went red on this machine for an unrelated reason \u2014 W23-59, filed and fixed in this branch.",
-        "ACCEPTANCE 1 DELIBERATELY NOT MET AS WRITTEN (for the founder to ratify): it asks for a key of 'rule + path + masked match'. Measured: every AWS key masks identically and the mask is of the file's first match, so that key would pass a replaced secret as pre-existing. The shipped key is category + path + an in-memory fingerprint of the value (acceptance 3, added at claim)."
+        "ACCEPTANCE 1 DELIBERATELY NOT MET AS WRITTEN (for the founder to ratify): it asks for a key of 'rule + path + masked match'. Measured: every AWS key masks identically and the mask is of the file's first match, so that key would pass a replaced secret as pre-existing. The shipped key is category + path + an in-memory fingerprint of the value (acceptance 3, added at claim).",
+        "FOUNDER RATIFIED 2026-09-24 as shipped (decision given directly by the founder in the coordinator session)"
       ]
     },
     {
@@ -17498,7 +17499,8 @@
         "CLAIMED 2026-09-23 (fix/v1-review-gaps). DESIGN AT CLAIM, narrowing acceptance 1 before any edit: the unchanged-dependencies answer applies ONLY where the audit could not otherwise run (local-only, no advisory source). A network-allowed project keeps running npm audit with the W23-51 baseline, so its review still says how many advisories pre-exist \u2014 replacing that with NOT_APPLICABLE would hide a fact the reviewer has today. The measurement: every root manifest/lockfile (package.json, package-lock.json, npm-shrinkwrap.json, pnpm-lock.yaml, yarn.lock) in the worktree is byte-compared with `git show <fork point>:<file>` (absent on both sides = unchanged); any git failure is 'unknown' and falls through to NOT RUN. The waiver is carried on the evidence (`waived`), set in exactly one branch of runSecurityChecks, so no other status or check can carry it; loop-review marks a waived check not required, verified-ticket-decision accepts `unavailable` only with `waived` on tool-deps.",
         "WIDENED mid-ticket 2026-09-23, when found: security-checks.ts went to 421 lines, so the policy (localOnlyAudit, isWaivedNotRun, UnauditedDependenciesPolicy, UNAUDITED_DEPENDENCIES_SETTING) lives in the new chapter review-deps.ts beside dependenciesUnchangedSince, re-exported by security-checks.ts; the barrel (index.ts, now exactly 400) exports the setting key and the type for apps/server. doctor.test.ts's 'every check green on a fresh project' now expects dependency-audit WARN: a fresh project has made no network choice, reads as local-only, and cannot audit dependencies \u2014 OK there would be the dishonest answer.",
         "DONE 2026-09-23 (fix/v1-review-gaps). Under local-only, tool-deps is NOT_APPLICABLE when every root manifest/lockfile (package.json, package-lock.json, npm-shrinkwrap.json, pnpm-lock.yaml, yarn.lock) is byte-identical to `git show <fork point>:<file>` (review-deps.ts; any git failure = unknown = NOT RUN). Otherwise NOT RUN; `security.unauditedDependencies: \"allow\"` in the repo root's .dokima/settings.json (read by review-pass/onboard from repoRoot, never the worktree) adds `waived` to that one evidence row, set in exactly one branch; checksPermitAutomaticCompletion, loop-review's required flag and verified-ticket-decision all honour it only via isWaivedNotRun (tool-deps + unavailable + waived string). The reviewer sees 'NOT RUN (waived)'; the verdict payload carries `waived`. localAdvisoryDbPath removed (nothing passed it; its test asserted a network flag on a snapshot that did not exist). Network-allowed projects are unchanged (npm audit + W23-51 baseline). `dokima doctor` gains dependency-audit: OK when network-allowed, WARN under local-only naming both settings (block default) or the waiver in force. RED (old sources, new tests): 'expected unavailable to be not_applicable' (unchanged lockfile), '.toMatch() expects to receive a string, but got undefined' (no waiver), decision 'expected false to be true' (waived tool-deps blocked acceptance), 'checkDependencyAudit is not a function' x4; NEGATIVES green both sides: changed lockfile blocks by default, unknown/unresolvable fork point never reads unchanged, findings not waivable, a waived flag on tool-sast is ignored. Offline advisory snapshot = W23-58. Gate: lint 0, typecheck 0, 5539 tests (626 files, 3 skipped), 76 e2e, 6 validators + temp-leaks clean.",
-        "ACCEPTANCE 1 NARROWED 2026-09-23 at close, and recorded here and in acceptance rather than only in the claim note: the unchanged-dependencies answer is local-only-scoped (claim note gives the reason \u2014 a network-allowed review keeps its pre-existing advisory count). For the founder to ratify. Eligibility readers checked by grep: verified-ticket-decision (-> approved-build-accept's requiredChecksAllPassed), loop-review's decideReview required flag, checksPermitAutomaticCompletion (review + onboard); build-repair only lists NOT RUN checks as infrastructure beside the decision's eligibility."
+        "ACCEPTANCE 1 NARROWED 2026-09-23 at close, and recorded here and in acceptance rather than only in the claim note: the unchanged-dependencies answer is local-only-scoped (claim note gives the reason \u2014 a network-allowed review keeps its pre-existing advisory count). For the founder to ratify. Eligibility readers checked by grep: verified-ticket-decision (-> approved-build-accept's requiredChecksAllPassed), loop-review's decideReview required flag, checksPermitAutomaticCompletion (review + onboard); build-repair only lists NOT RUN checks as infrastructure beside the decision's eligibility.",
+        "FOUNDER RATIFIED 2026-09-24 as shipped (decision given directly by the founder in the coordinator session)"
       ],
       "stories": [
         "US-402"
@@ -17606,6 +17608,56 @@
       "stories": []
     },
     {
+      "id": "W23-60",
+      "title": "tool-sast is NOT RUN on every install but the founder's: the rulepacks are proprietary and not vendored, so ship a bundled, clean-room, Apache-2.0 Opengrep baseline and resolve to it when no ruleset is configured",
+      "phase": 23,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "rules/sast-baseline/**",
+        "rules/sast-baseline-fixtures/**",
+        "packages/harbormaster/src/sast-rules.ts",
+        "packages/harbormaster/src/sast-rules.test.ts",
+        "packages/harbormaster/src/sast-baseline.test.ts",
+        "apps/server/src/cli/ops/doctor-sast.ts",
+        "apps/server/src/cli/ops/doctor.test.ts",
+        "package.json",
+        "scripts/smoke-pack.mjs",
+        "scripts/smoke-pack.test.mjs",
+        ".github/workflows/ci.yml",
+        "eslint.config.js",
+        ".prettierignore",
+        "README.md",
+        "docs/DEPLOYMENT.md",
+        "docs/STATUS.md",
+        "CHANGELOG.md",
+        "apps/server/src/cli/review-pass.ts"
+      ],
+      "depends_on": [
+        "W23-59"
+      ],
+      "acceptance": [
+        "An Opengrep ruleset of 15-30 high-precision rules for JS/TS and Python ships inside the package at rules/sast-baseline/ (in package.json files; the pack-smoke CI job fails if the tarball lacks its LICENSE or its rule files), covering SQL, command and eval injection, path traversal, hardcoded credentials, insecure deserialization, weak crypto and disabled TLS verification",
+        "Every rule is written clean-room for Dokima: nothing is copied or adapted from bpm-rulepacks (proprietary) or the Semgrep registry (restrictive licence). The directory carries an Apache-2.0 LICENSE, and README and DEPLOYMENT say so",
+        "Every rule has a positive (ruleid:) and a negative (ok:) fixture, and `opengrep test` passes per rule file; the suite checks the pairing on every run and runs opengrep test wherever opengrep is installed (CI installs a pinned opengrep)",
+        "The set is run over Dokima's own source; any rule that reports a false positive there is fixed or dropped, and each remaining hit is classified",
+        "Resolution order: DOKIMA_SAST_RULES when set (a set-but-missing path is NOT RUN, never a silent fallback, so the W23-59 suite pin holds), else ~/.dokima/rules/sast, else the bundled baseline. The ruleset records which source it came from. RED FIRST, hermetic (independent of this machine's ~/.dokima symlink): with no DOKIMA_SAST_RULES and an empty HOME, tool-sast RUNS on the bundled baseline instead of reporting NOT RUN",
+        "`dokima doctor` names the active ruleset and its source, does not warn when the bundled baseline is in use, and says a richer pack can be plugged in via DOKIMA_SAST_RULES or ~/.dokima/rules/sast"
+      ],
+      "points": 3,
+      "status": "done",
+      "notes": [
+        "FILED AND CLAIMED 2026-09-24 (feat/w23-60-sast-baseline) on the founder's decision \"go with bundled open baseline for SAST\", given directly in the coordinator session on 2026-09-24 and relayed verbatim to this agent. The id was reserved by W23-61's renumber (54b0a7c0). It resolves STATUS.md's \"Ruleset distribution\" item. DEPLOYMENT.md is also in W23-61's scope; both are lane orchestrator, so they never run in parallel.",
+        "WIDENED 2026-09-24, when found: apps/server/src/cli/review-pass.ts carried a comment naming only DOKIMA_SAST_RULES or ~/.dokima/rules/sast; that one comment line now names the baseline too. Owned by no open ticket.",
+        "DONE 2026-09-24 (feat/w23-60-sast-baseline). rules/sast-baseline/: 25 rules in 16 files. JS/TS 13: js-eval-dynamic, js-new-function-dynamic, js-vm-run-dynamic, js-child-process-shell-dynamic, js-spawn-shell-true-dynamic, js-sql-string-built, js-sql-request-data, js-request-path-traversal, js-hardcoded-credential, js-unsafe-deserialization, js-weak-hash, js-weak-cipher, js-tls-verification-disabled. Python 12: py-eval-exec-dynamic, py-os-system-dynamic, py-subprocess-shell-dynamic, py-sql-string-built, py-sql-request-data, py-request-path-traversal, py-hardcoded-credential, py-unsafe-deserialization, py-yaml-unsafe-load, py-weak-hash, py-weak-cipher, py-tls-verification-disabled. Each file is headed clean-room + Apache-2.0, with LICENSE beside them; nothing was opened from bpm-rulepacks and nothing taken from the Semgrep registry. Fixtures live in rules/sast-baseline-fixtures/ (not shipped; eslint- and prettier-ignored). opengrep 1.25.0 `test` passes for all 16 rule files (17 fixture files). `opengrep test` with a DIRECTORY config checks every rule file against every fixture, so the suite runs it per rule file. Mutation check: deleting py-eval-exec-dynamic's pattern-not made its ok: line fail. RED (hermetic: own empty HOME, no DOKIMA_SAST_RULES): 'expected unavailable to be passed' (tool-sast NOT RUN) and 'expected null to match object { source: bundled }'; GREEN after.",
+        "FALSE POSITIVES ON DOKIMA (1694 files, fixtures excluded). The first run had 93 hits; the 92 false positives were fixed by narrowing the rule. js-sql-string-built 33 (11 lines x3; better-sqlite3 templates splicing a WHERE clause built from fixed fragments): the rule now needs a value interpolated INSIDE a quoted SQL string, or a SQL literal joined with +; request data reaching a query is the new taint rule js-sql-request-data. js-hardcoded-credential 58: test files and *-fixtures.* are excluded (every hit was a made-up key in a test). js-weak-hash 1 (ws-socket.ts SHA-1, which RFC 6455 fixes): the WebSocket handshake GUID is excluded. FINAL: 1 hit, a TRUE positive. packages/gateway/src/fitness/scoring.ts:86 runs model-written code in node:vm inside the core, reached from POST /models/bench with a real provider. Filed as W23-62. Python: Dokima has no .py. A signal sweep over ~/Code/ai-daytrader (244 files) found the same splice FP family in py-sql-string-built (fixed the same way) and an api_key=\"not-needed\" placeholder (excluded); what remains there is eval/exec of LLM-written formulas and pickle.load.",
+        "doctor: OK on the baseline; it names the baseline and where a richer pack plugs in. A set-but-empty DOKIMA_SAST_RULES is still WARN. Real sandboxed smoke (DOKIMA_TEST_REAL_SCANNERS=1, network denied) on the baseline: the clean tree passed and a planted command injection was findings. CI: the gate job fetches opengrep v1.25.0 by sha256 (no installer script), and pack-smoke fails without rules/sast-baseline/LICENSE or a rule file. Gate (Node 22.23.2): lint 0, typecheck 0, 5578 tests passed (628 files, 5 skipped), 76 e2e, 6 validators + temp-leaks clean."
+      ],
+      "stories": [
+        "US-402"
+      ]
+    },
+    {
       "id": "W23-61",
       "title": "wire the container sandbox profile for real: per-project selection threaded through every sandboxed door, the profile on the receipt, and a verify that can actually run in the image",
       "phase": 23,
@@ -17635,6 +17687,32 @@
         "FILED 2026-09-24 by W23-57 (Law 1), which deprecated the documented `sandbox: container` setting to a fail-closed refusal because none of this exists yet. The three blockers W23-57 recorded are this ticket's shape: the only selection pattern is process-global (setUnsandboxedVerifyWaiver) and one core serves N projects; ~10 call sites and no receipt field; darwin node_modules inside a Linux image. W23-54 already made the security tools correct under the profile once it is selected.",
         "NEEDS A FOUNDER CALL BEFORE IT IS WORTH CLAIMING: whether v1.x promises a container profile at all. SC-07's process profile already denies network and cleans the env on macOS and Linux; the container adds isolation strength, not a missing guarantee.",
         "RENUMBERED 2026-09-24 from W23-60 to W23-61, same session it was filed: the founder assigned W23-60 to the bundled open SAST baseline. Every reference (W23-57's notes and acceptance, sandbox-preflight.ts's refusal text and its tests, DEPLOYMENT \u00a75, SECURITY_CONTROLS SC-07, sandbox/index.ts) was renamed in the same commit; the earlier commit messages on fix/v1-wave5 that say W23-60 for this ticket predate the renumber."
+      ],
+      "stories": [
+        "US-402"
+      ]
+    },
+    {
+      "id": "W23-62",
+      "title": "the model bench runs model-written code in node:vm inside the core process: POST /models/bench scores a real provider's function-behavior answers with vm.Script, which is not a security boundary",
+      "phase": 23,
+      "module": "gateway",
+      "lane": "gateway",
+      "write_scope": [
+        "packages/gateway/src/fitness/scoring.ts",
+        "packages/gateway/src/fitness/scoring.test.ts",
+        "packages/gateway/src/fitness/bench.ts"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "Code a real model wrote is never evaluated in the core process: function-behavior cases for a real provider run in a separate, sandboxed process with a deadline (the SC-07 profile), or are refused with a named reason",
+        "Red fixture: a candidate that reaches the host through the vm context (process, or require via a constructor escape) does so before the change, and cannot after",
+        "The scripted-fake CI path keeps its speed and its verdicts"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": [
+        "FILED 2026-09-24 by W23-60 (Law 1). The bundled baseline's js-vm-run-dynamic reported packages/gateway/src/fitness/scoring.ts:86 on Dokima's own source. The file's header says real model code is only evaluated by scripts/fitness-live.mjs. In fact apps/server/src/api/server/models-bench-route.ts wires runFitnessBench to providerForConfig, so a real model's answer reaches vm.Script in the core process."
       ],
       "stories": [
         "US-402"

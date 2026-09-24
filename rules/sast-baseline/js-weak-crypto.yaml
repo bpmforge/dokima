@@ -1,0 +1,48 @@
+# Dokima SAST baseline. Copyright 2026 Bradford Matthews. Apache-2.0 (see LICENSE).
+# Written clean-room for Dokima; not derived from any other rule collection.
+rules:
+  - id: js-weak-hash
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >-
+      MD5 and SHA-1 are broken for collision resistance. For passwords use
+      scrypt or argon2; for integrity or signatures use SHA-256 or better.
+    metadata:
+      category: security
+      cwe: 'CWE-328: Use of Weak Hash'
+      confidence: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: $CRYPTO.createHash("$ALG", ...)
+          - pattern: $CRYPTO.createHmac("$ALG", ...)
+      - metavariable-regex:
+          metavariable: $ALG
+          regex: (?i)^(md4|md5|sha1|sha-1|rsa-md5|rsa-sha1)$
+      # RFC 6455 fixes SHA-1 for the WebSocket handshake; that is protocol,
+      # not a choice.
+      - pattern-not-inside: $CRYPTO.createHash("sha1").update($KEY + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11")
+      - pattern-not-inside: |
+          $MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+          ...
+
+  - id: js-weak-cipher
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      This cipher is weak: createCipher derives its key with MD5 and no IV,
+      DES/3DES/RC4/RC2/Blowfish are broken or obsolete, and ECB mode leaks
+      patterns. Use aes-256-gcm with a random IV via createCipheriv.
+    metadata:
+      category: security
+      cwe: 'CWE-327: Use of a Broken or Risky Cryptographic Algorithm'
+      confidence: HIGH
+    pattern-either:
+      - pattern: $CRYPTO.createCipher(...)
+      - pattern: $CRYPTO.createDecipher(...)
+      - patterns:
+          - pattern-either:
+              - pattern: $CRYPTO.createCipheriv("$ALG", ...)
+              - pattern: $CRYPTO.createDecipheriv("$ALG", ...)
+          - metavariable-regex:
+              metavariable: $ALG
+              regex: (?i)^(des|3des|rc2|rc4|bf|blowfish|.*-ecb$)

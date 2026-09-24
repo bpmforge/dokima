@@ -1,0 +1,25 @@
+# Dokima SAST baseline. Copyright 2026 Bradford Matthews. Apache-2.0 (see LICENSE).
+# Written clean-room for Dokima; not derived from any other rule collection.
+rules:
+  - id: py-tls-verification-disabled
+    languages: [python]
+    severity: ERROR
+    message: >-
+      TLS certificate verification is turned off, so any machine on the path
+      can impersonate the server. Point verify= at the right CA bundle instead.
+    metadata:
+      category: security
+      cwe: 'CWE-295: Improper Certificate Validation'
+      confidence: HIGH
+    pattern-either:
+      - patterns:
+          - pattern: $LIB.$FN(..., verify=False, ...)
+          - metavariable-regex:
+              metavariable: $LIB
+              regex: ^(requests|httpx|session|sess|s|client)$
+      - pattern: httpx.Client(..., verify=False, ...)
+      - pattern: httpx.AsyncClient(..., verify=False, ...)
+      - pattern: $SESSION.verify = False
+      - pattern: ssl._create_unverified_context(...)
+      - pattern: $CTX.verify_mode = ssl.CERT_NONE
+      - pattern: $CTX.check_hostname = False

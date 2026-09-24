@@ -11,7 +11,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { bootstrapImportsNotShipped, runtimeImportClosure } from './smoke-pack.mjs';
+import {
+  bootstrapImportsNotShipped,
+  runtimeImportClosure,
+  SAST_BASELINE_DIR,
+  sastBaselineNotShipped,
+} from './smoke-pack.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
@@ -76,5 +81,33 @@ describe('bootstrapImportsNotShipped against a fixture package', () => {
   it('treats a directory entry as covering everything under it', () => {
     const p = fixture(['bin/', 'lib']);
     expect(bootstrapImportsNotShipped(p, dir)).toEqual([]);
+  });
+});
+
+/**
+ * W23-60 — the bundled SAST baseline is what a fresh install runs tool-sast
+ * on. The pack smoke (CI) checks the real tarball's file list with the same
+ * function; this is the offline half.
+ */
+describe('the tarball ships the bundled SAST baseline (W23-60)', () => {
+  it('`files` lists the baseline directory, and not its fixtures', () => {
+    expect(pkg.files).toContain(SAST_BASELINE_DIR);
+    expect(pkg.files.some((f) => f.includes('sast-baseline-fixtures'))).toBe(false);
+  });
+
+  it('RED FIXTURE: a tarball without the LICENSE or without rule files is refused', () => {
+    expect(sastBaselineNotShipped(['package.json'])).toEqual([
+      'rules/sast-baseline/LICENSE',
+      'rules/sast-baseline/*.yaml',
+    ]);
+    expect(sastBaselineNotShipped(['rules/sast-baseline/LICENSE'])).toEqual([
+      'rules/sast-baseline/*.yaml',
+    ]);
+    expect(
+      sastBaselineNotShipped([
+        'rules/sast-baseline/LICENSE',
+        'rules/sast-baseline/js-tls.yaml',
+      ]),
+    ).toEqual([]);
   });
 });

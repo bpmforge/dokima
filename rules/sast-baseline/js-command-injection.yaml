@@ -1,0 +1,84 @@
+# Dokima SAST baseline. Copyright 2026 Bradford Matthews. Apache-2.0 (see LICENSE).
+# Written clean-room for Dokima; not derived from any other rule collection.
+rules:
+  - id: js-child-process-shell-dynamic
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      child_process exec/execSync hands a command built at run time to a shell.
+      Input in it can add commands. Use execFile or spawn with an argument
+      array and no shell.
+    metadata:
+      category: security
+      cwe: 'CWE-78: OS Command Injection'
+      confidence: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: require('child_process').$FN($CMD, ...)
+          - pattern: require('node:child_process').$FN($CMD, ...)
+          - patterns:
+              - pattern-either:
+                  - pattern-inside: |
+                      $CP = require('$MOD');
+                      ...
+                  - pattern-inside: |
+                      import * as $CP from '$MOD';
+                      ...
+                  - pattern-inside: |
+                      import $CP from '$MOD';
+                      ...
+              - metavariable-regex:
+                  metavariable: $MOD
+                  regex: ^(node:)?child_process$
+              - pattern: $CP.$FN($CMD, ...)
+          - patterns:
+              - pattern-either:
+                  - pattern-inside: |
+                      const { ..., $FN, ... } = require('$MOD');
+                      ...
+                  - pattern-inside: |
+                      import { ..., $FN, ... } from '$MOD';
+                      ...
+              - metavariable-regex:
+                  metavariable: $MOD
+                  regex: ^(node:)?child_process$
+              - pattern: $FN($CMD, ...)
+      - metavariable-regex:
+          metavariable: $FN
+          regex: ^(exec|execSync)$
+      - metavariable-pattern:
+          metavariable: $CMD
+          patterns:
+            - pattern-not: '"..."'
+      # A template literal with no ${...} is a constant command.
+      - metavariable-regex:
+          metavariable: $CMD
+          regex: ^(?!`[^`$]*`$)
+
+  - id: js-spawn-shell-true-dynamic
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      spawn/execFile with `shell: true` and a command built at run time: the
+      shell parses it, so input in it can add commands. Drop `shell: true` and
+      pass arguments as an array.
+    metadata:
+      category: security
+      cwe: 'CWE-78: OS Command Injection'
+      confidence: MEDIUM
+    patterns:
+      - pattern-either:
+          - pattern: '$FN($CMD, [...], {..., shell: true, ...})'
+          - pattern: '$FN($CMD, {..., shell: true, ...})'
+          - pattern: '$O.$FN($CMD, [...], {..., shell: true, ...})'
+          - pattern: '$O.$FN($CMD, {..., shell: true, ...})'
+      - metavariable-regex:
+          metavariable: $FN
+          regex: ^(spawn|spawnSync|execFile|execFileSync)$
+      - metavariable-pattern:
+          metavariable: $CMD
+          patterns:
+            - pattern-either:
+                - pattern: '"..." + $X'
+                - pattern: '$X + "..."'
+                - pattern: '`...${$X}...`'

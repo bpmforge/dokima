@@ -1,0 +1,37 @@
+# Dokima SAST baseline. Copyright 2026 Bradford Matthews. Apache-2.0 (see LICENSE).
+# Written clean-room for Dokima; not derived from any other rule collection.
+rules:
+  - id: py-request-path-traversal
+    languages: [python]
+    severity: ERROR
+    message: >-
+      A file path comes from the request and reaches open() or a file-serving
+      call. "../" in it reads or writes outside the intended directory. Use
+      werkzeug's secure_filename, or resolve the path and refuse anything
+      outside the base directory.
+    metadata:
+      category: security
+      cwe: 'CWE-22: Path Traversal'
+      confidence: MEDIUM
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern: request.$ATTR
+          - metavariable-regex:
+              metavariable: $ATTR
+              regex: ^(args|form|values|files|json|cookies|GET|POST|FILES|query_params)$
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: open($PATH, ...)
+              - pattern: send_file($PATH, ...)
+              - pattern: flask.send_file($PATH, ...)
+              - pattern: os.remove($PATH, ...)
+              - pattern: os.unlink($PATH, ...)
+              - pattern: shutil.rmtree($PATH, ...)
+              - pattern: FileResponse($PATH, ...)
+          - focus-metavariable: $PATH
+    pattern-sanitizers:
+      - pattern: secure_filename(...)
+      - pattern: werkzeug.utils.secure_filename(...)
+      - pattern: os.path.basename(...)

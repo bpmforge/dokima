@@ -100,7 +100,7 @@ export async function executeReviewPass(options: ExecuteReviewPassOptions): Prom
     await Promise.all([
       bundledSecretsScanner(),
       networkPolicyOf(options.repoRoot),
-      // W23-51: opengrep's pinned ruleset (DOKIMA_SAST_RULES or ~/.dokima/rules/sast).
+      // W23-51/W23-60: opengrep's ruleset (DOKIMA_SAST_RULES, ~/.dokima/rules/sast, else the bundled baseline).
       resolveSastRules(process.env),
       // W23-56: the project's waiver for a dependency audit that cannot run —
       // from the repository root, never from the worktree under review.

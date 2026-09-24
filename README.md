@@ -166,3 +166,8 @@ release is Apache-2.0 forever.
 
 `content/` (the bundled expert library and validator pack) is imported from the
 `attest` project and stays under [Apache-2.0](content/LICENSE).
+
+`rules/sast-baseline/` (the bundled Opengrep ruleset the SAST check runs when
+no other is configured) was written clean-room for Dokima and is under
+[Apache-2.0](rules/sast-baseline/LICENSE). It contains no Semgrep registry
+rules.

@@ -64,6 +64,20 @@ jobs:
           unshare --net -r -- true && echo "SC-07 process sandbox available"
       - name: Install ripgrep (code-index tests use the real binary)
         run: sudo apt-get install -y -q ripgrep >/dev/null && rg --version | head -1
+      - name: Install opengrep v1.25.0, checksum-pinned (the SAST baseline's fixture test runs it)
+        # W23-60: sast-baseline.test.ts runs `opengrep test` for every bundled
+        # rule against its positive and negative fixtures. It skips where
+        # opengrep is absent, so without this step it could never fail in CI.
+        # The release binary is fetched directly and its sha256 checked; no
+        # installer script runs.
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL -o "$HOME/.local/bin/opengrep" \
+            https://github.com/opengrep/opengrep/releases/download/v1.25.0/opengrep_manylinux_x86
+          echo "9ac4aebb47ba3f7b0d8fc641ac8749cb6c2f253f616131a67d9631e00d4bea33  $HOME/.local/bin/opengrep" | sha256sum -c -
+          chmod +x "$HOME/.local/bin/opengrep"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/opengrep" --version
       - name: Lint
         run: pnpm lint
       - name: Typecheck
@@ -103,6 +117,8 @@ jobs:
       - name: Throwaway vault key for doctor's keychain probe
         run: echo "DOKIMA_VAULT_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
       - name: Build, pack, install the tarball, run the installed CLI
+        # Also fails when the tarball lacks the bundled SAST baseline
+        # (rules/sast-baseline: its LICENSE and rule files), W23-60.
         run: pnpm smoke:pack
 
   conformance:
