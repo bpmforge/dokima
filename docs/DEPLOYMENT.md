@@ -117,7 +117,7 @@ it to `"process"`) to proceed.
 The container profile itself exists as a library option
 (`packages/harbormaster/src/sandbox/container.ts`: per-run Podman/Docker container,
 worktree at `/work`, `--network=none`, non-root, CPU/mem/pids limits; W23-54 mounts the
-scanners it needs). Making it selectable is **W23-60**, and it is blocked on three
+scanners it needs). Making it selectable is **W23-61**, and it is blocked on three
 things W23-57 recorded: a per-project selection threaded through every door (the only
 existing switch is process-global, and one core serves many projects), a receipt field
 naming the profile that ran, and a verify that can run in the image at all (a macOS

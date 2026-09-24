@@ -113,7 +113,7 @@ describe('assertSandboxOrWaiver (W13-25)', () => {
  * W23-57: DEPLOYMENT §5 told users to set `sandbox: container`, and no
  * production caller ever read it — every run went through the process profile
  * whatever the project chose, silently. Until the profile is wired for real
- * (W23-60) the choice is REFUSED with the reason at every door, never ignored.
+ * (W23-61) the choice is REFUSED with the reason at every door, never ignored.
  */
 describe('sandboxSettingRefusal (W23-57)', () => {
   async function projectWith(settings: Record<string, unknown> | null): Promise<string> {
@@ -134,7 +134,7 @@ describe('sandboxSettingRefusal (W23-57)', () => {
       await projectWith({ sandbox: 'container' }),
     );
     expect(refusal).toMatch(/sandbox: container/);
-    expect(refusal).toMatch(/W23-60/);
+    expect(refusal).toMatch(/W23-61/);
   });
 
   it('no setting, or `process`, is the default and proceeds', async () => {

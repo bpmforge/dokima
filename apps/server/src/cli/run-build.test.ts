@@ -637,7 +637,7 @@ describe(
             }),
           );
           expect(code).toBe(2);
-          expect(io.stderr.join('\n')).toMatch(/sandbox: container.*W23-60/s);
+          expect(io.stderr.join('\n')).toMatch(/sandbox: container.*W23-61/s);
           expect(listEvents(log).some((e) => e.eventType === 'ticket.claimed')).toBe(
             false,
           );

@@ -96,7 +96,7 @@ ticket. IDs are stable — new controls append, never renumber.
   (opt-in per project). The container profile via Podman/Docker is NOT selectable
   (W23-57): a project setting `sandbox: container` is refused with the reason at every
   sandboxed door rather than silently run under the process profile; wiring it is
-  W23-60 (DEPLOYMENT §5). Validator-pack executables run under the same sandbox. _Lands:_
+  W23-61 (DEPLOYMENT §5). Validator-pack executables run under the same sandbox. _Lands:_
   **W6-06 per plan.json** (design-review 2026-07-14 correction from "W1"; W1-02 gave
   validators timeout + sandbox-cwd only — full process isolation is W6-06). _Verify:_ verify-run fixture attempts outbound connect + env read ⇒
   both fail; container profile integration test.

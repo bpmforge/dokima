@@ -90,7 +90,7 @@ export const SANDBOX_SETTINGS_KEY = 'sandbox';
  * whatever the project chose — and said nothing.
  *
  * DEPRECATED TO A REFUSAL, NOT WIRED, and the reasons are recorded on the board
- * (W23-57) and carried by W23-60: the only selection pattern here is
+ * (W23-57) and carried by W23-61: the only selection pattern here is
  * process-global while one core serves many projects; wiring means threading a
  * profile through every sandboxed call site plus a receipt field that does not
  * exist; and a macOS worktree's native node_modules do not run in the default
@@ -108,7 +108,7 @@ export function sandboxSettingRefusalFrom(settings: ScopedSettings): string | nu
   return (
     `this project's settings choose \`${named}\`, and no run in this release ` +
     `executes under any profile but the process sandbox (SC-07) — the container ` +
-    `profile is not selectable yet (W23-60). Refusing rather than running under ` +
+    `profile is not selectable yet (W23-61). Refusing rather than running under ` +
     `the process profile in its place. Remove the "${SANDBOX_SETTINGS_KEY}" key ` +
     `from .dokima/settings.json (or set it to "process") to use the process sandbox.`
   );
