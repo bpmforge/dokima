@@ -67,7 +67,9 @@ describe('a card that needs you is a different shape (W13-05)', () => {
     'work waiting is not the same as a decision waiting. Ready 1 should not ' +
       'shout for a person, but it must not read as idle either',
     () => {
-      const { container } = renderCard(card({ board: { ready: 1, blocked: 0, done: 0 } }));
+      const { container } = renderCard(
+        card({ board: { ready: 1, blocked: 0, done: 0 } }),
+      );
       const article = container.querySelector('article')!;
       expect(article.className).not.toContain('surface--idle');
       expect(article.className).not.toContain('surface--attention');
@@ -133,5 +135,32 @@ describe('the running reading is plain language (W13-62)', () => {
     const busy = renderCard(card({ berthsRunning: 2, heartbeatAgeMs: 1000 }));
     expect(busy.container.textContent).toContain('2 agents running');
     expect(busy.container.textContent).not.toMatch(/berth/i);
+  });
+});
+
+/**
+ * W23-36: a project whose folder is gone is MARKED, and the mark is in the
+ * accessible name — not only in a chip and a class. Two e2e suites queried the
+ * page heading and got three matches, because a card's heading carried nothing
+ * but the project's name.
+ */
+describe('an unavailable project is distinguishable by name, not only by styling (W23-36)', () => {
+  it('RED FIXTURE: the unavailable card and its heading are NAMED unavailable', () => {
+    renderCard(card({ available: false, name: 'Recipe Box' }));
+    expect(
+      screen.getByRole('article', {
+        name: 'Recipe Box — unavailable, not found on disk',
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { name: 'Recipe Box (unavailable)' }),
+    ).toBeTruthy();
+  });
+
+  it('an available card is named by the project alone', () => {
+    renderCard(card({ available: true, name: 'Recipe Box' }));
+    expect(screen.getByRole('article', { name: 'Recipe Box' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Recipe Box' })).toBeTruthy();
+    expect(screen.queryByRole('article', { name: /unavailable/ })).toBeNull();
   });
 });

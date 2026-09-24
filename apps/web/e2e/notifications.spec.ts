@@ -12,7 +12,6 @@ import { freshProjectPath, removeTempProject } from './temp-project.js';
  * contract, not a shortcut around it.
  */
 
-
 async function openFreshProject(page: Page, name: string, dir: string): Promise<string> {
   await fs.mkdir(dir, { recursive: true });
   await page.goto('/');
@@ -24,7 +23,10 @@ async function openFreshProject(page: Page, name: string, dir: string): Promise<
   await page.getByRole('button', { name: 'choose the location' }).click();
   await page.getByLabel('Folder').fill(dir);
   await page.getByLabel('Project name').fill(name);
-  await page.locator('.fleet__form').getByRole('button', { name: 'Create project' }).click();
+  await page
+    .locator('.fleet__form')
+    .getByRole('button', { name: 'Create project' })
+    .click();
   // W17-09: creating a project auto-opens it — the workspace, not the grid.
   await expect(page.getByTestId('split-pane-workspace')).toBeVisible();
   const projectId = new URL(page.url()).searchParams.get('project');
@@ -57,7 +59,7 @@ async function emit(
 
 test('bell nav toggles the notification center and back to Fleet', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Fleet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Fleet', exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: /Morning queue/ }).click();
   await expect(page.getByTestId('notifications-view')).toBeVisible();
@@ -67,7 +69,7 @@ test('bell nav toggles the notification center and back to Fleet', async ({ page
   // other, so you return to it by choosing it. Label is Fleet with no
   // project open, Board with one.
   await page.getByRole('button', { name: 'Fleet', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Fleet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Fleet', exact: true })).toBeVisible();
 });
 
 test('empty states per UX_SPEC §2b for a freshly-registered project', async ({

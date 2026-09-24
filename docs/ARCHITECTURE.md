@@ -234,6 +234,20 @@ WIP=1 per actor holds per berth; the claim step re-checks lane occupancy atomica
   event), and global entries are consulted at R0 for every project. Promotion is explicit
   (human or reviewer-gated), never automatic.
 
+**A registered project whose directory has vanished is MARKED, never hidden or pruned
+(W23-36).** The registry (`fleet.json`) is the user's list; a folder's absence is a
+filesystem fact read on every listing (`available`), not a registry edit. The Fleet
+shows such a project as an unavailable card that names the missing path, sorts it after
+the living ones, and offers one action — Remove from Fleet (and a bulk remove), both
+registry-only and both explicit. Hiding was rejected because it makes a vanished project
+indistinguishable from one never registered and leaves nobody able to learn why it
+went; pruning was rejected because a transient absence (an unmounted drive, a folder
+mid-rename) would silently forget a project and rewrite a list the user owns. The state
+is carried by the card's accessible name ("<name> — unavailable, not found on disk"; its
+heading reads "<name> (unavailable)"), not only by its styling, so every surface that
+reads the registry — people, assistive technology, and the e2e suite — sees the same
+thing.
+
 ## 7. Crash safety & resume
 
 Crash-safe by construction (NFR-3), inherited pattern: **persist-before-execute**.

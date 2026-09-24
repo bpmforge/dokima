@@ -59,15 +59,23 @@ export function ProjectCard({
   // card made the fleet a wall of duplicate prose that buried the live
   // projects. One line names the reason; the shared removal semantics are
   // stated once, on the page near the bulk action, not N times.
+  //
+  // W23-36: MARKED, NOT HIDDEN OR PRUNED — and marked in the ACCESSIBLE NAME,
+  // not only in the chip and the class. Hiding would make a vanished project
+  // look never-registered and leave nobody able to learn why it went; pruning
+  // would forget a project on a transient absence (an unmounted drive, a folder
+  // mid-rename) and rewrite a registry the user owns. Removal stays the user's
+  // explicit act. docs/ARCHITECTURE.md §6 records the decision.
   if (!card.available) {
     return (
       <article
         className="project-card project-card--unavailable"
         data-testid={`project-card-${card.id}`}
         data-unavailable="true"
+        aria-label={`${card.name} — unavailable, not found on disk`}
       >
         <header className="project-card__header">
-          <h2>{card.name}</h2>
+          <h2 aria-label={`${card.name} (unavailable)`}>{card.name}</h2>
           <span className="project-card__phase-chip project-card__phase-chip--unavailable">
             Unavailable
           </span>
@@ -89,6 +97,7 @@ export function ProjectCard({
     <article
       className={`project-card surface${surfaceState}`}
       data-testid={`project-card-${card.id}`}
+      aria-label={card.name}
     >
       <header className="project-card__header">
         <h2>{card.name}</h2>
