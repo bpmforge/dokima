@@ -17608,6 +17608,51 @@
       "stories": []
     },
     {
+      "id": "W23-60",
+      "title": "tool-sast is NOT RUN on every install but the founder's: the rulepacks are proprietary and not vendored, so ship a bundled, clean-room, Apache-2.0 Opengrep baseline and resolve to it when no ruleset is configured",
+      "phase": 23,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "rules/sast-baseline/**",
+        "rules/sast-baseline-fixtures/**",
+        "packages/harbormaster/src/sast-rules.ts",
+        "packages/harbormaster/src/sast-rules.test.ts",
+        "packages/harbormaster/src/sast-baseline.test.ts",
+        "apps/server/src/cli/ops/doctor-sast.ts",
+        "apps/server/src/cli/ops/doctor.test.ts",
+        "package.json",
+        "scripts/smoke-pack.mjs",
+        "scripts/smoke-pack.test.mjs",
+        ".github/workflows/ci.yml",
+        "eslint.config.js",
+        ".prettierignore",
+        "README.md",
+        "docs/DEPLOYMENT.md",
+        "docs/STATUS.md",
+        "CHANGELOG.md"
+      ],
+      "depends_on": [
+        "W23-59"
+      ],
+      "acceptance": [
+        "An Opengrep ruleset of 15-30 high-precision rules for JS/TS and Python ships inside the package at rules/sast-baseline/ (in package.json files; the pack-smoke CI job fails if the tarball lacks its LICENSE or its rule files), covering SQL, command and eval injection, path traversal, hardcoded credentials, insecure deserialization, weak crypto and disabled TLS verification",
+        "Every rule is written clean-room for Dokima: nothing is copied or adapted from bpm-rulepacks (proprietary) or the Semgrep registry (restrictive licence). The directory carries an Apache-2.0 LICENSE, and README and DEPLOYMENT say so",
+        "Every rule has a positive (ruleid:) and a negative (ok:) fixture, and `opengrep test` passes per rule file; the suite checks the pairing on every run and runs opengrep test wherever opengrep is installed (CI installs a pinned opengrep)",
+        "The set is run over Dokima's own source; any rule that reports a false positive there is fixed or dropped, and each remaining hit is classified",
+        "Resolution order: DOKIMA_SAST_RULES when set (a set-but-missing path is NOT RUN, never a silent fallback, so the W23-59 suite pin holds), else ~/.dokima/rules/sast, else the bundled baseline. The ruleset records which source it came from. RED FIRST, hermetic (independent of this machine's ~/.dokima symlink): with no DOKIMA_SAST_RULES and an empty HOME, tool-sast RUNS on the bundled baseline instead of reporting NOT RUN",
+        "`dokima doctor` names the active ruleset and its source, does not warn when the bundled baseline is in use, and says a richer pack can be plugged in via DOKIMA_SAST_RULES or ~/.dokima/rules/sast"
+      ],
+      "points": 3,
+      "status": "in_progress",
+      "notes": [
+        "FILED AND CLAIMED 2026-09-24 (feat/w23-60-sast-baseline) on the founder's decision \"go with bundled open baseline for SAST\", given directly in the coordinator session on 2026-09-24 and relayed verbatim to this agent. The id was reserved by W23-61's renumber (54b0a7c0). It resolves STATUS.md's \"Ruleset distribution\" item. DEPLOYMENT.md is also in W23-61's scope; both are lane orchestrator, so they never run in parallel."
+      ],
+      "stories": [
+        "US-402"
+      ]
+    },
+    {
       "id": "W23-61",
       "title": "wire the container sandbox profile for real: per-project selection threaded through every sandboxed door, the profile on the receipt, and a verify that can actually run in the image",
       "phase": 23,
