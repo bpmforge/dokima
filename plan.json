@@ -16805,7 +16805,7 @@
       "id": "W23-37",
       "role": "coding-agent",
       "phase": 23,
-      "status": "todo",
+      "status": "in_progress",
       "stories": [
         "US-402"
       ],
@@ -16816,7 +16816,9 @@
       "title": "every deliverable ticket demands grounding the gate cannot check \u2014 `test -s <path>` is the verify behind 'it reflects what the interview actually established'",
       "write_scope": [
         "packages/pipeline/src/deliverable-drafts.ts",
-        "packages/pipeline/src/deliverable-drafts.test.ts"
+        "packages/pipeline/src/deliverable-drafts.test.ts",
+        "packages/pipeline/src/run/run-pipeline.ts",
+        "packages/pipeline/src/run/run-pipeline.test.ts"
       ],
       "acceptance": [
         "A deliverable ticket's verify command can FAIL for a file that is non-empty boilerplate about no particular product \u2014 the current `test -s <path>` cannot, so the close gate mints receipts against a criterion that reads 'It reflects what the interview actually established, not a template'",
@@ -16828,7 +16830,10 @@
         "DROPPED FINDING, filed 2026-09-20 during a P13 sweep. W22-26 wrote it down in its own closing note and filed nothing: 'Fixing the blindness does not fix the check; that asymmetry is still there and is worth its own ticket if anyone wants the gate to mean what the criterion says.' Law 1: a follow-up that names no ticket id is a dropped finding, not a deferral.",
         "W22-26 FIXED THE OTHER HALF, and fixed it well. The maker was blind \u2014 the synthesized blueprint existed in memory for one function and was discarded \u2014 so it now persists to .dokima/blueprint.md and is pinned first in the handoff's core block. Verified by re-running the same journey: VISION.md went from generic boilerplate to the user's own words including their scope split.",
         "WHAT REMAINS IS THE GATE, and it is the sharper half. deliverableDrafts writes 'It reflects what the interview actually established, not a template' onto EVERY deliverable ticket, and sets verify to `test -s <path>` \u2014 a command whose only possible failure is an empty file. So the board states a criterion the gate cannot evaluate, and a receipt minted against it claims more than it earned. That is the exact shape CLAUDE.md law 3 names: a real check nobody runs decays into a check nobody can trust.",
-        "MEASURE BEFORE CHOOSING (L-56): a grounding check is cheap to state and easy to make vacuous. W23-33 refuses a verify script that manufactures its own evidence and W21-87 refuses one that runs nothing \u2014 a grounding command must survive both, or it is the same defect wearing a new command."
+        "MEASURE BEFORE CHOOSING (L-56): a grounding check is cheap to state and easy to make vacuous. W23-33 refuses a verify script that manufactures its own evidence and W21-87 refuses one that runs nothing \u2014 a grounding command must survive both, or it is the same defect wearing a new command.",
+        "CLAIMED 2026-09-24 (fix/v1-wave5). SCOPE AT THE READ (Law 1): deliverable-drafts.ts does not exist \u2014 deliverableDrafts lives in packages/pipeline/src/run/run-pipeline.ts. It moves into the filed file (packages/pipeline/src/run/deliverable-drafts.ts, as the scope already names it), and run-pipeline.ts + its test widen to take the import and the fixture that already pins the verify string.",
+        "MEASURED BEFORE CHOOSING (the ticket's own L-56 note), and the measurement rules out DEMOTE as a change: the criterion 'It reflects what the interview actually established, not a template' begins 'It', so isExecutableCriterion already sends it to needsHumanCheck and every close receipt already carries humanCheckNotice for it (loop-gates.ts, acceptanceNeedsHumanCheck). Demoting it would change no behaviour, and its red fixture would be a test that cannot fail. So the ticket's real defect is the other half: a verify of `test -s` that passes any non-empty file.",
+        "DECISION: MAKE IT CHECKABLE. runPipeline holds the synthesized blueprint in memory at the moment it builds the drafts, so each deliverable's verify is built from it: `test -s <path>` AND at least two distinct terms drawn from the blueprint (title words weighted, generic software and English words excluded) appear in the file. Deterministic, no model call, and it runs in the worktree without reading .dokima/blueprint.md \u2014 which a sandboxed verify in a ticket worktree cannot rely on reaching. When a blueprint yields fewer than three usable terms, the verify stays `test -s` and the grounding criterion says outright that no machine checks it: never a grep that always passes. Survives W21-87 (a no-match grep prints nothing and exits 1 \u2014 it cannot 'run nothing' and pass) and W23-33 (a command, not a package script, and it creates no file)."
       ]
     },
     {
