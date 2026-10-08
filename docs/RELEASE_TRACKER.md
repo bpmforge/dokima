@@ -55,20 +55,22 @@ specification the person read; a project's stored autonomy dial cannot set it
 
 ## Release milestones
 
-| Tag                   | Scope                                           | Gate                                                                                | Status                                                                                                                    |
-| --------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| **v0.1.0-foundation** | W0–W3 (trust core, loop, gateway, Harbormaster) | full pnpm gate + planted-defect harness green; conductor self-hosts a fixture board | ✅ met, untagged                                                                                                          |
-| v0.2.0                | + W4 Canvas/Fleet                               | Playwright E2E over fake-model gateway                                              | ✅ met, untagged                                                                                                          |
-| v0.3.0                | + W5 Pipeline/PM                                | sample idea runs <15 min on a local model                                           | ✅ met, untagged                                                                                                          |
-| v0.9.0                | + W6 integrations, W7 memory                    | forge-mirror reconciliation + anti-Jarvis-gap recall test                           | ✅ met, untagged                                                                                                          |
-| **v1.0.0**            | W8 dogfood: Dokima audits itself                | own security cluster passes; receipts in `docs/dogfood/`                            | ✅ **met** — **`release/v1.0.0` prepared 2026-09-03** (1.0.0 bump + CHANGELOG entry); tag `v1.0.0` on merge, then publish |
+| Tag                   | Scope                                           | Gate                                                                                | Status                                                                                                                                               |
+| --------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **v0.1.0-foundation** | W0–W3 (trust core, loop, gateway, Harbormaster) | full pnpm gate + planted-defect harness green; conductor self-hosts a fixture board | ✅ met, untagged                                                                                                                                     |
+| v0.2.0                | + W4 Canvas/Fleet                               | Playwright E2E over fake-model gateway                                              | ✅ met, untagged                                                                                                                                     |
+| v0.3.0                | + W5 Pipeline/PM                                | sample idea runs <15 min on a local model                                           | ✅ met, untagged                                                                                                                                     |
+| v0.9.0                | + W6 integrations, W7 memory                    | forge-mirror reconciliation + anti-Jarvis-gap recall test                           | ✅ met, untagged                                                                                                                                     |
+| **v1.0.0**            | W8 dogfood: Dokima audits itself                | own security cluster passes; receipts in `docs/dogfood/`                            | ✅ **met** — **`release/v1.0.0` prepared 2026-09-03** (1.0.0 bump + CHANGELOG entry); **tagged `v1.0.0` 2026-09-14** (`3f9c12e8`); not yet published |
 
-Every milestone gate has been met. The only tag that exists is **`v0.1.0`**
-(`4331e9fe`, 2026-08-03, on both remotes) — cut when the pre-public checklist
-was still open, and never published to any registry. This file and
+Every milestone gate has been met. Two tags exist (checked against `git
+ls-remote --tags` on 2026-10-08): **`v0.1.0`** (`4331e9fe`, 2026-08-03) — cut
+when the pre-public checklist was still open — and **`v1.0.0`** (`3f9c12e8`,
+2026-09-14). `package.json` is at 1.0.1, which has a CHANGELOG entry but no
+tag yet. None of them has been published to any registry. This file and
 `docs/work/RELEASE_HANDOFF_2026-09-03.md` both read "nothing has been tagged"
 until 2026-09-08; corrected here against `git tag -l` rather than assumed.
-No milestone tag above has been cut.
+No other milestone tag above has been cut.
 
 ## Pre-public checklist (required for any tag ≥0.3)
 
