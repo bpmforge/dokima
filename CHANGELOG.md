@@ -146,7 +146,7 @@ name what a change means for that boundary, not just what moved.
   now derived and landed through the ordinary close gate instead of retried;
   an endpoint failure over unfinished work still retries for free.
 
-## [1.0.1] — 2026-09-23
+## [1.0.1] — Unreleased (not yet tagged)
 
 A packaging fix release that also closes one gate bypass. v1.0.0's tarball
 could not start, so the guard the boundary relies on — "the CLI refuses an
@@ -201,7 +201,7 @@ Both are closed; no verb, receipt or event shape changed.
   better-sqlite3 native binary, and `doctor` still reports OK on a fresh
   home. Documented in the release handoff; not changed here.
 
-## [1.0.0] — 2026-09-03
+## [1.0.0] — 2026-09-14
 
 The first public release. Every milestone gate in `docs/RELEASE_TRACKER.md`
 (v0.1 foundation through v1.0 dogfood) was met before this tag; the
@@ -222,7 +222,8 @@ clearance, package verification on a clean machine — is complete.
 - Verify commands and validator packs run inside a process sandbox
   (`sandbox-exec` on macOS, user namespaces on Linux) and the build refuses,
   rather than degrades silently, on a host that cannot sandbox.
-- The bundled expert library (89 agents, 83 validators, 26 protocols) ships
+- The bundled expert library (95 expert agents, 81 validators plus the 2
+  shared `_lib*.sh` libraries they source, 36 protocols) ships
   signed; the signing key was rotated and purged from history before this
   release, and history scanning is part of the gate so a committed-then-deleted
   credential can never again read as clean.
@@ -353,7 +354,7 @@ reach a registry — this section is kept for the history it records.
   named `kind-not-constructible` refusal rather than falling back to localhost
   or fabricating a $0 cost. Local kinds work today.
 
-[Unreleased]: https://github.com/bpmforge/dokima/compare/v1.0.1...HEAD
-[1.0.1]: https://github.com/bpmforge/dokima/compare/v1.0.0...v1.0.1
+[Unreleased]: https://github.com/bpmforge/dokima/compare/v1.0.0...HEAD
+[1.0.1]: https://github.com/bpmforge/dokima/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/bpmforge/dokima/releases/tag/v1.0.0
 [0.1.0]: https://github.com/bpmforge/dokima/releases/tag/v0.1.0
