@@ -94,7 +94,7 @@ model and no network. Cloud providers are an option you turn on, and
 credentials live in your OS keychain as named references — never in a config
 file, a prompt, or the event log.
 
-**It ships with the expert system in the box.** 95 expert agents, 83
+**It ships with the expert system in the box.** 95 expert agents, 81
 validators, and 36 shared protocols, each carrying provenance and a verified
 signature — not prompts invented on the fly.
 
