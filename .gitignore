@@ -45,3 +45,8 @@ docs/security/semgrep-scan-*.log
 # are the tracked record; these are the working files behind them.
 docs/security/semgrep-results.json
 docs/security/semgrep-results.sarif
+
+# Local tool state, not source: the code-search MCP's symbol index and a
+# Shipwright conductor state DB (SQLite + WAL files, rewritten on use).
+.code-search/
+.shipwright/

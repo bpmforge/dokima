@@ -99,7 +99,7 @@ git push github main` (origin = Gitea, may be offline off-LAN — GitHub
 ## Map
 
 - Founding blueprint (canonical design): `docs/BLUEPRINT.md`
-- Founder decisions (do not re-litigate): `docs/DECISIONS.md` (D-001…D-013)
+- Founder decisions (do not re-litigate): `docs/DECISIONS.md` (D-001…D-033)
 - Requirements: `docs/SRS.md` · stories `docs/USER_STORIES.md` · flows `docs/USE_CASES.md`
 - Architecture: `docs/ARCHITECTURE.md` · DB `docs/DATABASE.md` · API `docs/API_DESIGN.md`
 - Security: `docs/THREAT_MODEL.md` · controls `docs/SECURITY_CONTROLS.md`

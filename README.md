@@ -30,10 +30,11 @@ node apps/server/src/bootstrap/cli-entry.mjs
 That boots the workbench and opens the Canvas at `http://127.0.0.1:4317`.
 Run it inside a project directory and it opens (or creates) that project.
 
-> **Not on the registry yet.** Dokima ships as `@bpmforge/dokima`; 1.0.0 is
-> tagged and prepared, and the publish itself is the last step. Until it lands,
-> install from source as above — `npm link` at the repo root puts a `dokima`
-> command on your PATH. Step 3 of the release handoff flips this line.
+> **Not on the registry yet.** Dokima ships as `@bpmforge/dokima`; `v1.0.0` is
+> tagged, `package.json` is at 1.0.1 (the packaging fix in the
+> [CHANGELOG](CHANGELOG.md)), and the publish itself is the last step. Until it
+> lands, install from source as above — `npm link` at the repo root puts a
+> `dokima` command on your PATH. Step 3 of the release handoff flips this line.
 
 Before you trust it with anything, ask it how it's doing:
 
@@ -43,27 +44,35 @@ node apps/server/src/bootstrap/cli-entry.mjs doctor
 
 ```
 [OK] port: port 4317 is free
+[OK] native-db: better-sqlite3 loaded; a throwaway database was opened and migrated
 [OK] db-integrity: no state.db yet (fresh project)
 [OK] keychain: keychain read/write probe succeeded
 [OK] providers: no providers configured
 [OK] pack-signatures: manifest + all file hashes verified
 [OK] worktree-orphans: no worktrees directory yet
+[WARN] sast: opengrep is not installed — …
+[WARN] dependency-audit: this project is local-only, so npm audit has no advisory data. …
 doctor: OK
 ```
+
+A `WARN` does not fail the run; it tells you which machine-review check will
+report NOT RUN and how to fix it. On Linux there is no OS keychain adapter yet,
+so set `DOKIMA_NO_KEYCHAIN=1` and `DOKIMA_VAULT_KEY` to use the encrypted-file
+store (see [DEPLOYMENT](docs/DEPLOYMENT.md)).
 
 ### The rest of the CLI
 
 Shown as `dokima <cmd>` — that's the name after `npm link`; from a plain
 checkout it's `node apps/server/src/bootstrap/cli-entry.mjs <cmd>`.
 
-| Command                                    | What it does                                                                                       |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| `dokima`                                   | Boot the workbench and open the Canvas                                                             |
-| `dokima doctor`                            | Six health checks: port, DB integrity, keychain, providers, content signatures, orphaned worktrees |
-| `dokima providers refresh`                 | Re-run model discovery against your configured endpoints                                           |
-| `dokima packs update`                      | Verify and install the bundled expert/validator library                                            |
-| `dokima backup`                            | Online SQLite backup with retention pruning                                                        |
-| `dokima service install`\|`status`\|`stop` | Run it as a background service for overnight work                                                  |
+| Command                                    | What it does                                                                                                                               |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `dokima`                                   | Boot the workbench and open the Canvas                                                                                                     |
+| `dokima doctor`                            | Nine health checks: port, native SQLite, DB integrity, keychain, providers, content signatures, orphaned worktrees, SAST, dependency audit |
+| `dokima providers refresh`                 | Re-run model discovery against your configured endpoints                                                                                   |
+| `dokima packs update`                      | Verify and install the bundled expert/validator library                                                                                    |
+| `dokima backup`                            | Online SQLite backup with retention pruning                                                                                                |
+| `dokima service install`\|`status`\|`stop` | Run it as a background service for overnight work                                                                                          |
 
 ---
 
@@ -85,8 +94,8 @@ model and no network. Cloud providers are an option you turn on, and
 credentials live in your OS keychain as named references — never in a config
 file, a prompt, or the event log.
 
-**It ships with the expert system in the box.** 89 expert agents, 83
-validators, and 26 shared protocols, each carrying provenance and a verified
+**It ships with the expert system in the box.** 95 expert agents, 81
+validators, and 36 shared protocols, each carrying provenance and a verified
 signature — not prompts invented on the fly.
 
 ---
@@ -108,12 +117,13 @@ TypeScript, ESM, SQLite.
 
 ---
 
-## Status — release candidate
+## Status — 1.0 tagged, not yet published
 
-The build is complete: **495 of 497 tickets done** on [`plan.json`](plan.json)
-(the two left are deliberately held for founder calls — a plugin loader with
-no plugin to load, and the unattended-autonomy dial). The v1.0 dogfood gate
-passed (Dokima onboards itself, runs its own security cluster, and publishes
+**555 of 559 tickets done** on [`plan.json`](plan.json). One is deliberately
+blocked for a founder call (W12-44, a plugin loader with no plugin to load);
+three are open post-1.0 security work (W23-58 offline advisory data, W23-61 the
+container sandbox profile, W23-62 the model bench's `node:vm` scoring). The
+v1.0 dogfood gate passed (Dokima onboards itself, runs its own security cluster, and publishes
 receipts under [`docs/dogfood/`](docs/dogfood/)); the packaged CLI installs
 and runs on a clean machine; and a guided sample project has been driven from
 the setup wizard through interview, blueprint, founder decisions, board, build
@@ -122,15 +132,15 @@ runs, machine review and acceptance on local models only, end to end.
 The gaps an earlier version of this section listed are closed, each with a
 ticket behind it: provider/model selection is wired to every model call, per
 role (W10-03/45); the visual design has a token system and no raw hexes
-(W10-06/28/30/32); the bundled expert library is at upstream `attest` v3.5.1
-(W12-07); `dokima --help` prints help and no command boots a server by
-accident (W10-44/W13-33); and the name is Dokima, shipping as
+(W10-06/28/30/32); the bundled expert library tracks upstream `attest`
+(W12-07 took it to v3.5.1; `content/index.json` now records v3.5.4); `dokima
+--help` prints help and no command boots a server by accident (W10-44/W13-33); and the name is Dokima, shipping as
 `@bpmforge/dokima` (D-021).
 
-**What remains before the first tag is not build work:** the npm package is
-prepared and verified (`npm pack` → install into a clean project → boot), and
-publishing it is an authenticated operator step. Until then, install from
-source as above. Progress ledger: [`docs/STATUS.md`](docs/STATUS.md);
+**What remains is not build work:** `v1.0.0` is tagged, the npm package is
+prepared and verified (`pnpm smoke:pack`: `npm pack` → install into a clean
+directory → `dokima --help` and `dokima doctor`), and publishing it is an
+authenticated operator step. Until then, install from source as above. Progress ledger: [`docs/STATUS.md`](docs/STATUS.md);
 release checklist: [`docs/RELEASE_TRACKER.md`](docs/RELEASE_TRACKER.md).
 
 See the full [screenshot tour](docs/tour/TOUR.md) for what's built today.

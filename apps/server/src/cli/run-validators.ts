@@ -5,10 +5,10 @@
  * The founder asked directly whether the product keeps a model honest about
  * the stack it designed. It does not, and the gap is not in the content pack:
  *
- *   - `content/validators/` ships 83 validators imported from attest,
- *     including `validate-tech-stack.sh` ("every direct dependency in the
- *     project's manifest must appear in docs/TECH_STACK.md") and
- *     `validate-deps.sh`.
+ *   - `content/validators/` ships 81 validators (plus the 2 shared
+ *     `_lib*.sh` libraries they source) imported from attest, including
+ *     `validate-tech-stack.sh` ("every direct dependency in the project's
+ *     manifest must appear in docs/TECH_STACK.md") and `validate-deps.sh`.
  *   - `DEFAULT_REQUIRED_VALIDATORS` is exactly `['secrets-scan',
  *     'validate-remote-parity']`, and run 16's close receipt for
  *     PLAN-vault-001 lists those two and nothing else.
@@ -19,7 +19,7 @@
  * which is ANTI_SLOP R-21 slopsquatting and admits an attacker rather than
  * mere sloppiness — and nothing compared it against what the project designed.
  *
- * THIS ADDS THE MECHANISM, NOT A POLICY. Which of the 83 belong in a
+ * THIS ADDS THE MECHANISM, NOT A POLICY. Which of the 81 belong in a
  * GENERATED PRODUCT's gate is a founder decision: most are irrelevant to a
  * password manager, several assume documents a given project may never
  * produce, and a gate that refuses for debt a ticket did not create teaches
@@ -91,9 +91,9 @@ export function resolveRequiredValidators(
  * `DEFAULT_REQUIRED_VALIDATORS` is `['secrets-scan',
  * 'validate-remote-parity']` — a leaked credential and a wrong git remote.
  * Nothing asked whether the code was any good, while `content/validators/`
- * ships 85 validators. W21-38 built the setting above and left the policy
- * open: "which of the 83 belong in a GENERATED PRODUCT's gate is a founder
- * decision."
+ * ships 81 validators (plus the 2 shared `_lib*.sh` libraries; 83 `.sh`
+ * files). W21-38 built the setting above and left the policy open: which of
+ * them belong in a GENERATED PRODUCT's gate "is a founder decision."
  *
  * The founder decided: the product is for people who may have no development
  * experience, so it should RUN the checks rather than wait to be asked.
