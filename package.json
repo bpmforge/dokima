@@ -70,9 +70,9 @@
   "dependencies": {
     "better-sqlite3": "^12.11.1",
     "execa": "^9.6.0",
-    "fastify": "^5.10.0",
+    "fastify": "^5.12.2",
     "google-auth-library": "^10.5.0",
-    "undici": "^7.16.0",
+    "undici": "^7.29.1",
     "zod": "^4.1.13"
   },
   "files": [
