@@ -16,6 +16,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import * as notificationsApi from './api.js';
 import * as decisionsApi from '../decisions/api.js';
 import { MorningQueue } from './MorningQueue.js';
+import { isDestructiveToolCall } from './McpApprovalEvidence.js';
 import type { NotificationItem } from './types.js';
 import type { SlateRecord } from '../decisions/types.js';
 
@@ -186,6 +187,43 @@ describe('a tool-approval card shows the work (W14-04, the W13-61 standard)', ()
     expect(consequence.textContent).toContain('nothing ever runs');
     expect(screen.getByRole('button', { name: 'Approve' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Reject' })).toBeTruthy();
+  });
+});
+
+describe('a destructive tool call takes a second press (review 2026-10-15)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    decisions.fetchSlates.mockResolvedValue([]);
+  });
+  afterEach(cleanup);
+
+  it('RED FIXTURE: one press on Approve for a recursive delete records nothing; the second press does', async () => {
+    notifications.fetchMorningQueue.mockResolvedValue([
+      card({
+        id: 'mcp-approval-del',
+        kind: 'approval',
+        refType: 'mcp_tool_call',
+        refId: 'del',
+        title: 'Tool approval: fs.delete',
+        body: { serverId: 'fs', toolId: 'fs.delete', args: { path: 'src', recursive: true } },
+      }),
+    ]);
+    notifications.decideApproval.mockResolvedValue(undefined);
+    render(<MorningQueue />);
+    await waitFor(() => screen.getByTestId('mcp-approval-destructive'));
+    const approve = screen.getByTestId('mcp-approve-destructive');
+    fireEvent.click(approve);
+    expect(notifications.decideApproval).not.toHaveBeenCalled();
+    expect(approve.textContent).toContain('Press again');
+    fireEvent.click(approve);
+    await waitFor(() => expect(notifications.decideApproval).toHaveBeenCalledTimes(1));
+  });
+
+  it('flags forced and recursive arguments, not ordinary calls', () => {
+    expect(isDestructiveToolCall({ toolId: 'shell.run', args: { cmd: 'rm -rf build' } })).toBe(true);
+    expect(isDestructiveToolCall({ toolId: 'git.push', args: { force: true } })).toBe(true);
+    expect(isDestructiveToolCall({ toolId: 'srv-x.deploy', args: { env: 'prod' } })).toBe(false);
+    expect(isDestructiveToolCall(null)).toBe(false);
   });
 });
 

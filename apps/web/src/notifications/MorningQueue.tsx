@@ -5,7 +5,12 @@ import {
   fetchMorningQueue,
   NotificationsApiError,
 } from './api.js';
-import { McpApprovalEvidence, type McpApprovalBody } from './McpApprovalEvidence.js';
+import {
+  isDestructiveToolCall,
+  McpApprovalEvidence,
+  type McpApprovalBody,
+} from './McpApprovalEvidence.js';
+import { ArmedButton } from '../lib/ArmedButton.js';
 import { SlateAnswer } from './SlateAnswer.js';
 import { TicketEvidence } from './TicketEvidence.js';
 import { NotificationCard } from './NotificationCard.js';
@@ -345,15 +350,26 @@ function DecideActions({
         </div>
       ) : (
         <>
-          <button
-            type="button"
-            disabled={busy || !approvable}
-            aria-describedby={consequenceId}
-            title={approvable ? undefined : 'There is nothing on this card to approve yet.'}
-            onClick={() => void onDecide('approved')}
-          >
-            Approve
-          </button>
+          {item.refType === 'mcp_tool_call' && isDestructiveToolCall(mcpBody) ? (
+            <ArmedButton
+              label="Approve"
+              armedLabel="Approve the destructive call? Press again"
+              disabled={busy || !approvable}
+              describedBy={consequenceId}
+              testId="mcp-approve-destructive"
+              onConfirm={() => void onDecide('approved')}
+            />
+          ) : (
+            <button
+              type="button"
+              disabled={busy || !approvable}
+              aria-describedby={consequenceId}
+              title={approvable ? undefined : 'There is nothing on this card to approve yet.'}
+              onClick={() => void onDecide('approved')}
+            >
+              Approve
+            </button>
+          )}
           <button
             type="button"
             disabled={busy}

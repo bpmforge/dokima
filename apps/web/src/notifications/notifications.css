@@ -276,6 +276,13 @@
   margin: 0 0 var(--sw-space-1);
 }
 
+/* Review 2026-10-15: a destructive tool call is named before its second press. */
+.notification-card__evidence-warning {
+  color: var(--sw-danger);
+  font-weight: 600;
+  margin: var(--sw-space-1) 0;
+}
+
 /* Review Q1/Q3: a failed decision stays on its card; Reject's optional reason. */
 .notification-card__error {
   color: var(--sw-danger);
