@@ -1,6 +1,9 @@
 {
   "strings": [
+    "Skip to content",
     "Dokima",
+    "·",
+    "Demo Voyage",
     "Board",
     "Team",
     "Describe",
@@ -39,15 +42,27 @@
   ],
   "interactive": [
     {
+      "tag": "a",
+      "role": null,
+      "name": "Skip to content",
+      "disabled": false,
+      "rect": {
+        "x": 8,
+        "y": -48,
+        "w": 140,
+        "h": 38
+      }
+    },
+    {
       "tag": "button",
       "role": null,
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 520,
+        "x": 560,
         "y": 12,
-        "w": 69,
-        "h": 36
+        "w": 65,
+        "h": 32
       }
     },
     {
@@ -56,10 +71,10 @@
       "name": "Team",
       "disabled": false,
       "rect": {
-        "x": 593,
+        "x": 629,
         "y": 12,
-        "w": 65,
-        "h": 36
+        "w": 62,
+        "h": 32
       }
     },
     {
@@ -68,10 +83,10 @@
       "name": "Describe",
       "disabled": false,
       "rect": {
-        "x": 663,
+        "x": 695,
         "y": 12,
-        "w": 91,
-        "h": 36
+        "w": 85,
+        "h": 32
       }
     },
     {
@@ -80,10 +95,10 @@
       "name": "Plan",
       "disabled": false,
       "rect": {
-        "x": 757,
+        "x": 785,
         "y": 12,
-        "w": 57,
-        "h": 36
+        "w": 54,
+        "h": 32
       }
     },
     {
@@ -92,10 +107,10 @@
       "name": "Decisions",
       "disabled": false,
       "rect": {
-        "x": 818,
+        "x": 843,
         "y": 12,
-        "w": 96,
-        "h": 36
+        "w": 91,
+        "h": 32
       }
     },
     {
@@ -104,10 +119,10 @@
       "name": "Lessons",
       "disabled": false,
       "rect": {
-        "x": 919,
+        "x": 938,
         "y": 12,
-        "w": 85,
-        "h": 36
+        "w": 81,
+        "h": 32
       }
     },
     {
@@ -116,10 +131,10 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1008,
+        "x": 1023,
         "y": 12,
-        "w": 73,
-        "h": 36
+        "w": 68,
+        "h": 32
       }
     },
     {
@@ -128,10 +143,10 @@
       "name": "Morning queue, 2 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1093,
-        "y": 17,
+        "x": 1103,
+        "y": 12,
         "w": 134,
-        "h": 27
+        "h": 32
       }
     },
     {
@@ -140,22 +155,22 @@
       "name": "Settings",
       "disabled": false,
       "rect": {
-        "x": 1239,
+        "x": 1249,
         "y": 12,
-        "w": 86,
-        "h": 36
+        "w": 82,
+        "h": 32
       }
     },
     {
       "tag": "button",
       "role": null,
-      "name": "Switch to dark theme",
+      "name": "Light theme, switch to dark",
       "disabled": false,
       "rect": {
-        "x": 1337,
+        "x": 1343,
         "y": 12,
-        "w": 87,
-        "h": 36
+        "w": 81,
+        "h": 32
       }
     },
     {
@@ -164,10 +179,10 @@
       "name": "Setup Wizard",
       "disabled": false,
       "rect": {
-        "x": 1098,
-        "y": 93,
-        "w": 124,
-        "h": 36
+        "x": 1091,
+        "y": 90,
+        "w": 128,
+        "h": 38
       }
     },
     {
@@ -176,10 +191,10 @@
       "name": "Close",
       "disabled": false,
       "rect": {
-        "x": 1229,
-        "y": 93,
-        "w": 67,
-        "h": 36
+        "x": 1227,
+        "y": 90,
+        "w": 69,
+        "h": 38
       }
     },
     {
@@ -189,8 +204,8 @@
       "disabled": false,
       "rect": {
         "x": 144,
-        "y": 186,
-        "w": 79,
+        "y": 185,
+        "w": 87,
         "h": 27
       }
     },
@@ -200,9 +215,9 @@
       "name": "Models",
       "disabled": false,
       "rect": {
-        "x": 227,
-        "y": 186,
-        "w": 65,
+        "x": 235,
+        "y": 185,
+        "w": 73,
         "h": 27
       }
     },
@@ -212,9 +227,9 @@
       "name": "Runs & Forge",
       "disabled": false,
       "rect": {
-        "x": 296,
-        "y": 186,
-        "w": 105,
+        "x": 311,
+        "y": 185,
+        "w": 112,
         "h": 27
       }
     },
@@ -224,9 +239,9 @@
       "name": "Autonomy · Budget · Berths",
       "disabled": false,
       "rect": {
-        "x": 405,
-        "y": 186,
-        "w": 196,
+        "x": 427,
+        "y": 185,
+        "w": 206,
         "h": 27
       }
     },
@@ -236,9 +251,9 @@
       "name": "Advanced ▾",
       "disabled": false,
       "rect": {
-        "x": 604,
-        "y": 186,
-        "w": 92,
+        "x": 637,
+        "y": 185,
+        "w": 102,
         "h": 27
       }
     },
@@ -248,9 +263,9 @@
       "name": "Agent",
       "disabled": false,
       "rect": {
-        "x": 701,
-        "y": 186,
-        "w": 56,
+        "x": 743,
+        "y": 185,
+        "w": 63,
         "h": 27
       }
     },
@@ -260,9 +275,9 @@
       "name": "Cost Estimate",
       "disabled": false,
       "rect": {
-        "x": 761,
-        "y": 186,
-        "w": 108,
+        "x": 810,
+        "y": 185,
+        "w": 115,
         "h": 27
       }
     },
@@ -272,9 +287,9 @@
       "name": "Effective Settings",
       "disabled": false,
       "rect": {
-        "x": 872,
-        "y": 186,
-        "w": 132,
+        "x": 929,
+        "y": 185,
+        "w": 139,
         "h": 27
       }
     },
@@ -284,9 +299,9 @@
       "name": "MCP Servers",
       "disabled": false,
       "rect": {
-        "x": 1008,
-        "y": 186,
-        "w": 102,
+        "x": 1072,
+        "y": 185,
+        "w": 111,
         "h": 27
       }
     },
@@ -296,9 +311,9 @@
       "name": "Validator Packs",
       "disabled": false,
       "rect": {
-        "x": 1114,
-        "y": 186,
-        "w": 117,
+        "x": 144,
+        "y": 216,
+        "w": 126,
         "h": 27
       }
     },
@@ -308,9 +323,9 @@
       "name": "Expert Overrides",
       "disabled": false,
       "rect": {
-        "x": 144,
-        "y": 217,
-        "w": 127,
+        "x": 274,
+        "y": 216,
+        "w": 139,
         "h": 27
       }
     },
@@ -320,9 +335,9 @@
       "name": "Rule Lifecycle",
       "disabled": false,
       "rect": {
-        "x": 275,
-        "y": 217,
-        "w": 107,
+        "x": 416,
+        "y": 216,
+        "w": 116,
         "h": 27
       }
     },
@@ -332,9 +347,9 @@
       "name": "Suppressions",
       "disabled": false,
       "rect": {
-        "x": 386,
-        "y": 217,
-        "w": 105,
+        "x": 536,
+        "y": 216,
+        "w": 114,
         "h": 27
       }
     },
@@ -344,9 +359,9 @@
       "name": "Escalation Policy",
       "disabled": false,
       "rect": {
-        "x": 495,
-        "y": 217,
-        "w": 126,
+        "x": 654,
+        "y": 216,
+        "w": 135,
         "h": 27
       }
     },
@@ -356,9 +371,9 @@
       "name": "Copilot",
       "disabled": false,
       "rect": {
-        "x": 626,
-        "y": 217,
-        "w": 64,
+        "x": 793,
+        "y": 216,
+        "w": 71,
         "h": 27
       }
     },
@@ -369,8 +384,8 @@
       "disabled": false,
       "rect": {
         "x": 144,
-        "y": 397,
-        "w": 180,
+        "y": 388,
+        "w": 244,
         "h": 35
       }
     },
@@ -380,9 +395,9 @@
       "name": "Name",
       "disabled": false,
       "rect": {
-        "x": 336,
-        "y": 397,
-        "w": 180,
+        "x": 400,
+        "y": 388,
+        "w": 244,
         "h": 35
       }
     },
@@ -392,9 +407,9 @@
       "name": "Project-local markdown path",
       "disabled": false,
       "rect": {
-        "x": 528,
-        "y": 397,
-        "w": 186,
+        "x": 656,
+        "y": 388,
+        "w": 244,
         "h": 35
       }
     },
@@ -404,8 +419,8 @@
       "name": "Overrides a core expert sharing this id",
       "disabled": false,
       "rect": {
-        "x": 730,
-        "y": 412,
+        "x": 916,
+        "y": 403,
         "w": 13,
         "h": 13
       }
@@ -416,10 +431,10 @@
       "name": "Add",
       "disabled": false,
       "rect": {
-        "x": 1012,
-        "y": 396,
-        "w": 55,
-        "h": 36
+        "x": 1205,
+        "y": 385,
+        "w": 57,
+        "h": 38
       }
     }
   ],
@@ -430,11 +445,11 @@
     },
     "contentBox": {
       "x": 0,
-      "y": 0,
+      "y": -48,
       "w": 1440,
-      "h": 900
+      "h": 948
     },
-    "occupancy": 1
+    "occupancy": 1.05
   },
   "classHistogram": {
     "app-shell": 1,
@@ -442,9 +457,12 @@
     "app-shell__decide-badge": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
+    "app-shell__main": 1,
     "app-shell__nav": 1,
     "app-shell__nav-item": 7,
     "app-shell__notifications-bell": 1,
+    "app-shell__project-name": 1,
+    "app-shell__wordmark": 1,
     "btn-quiet": 1,
     "icon": 2,
     "page": 1,
@@ -463,6 +481,8 @@
     "settings__tab--active": 1,
     "settings__tab--advanced-toggle": 1,
     "settings__tabs": 1,
+    "skip-link": 1,
+    "tab": 15,
     "theme-toggle": 1
   }
 }

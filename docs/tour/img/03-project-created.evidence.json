@@ -1,5 +1,6 @@
 {
   "strings": [
+    "Skip to content",
     "Dokima",
     "Fleet",
     "Roster",
@@ -32,15 +33,27 @@
   ],
   "interactive": [
     {
+      "tag": "a",
+      "role": null,
+      "name": "Skip to content",
+      "disabled": false,
+      "rect": {
+        "x": 8,
+        "y": -48,
+        "w": 140,
+        "h": 38
+      }
+    },
+    {
       "tag": "button",
       "role": null,
       "name": "Fleet",
       "disabled": false,
       "rect": {
-        "x": 940,
+        "x": 961,
         "y": 12,
-        "w": 64,
-        "h": 36
+        "w": 59,
+        "h": 32
       }
     },
     {
@@ -49,10 +62,10 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1008,
+        "x": 1025,
         "y": 12,
-        "w": 73,
-        "h": 36
+        "w": 68,
+        "h": 32
       }
     },
     {
@@ -61,10 +74,10 @@
       "name": "Morning queue, 0 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1093,
-        "y": 17,
+        "x": 1105,
+        "y": 12,
         "w": 134,
-        "h": 27
+        "h": 32
       }
     },
     {
@@ -73,22 +86,22 @@
       "name": "Settings",
       "disabled": false,
       "rect": {
-        "x": 1239,
+        "x": 1251,
         "y": 12,
-        "w": 86,
-        "h": 36
+        "w": 80,
+        "h": 32
       }
     },
     {
       "tag": "button",
       "role": null,
-      "name": "Switch to dark theme",
+      "name": "Light theme, switch to dark",
       "disabled": false,
       "rect": {
-        "x": 1337,
+        "x": 1343,
         "y": 12,
-        "w": 87,
-        "h": 36
+        "w": 81,
+        "h": 32
       }
     },
     {
@@ -97,10 +110,10 @@
       "name": "New project",
       "disabled": false,
       "rect": {
-        "x": 525,
-        "y": 93,
-        "w": 133,
-        "h": 36
+        "x": 511,
+        "y": 89,
+        "w": 135,
+        "h": 38
       }
     },
     {
@@ -109,10 +122,10 @@
       "name": "Onboard existing repo",
       "disabled": false,
       "rect": {
-        "x": 666,
-        "y": 93,
-        "w": 186,
-        "h": 36
+        "x": 654,
+        "y": 89,
+        "w": 194,
+        "h": 38
       }
     },
     {
@@ -121,10 +134,10 @@
       "name": "Import",
       "disabled": false,
       "rect": {
-        "x": 861,
-        "y": 93,
-        "w": 74,
-        "h": 36
+        "x": 856,
+        "y": 89,
+        "w": 75,
+        "h": 38
       }
     },
     {
@@ -133,10 +146,22 @@
       "name": "Show archived",
       "disabled": false,
       "rect": {
-        "x": 946,
-        "y": 105,
+        "x": 943,
+        "y": 102,
         "w": 13,
         "h": 13
+      }
+    },
+    {
+      "tag": "p",
+      "role": "status",
+      "name": "",
+      "disabled": false,
+      "rect": {
+        "x": 376,
+        "y": 151,
+        "w": 689,
+        "h": 0
       }
     },
     {
@@ -145,10 +170,10 @@
       "name": "Open",
       "disabled": false,
       "rect": {
-        "x": 392,
+        "x": 393,
         "y": 383,
-        "w": 59,
-        "h": 28
+        "w": 60,
+        "h": 30
       }
     },
     {
@@ -157,10 +182,10 @@
       "name": "Archive",
       "disabled": false,
       "rect": {
-        "x": 459,
+        "x": 460,
         "y": 383,
-        "w": 72,
-        "h": 28
+        "w": 75,
+        "h": 30
       }
     }
   ],
@@ -171,20 +196,22 @@
     },
     "contentBox": {
       "x": 0,
-      "y": 0,
+      "y": -48,
       "w": 1440,
-      "h": 900
+      "h": 948
     },
-    "occupancy": 1
+    "occupancy": 1.05
   },
   "classHistogram": {
     "app-shell": 1,
     "app-shell__bell-label": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
+    "app-shell__main": 1,
     "app-shell__nav": 1,
     "app-shell__nav-item": 2,
     "app-shell__notifications-bell": 1,
+    "app-shell__wordmark": 1,
     "btn-primary": 2,
     "btn-quiet": 3,
     "btn-secondary": 1,
@@ -193,10 +220,12 @@
     "fleet__archived-toggle": 1,
     "fleet__grid": 1,
     "fleet__header": 1,
+    "fleet__notice": 1,
     "fleet__summary": 1,
     "fleet__summary-caption": 1,
     "icon": 2,
     "page": 1,
+    "page__title": 1,
     "project-card": 1,
     "project-card__actions": 1,
     "project-card__berths": 1,
@@ -205,9 +234,10 @@
     "project-card__phase-chip": 1,
     "project-card__spend": 1,
     "readout": 8,
-    "readout--idle": 7,
+    "readout--idle": 8,
     "readout__label": 8,
     "readout__value": 8,
+    "skip-link": 1,
     "state": 1,
     "state--idle": 1,
     "surface": 2,

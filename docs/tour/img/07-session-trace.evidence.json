@@ -1,6 +1,9 @@
 {
   "strings": [
+    "Skip to content",
     "Dokima",
+    "·",
+    "Demo Voyage",
     "Board",
     "Team",
     "Describe",
@@ -23,28 +26,40 @@
     "The run made a pass over the ticket",
     "loop.pass",
     "agent-1",
-    "Aug 31, 2026, 12:58 PM",
+    "Oct 15, 2026, 1:46 AM",
     "Gate result",
     "A gate checked the work and minted a receipt",
     "gate.receipt_minted",
-    "Aug 31, 2026, 12:58 PM (+2ms)",
+    "Oct 15, 2026, 1:46 AM (+2ms)",
     "Escalation",
     "Escalated to a stronger model",
     "escalation.rung_advanced",
     "rung R0 → R1",
-    "Aug 31, 2026, 12:58 PM (+0ms)"
+    "Oct 15, 2026, 1:46 AM (+0ms)"
   ],
   "interactive": [
+    {
+      "tag": "a",
+      "role": null,
+      "name": "Skip to content",
+      "disabled": false,
+      "rect": {
+        "x": 8,
+        "y": -48,
+        "w": 140,
+        "h": 38
+      }
+    },
     {
       "tag": "button",
       "role": null,
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 520,
+        "x": 562,
         "y": 12,
-        "w": 69,
-        "h": 36
+        "w": 65,
+        "h": 32
       }
     },
     {
@@ -53,10 +68,10 @@
       "name": "Team",
       "disabled": false,
       "rect": {
-        "x": 593,
+        "x": 631,
         "y": 12,
-        "w": 65,
-        "h": 36
+        "w": 62,
+        "h": 32
       }
     },
     {
@@ -65,10 +80,10 @@
       "name": "Describe",
       "disabled": false,
       "rect": {
-        "x": 663,
+        "x": 697,
         "y": 12,
-        "w": 91,
-        "h": 36
+        "w": 85,
+        "h": 32
       }
     },
     {
@@ -77,10 +92,10 @@
       "name": "Plan",
       "disabled": false,
       "rect": {
-        "x": 757,
+        "x": 787,
         "y": 12,
-        "w": 57,
-        "h": 36
+        "w": 54,
+        "h": 32
       }
     },
     {
@@ -89,10 +104,10 @@
       "name": "Decisions",
       "disabled": false,
       "rect": {
-        "x": 818,
+        "x": 845,
         "y": 12,
-        "w": 96,
-        "h": 36
+        "w": 91,
+        "h": 32
       }
     },
     {
@@ -101,10 +116,10 @@
       "name": "Lessons",
       "disabled": false,
       "rect": {
-        "x": 919,
+        "x": 940,
         "y": 12,
-        "w": 85,
-        "h": 36
+        "w": 81,
+        "h": 32
       }
     },
     {
@@ -113,10 +128,10 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1008,
+        "x": 1025,
         "y": 12,
-        "w": 73,
-        "h": 36
+        "w": 68,
+        "h": 32
       }
     },
     {
@@ -125,10 +140,10 @@
       "name": "Morning queue, 0 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1093,
-        "y": 17,
+        "x": 1105,
+        "y": 12,
         "w": 134,
-        "h": 27
+        "h": 32
       }
     },
     {
@@ -137,22 +152,22 @@
       "name": "Settings",
       "disabled": false,
       "rect": {
-        "x": 1239,
+        "x": 1251,
         "y": 12,
-        "w": 86,
-        "h": 36
+        "w": 80,
+        "h": 32
       }
     },
     {
       "tag": "button",
       "role": null,
-      "name": "Switch to dark theme",
+      "name": "Light theme, switch to dark",
       "disabled": false,
       "rect": {
-        "x": 1337,
+        "x": 1343,
         "y": 12,
-        "w": 87,
-        "h": 36
+        "w": 81,
+        "h": 32
       }
     },
     {
@@ -161,10 +176,10 @@
       "name": "Close",
       "disabled": false,
       "rect": {
-        "x": 1349,
-        "y": 101,
-        "w": 67,
-        "h": 36
+        "x": 1347,
+        "y": 96,
+        "w": 69,
+        "h": 38
       }
     },
     {
@@ -174,9 +189,9 @@
       "disabled": false,
       "rect": {
         "x": 24,
-        "y": 194,
-        "w": 135,
-        "h": 36
+        "y": 191,
+        "w": 140,
+        "h": 38
       }
     },
     {
@@ -186,9 +201,9 @@
       "disabled": false,
       "rect": {
         "x": 709,
-        "y": 239,
-        "w": 135,
-        "h": 36
+        "y": 238,
+        "w": 140,
+        "h": 38
       }
     },
     {
@@ -198,9 +213,9 @@
       "disabled": false,
       "rect": {
         "x": 920,
-        "y": 301,
-        "w": 135,
-        "h": 36
+        "y": 302,
+        "w": 140,
+        "h": 38
       }
     },
     {
@@ -209,10 +224,10 @@
       "name": "File field report",
       "disabled": false,
       "rect": {
-        "x": 307,
-        "y": 415,
-        "w": 135,
-        "h": 36
+        "x": 299,
+        "y": 422,
+        "w": 140,
+        "h": 38
       }
     }
   ],
@@ -223,22 +238,26 @@
     },
     "contentBox": {
       "x": 0,
-      "y": 0,
+      "y": -48,
       "w": 1440,
-      "h": 900
+      "h": 948
     },
-    "occupancy": 1
+    "occupancy": 1.05
   },
   "classHistogram": {
     "app-shell": 1,
     "app-shell__bell-label": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
+    "app-shell__main": 1,
     "app-shell__nav": 1,
     "app-shell__nav-item": 7,
     "app-shell__notifications-bell": 1,
+    "app-shell__project-name": 1,
+    "app-shell__wordmark": 1,
     "btn-quiet": 1,
     "icon": 2,
+    "skip-link": 1,
     "theme-toggle": 1,
     "trace-event": 3,
     "trace-event--escalation": 1,

@@ -1,5 +1,6 @@
 {
   "strings": [
+    "Skip to content",
     "Dokima",
     "Fleet",
     "Roster",
@@ -15,15 +16,27 @@
   ],
   "interactive": [
     {
+      "tag": "a",
+      "role": null,
+      "name": "Skip to content",
+      "disabled": false,
+      "rect": {
+        "x": 8,
+        "y": -48,
+        "w": 140,
+        "h": 38
+      }
+    },
+    {
       "tag": "button",
       "role": null,
       "name": "Fleet",
       "disabled": false,
       "rect": {
-        "x": 942,
+        "x": 960,
         "y": 12,
-        "w": 62,
-        "h": 36
+        "w": 59,
+        "h": 32
       }
     },
     {
@@ -32,10 +45,10 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1008,
+        "x": 1023,
         "y": 12,
-        "w": 73,
-        "h": 36
+        "w": 68,
+        "h": 32
       }
     },
     {
@@ -44,10 +57,10 @@
       "name": "Morning queue, 2 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1093,
-        "y": 17,
+        "x": 1103,
+        "y": 12,
         "w": 134,
-        "h": 27
+        "h": 32
       }
     },
     {
@@ -56,22 +69,22 @@
       "name": "Settings",
       "disabled": false,
       "rect": {
-        "x": 1239,
+        "x": 1249,
         "y": 12,
-        "w": 86,
-        "h": 36
+        "w": 82,
+        "h": 32
       }
     },
     {
       "tag": "button",
       "role": null,
-      "name": "Switch to dark theme",
+      "name": "Light theme, switch to dark",
       "disabled": false,
       "rect": {
-        "x": 1337,
+        "x": 1343,
         "y": 12,
-        "w": 87,
-        "h": 36
+        "w": 81,
+        "h": 32
       }
     },
     {
@@ -80,10 +93,10 @@
       "name": "Close",
       "disabled": false,
       "rect": {
-        "x": 1373,
-        "y": 61,
-        "w": 67,
-        "h": 36
+        "x": 1227,
+        "y": 89,
+        "w": 69,
+        "h": 38
       }
     },
     {
@@ -92,10 +105,10 @@
       "name": "Choose a project",
       "disabled": false,
       "rect": {
-        "x": 0,
-        "y": 324,
-        "w": 170,
-        "h": 36
+        "x": 144,
+        "y": 383,
+        "w": 173,
+        "h": 38
       }
     },
     {
@@ -104,10 +117,10 @@
       "name": "Run Setup Wizard",
       "disabled": false,
       "rect": {
-        "x": 182,
-        "y": 324,
-        "w": 156,
-        "h": 36
+        "x": 329,
+        "y": 383,
+        "w": 161,
+        "h": 38
       }
     }
   ],
@@ -118,11 +131,11 @@
     },
     "contentBox": {
       "x": 0,
-      "y": 0,
+      "y": -48,
       "w": 1440,
-      "h": 900
+      "h": 948
     },
-    "occupancy": 1
+    "occupancy": 1.05
   },
   "classHistogram": {
     "app-shell": 1,
@@ -130,9 +143,11 @@
     "app-shell__decide-badge": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
+    "app-shell__main": 1,
     "app-shell__nav": 1,
     "app-shell__nav-item": 2,
     "app-shell__notifications-bell": 1,
+    "app-shell__wordmark": 1,
     "btn-primary": 1,
     "btn-quiet": 1,
     "btn-secondary": 1,
@@ -140,9 +155,13 @@
     "empty-state__actions": 1,
     "empty-state__lead": 1,
     "icon": 2,
+    "page": 1,
+    "page__inner": 1,
+    "page__title": 1,
     "settings": 1,
     "settings__header": 1,
     "settings__no-project": 1,
+    "skip-link": 1,
     "theme-toggle": 1
   }
 }

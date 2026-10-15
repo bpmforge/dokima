@@ -92,7 +92,7 @@ export async function runLightPass(browser, app, ctx) {
     ctx,
   );
 
-  await page.getByTestId('card-E2E-1').click();
+  await page.getByTestId('open-E2E-1').click();
   await page.getByTestId('ticket-drawer').waitFor();
   await shoot(
     page,
