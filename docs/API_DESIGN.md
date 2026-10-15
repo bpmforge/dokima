@@ -158,6 +158,32 @@ decision). Protocol:
 - Subscriptions map to projections (DATABASE.md §3); the server streams **projection
   deltas**, never raw event payloads (agent-internal detail is summarized — BLUEPRINT §7.1).
 - Board freshness contract: projection lag ≤1s after the underlying event (NFR-2/FR-C4).
+- **Run heartbeats** (`run:{runId}`, review R1). Produced by a build run started
+  through `POST /projects/{id}/build-runs` (`apps/server/src/api/server/run-heartbeat.ts`);
+  a run started from the CLI is another process with no hub and emits none.
+  Telemetry, not state: derived read-only from the run's own event-log rows,
+  never written to the log, never moves a ticket. Three envelope types:
+  ```jsonc
+  { "sub": "run:R42", "type": "loop.heartbeat", "data": {
+      "ticket": "W2-04", "run": "R42",
+      "phase": "working",          // claiming | preparing | working | waiting_on_model |
+                                   // retrying_provider | escalating | verifying | reviewing | paused
+      "berth": "berth-2",          // only when a berth admission named one
+      "step": "write_file",        // tool the model is producing, when it named one
+      "model": "qwen3-coder",      // from the last session.turn_started / session.producing
+      "rung": "R1",                // only after an escalation.rung_advanced
+      "age_s": 3,                  // seconds since the ticket's last ledgered activity
+      "elapsed_s": 125,            // seconds since this run first touched the ticket
+      "started_at": "…", "last_activity_at": "…" } }
+  { "sub": "run:R42", "type": "loop.heartbeat_ended", "data": { "ticket": "W2-04", "run": "R42", "reason": "ticket.closed" } }
+  { "sub": "run:R42", "type": "loop.run_ended", "data": { "run": "R42" } }
+  ```
+  Optional fields are OMITTED when no event has stated them — never guessed.
+  `pass` (above) is not sent by this producer: no run-scoped event states an
+  attempt count. Cadence: on the next 1s poll after a phase/step/rung change,
+  otherwise every 5s per active ticket; a client treats 15s without a beat as
+  stale and says so. The board finds the live run from `GET .../build-runs`
+  (newest run with `outcome: null`).
 - Correctness never depends on the stream: every subscription has a REST read
   (board = `GET /tickets`, spend = `GET /spend`, …) and clients reconcile on reconnect.
 

@@ -87,27 +87,29 @@ export function deriveMemberState(input: DeriveInput): MemberState {
   for (const [ticketId, hb] of heartbeats) {
     const owned = tickets.find((t) => t.id === ticketId && ownedBy(t, actorId));
     if (!owned) continue;
-    if (SELF_CHECK_PASSES.has(hb.pass)) {
+    // Review R1: the run producer sends `phase`, not the legacy `pass`.
+    const pass = hb.pass ?? hb.phase ?? '';
+    if (SELF_CHECK_PASSES.has(pass)) {
       return {
         kind: 'self-checking',
         line: `checking their own work on ${ticketId}`,
         ticketId,
-        evidence: `heartbeat pass=${hb.pass}`,
+        evidence: `heartbeat pass=${pass}`,
       };
     }
-    if (READ_PASSES.has(hb.pass)) {
+    if (READ_PASSES.has(pass)) {
       return {
         kind: 'reading',
         line: `reading for ${ticketId}`,
         ticketId,
-        evidence: `heartbeat pass=${hb.pass}`,
+        evidence: `heartbeat pass=${pass}`,
       };
     }
     return {
       kind: 'working',
       line: `building ${ticketId}`,
       ticketId,
-      evidence: `heartbeat pass=${hb.pass}`,
+      evidence: `heartbeat pass=${pass}`,
     };
   }
 

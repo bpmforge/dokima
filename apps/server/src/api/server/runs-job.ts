@@ -19,6 +19,7 @@ import {
   sweepInterruptedRuns,
   type BuildRunState,
 } from './approved-build-run-state.js';
+import { startRunHeartbeat, type HeartbeatHub, type RunHeartbeat } from './run-heartbeat.js';
 
 /**
  * A build run, executed OFF the request (W12-20).
@@ -105,6 +106,8 @@ export async function executeBuildRunJob(args: {
   readonly approvedBuild?: boolean;
   /** W23-02: part of the approved specification's digest. */
   readonly budgetUsd?: number | null;
+  /** Review R1: where `loop.heartbeat` telemetry goes (`run:{runId}`); none = no heartbeats. */
+  readonly hub?: HeartbeatHub;
 }): Promise<void> {
   const stdout: string[] = [];
   const stderr: string[] = [];
@@ -116,6 +119,7 @@ export async function executeBuildRunJob(args: {
    * what the duplicate check exists to prevent.
    */
   let thisCallOwnsTheRun = true;
+  let heartbeat: RunHeartbeat | undefined;
   try {
     const log = openEventLog(stateDbPath(args.projectPath));
     try {
@@ -157,6 +161,9 @@ export async function executeBuildRunJob(args: {
       }
       liveRuns.add(args.runId);
       buildRuns.set(args.runId, 'running');
+      // Telemetry only: reads this run's rows, publishes on the hub, never
+      // writes the log or moves a ticket (Law 4/7).
+      if (args.hub) heartbeat = startRunHeartbeat({ log, runId: args.runId, hub: args.hub });
       exitCode = await executeBuildRun(
         log,
         {
@@ -239,6 +246,7 @@ export async function executeBuildRunJob(args: {
         exitCode,
       });
     } finally {
+      heartbeat?.stop();
       if (thisCallOwnsTheRun) liveRuns.delete(args.runId);
       log.close();
     }

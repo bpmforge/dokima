@@ -38,16 +38,39 @@ export function isHeartbeatData(data: unknown): data is HeartbeatData {
   );
 }
 
-/** `run:{runId}` subscription's `loop.heartbeat` envelopes, keyed by ticket (UX_SPEC §4). */
+/**
+ * `run:{runId}` subscription's heartbeat envelopes, keyed by ticket
+ * (UX_SPEC §4, API_DESIGN §3):
+ *   - `loop.heartbeat` upserts the ticket's line, stamped with `receivedAtMs`
+ *     so its age keeps ticking locally and a silence reads as stale;
+ *   - `loop.heartbeat_ended` drops the ticket (its work in the run is over);
+ *   - `loop.run_ended` drops every ticket of that run.
+ */
 export function applyHeartbeatEnvelope(
   heartbeats: ReadonlyMap<string, HeartbeatData>,
   envelope: ServerEnvelope,
+  nowMs: number = Date.now(),
 ): ReadonlyMap<string, HeartbeatData> {
+  const data = envelope.data as Record<string, unknown> | null;
+  if (envelope.type === 'loop.heartbeat_ended') {
+    const ticket = typeof data?.ticket === 'string' ? data.ticket : undefined;
+    if (!ticket || !heartbeats.has(ticket)) return heartbeats;
+    const next = new Map(heartbeats);
+    next.delete(ticket);
+    return next;
+  }
+  if (envelope.type === 'loop.run_ended') {
+    const run = typeof data?.run === 'string' ? data.run : undefined;
+    const next = new Map(
+      [...heartbeats].filter(([, hb]) => run !== undefined && hb.run !== undefined && hb.run !== run),
+    );
+    return next.size === heartbeats.size ? heartbeats : next;
+  }
   if (envelope.type !== 'loop.heartbeat' || !isHeartbeatData(envelope.data)) {
     return heartbeats;
   }
   const next = new Map(heartbeats);
-  next.set(envelope.data.ticket, envelope.data);
+  next.set(envelope.data.ticket, { ...envelope.data, receivedAtMs: nowMs });
   return next;
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { BoardApiOptions } from '../api.js';
-import { formatHeartbeat } from '../heartbeat.js';
+import { formatHeartbeat, isHeartbeatStale } from '../heartbeat.js';
+import { useHeartbeatClock } from '../useLiveRun.js';
 import type { HeartbeatData } from '../types.js';
 import { fetchRunTrace, fetchSpendByRung, fetchTicketRuns } from './api.js';
 import { SpendByRung } from './SpendByRung.js';
@@ -66,6 +67,7 @@ export function TelemetryPanel({
   ticketId,
   heartbeat,
 }: TelemetryPanelProps) {
+  const now = useHeartbeatClock(heartbeat !== undefined);
   const [spend, setSpend] = useState<SpendByRungData | null>(null);
   const [runs, setRuns] = useState<string[] | null>(null);
   const [trace, setTrace] = useState<{ runId: string; events: TraceEvent[] } | null>(
@@ -126,9 +128,12 @@ export function TelemetryPanel({
   return (
     <section aria-label="Telemetry" data-testid="drawer-telemetry">
       <h3>Live loop telemetry</h3>
-      <p data-testid="drawer-heartbeat">
+      <p
+        data-testid="drawer-heartbeat"
+        data-stale={heartbeat && isHeartbeatStale(heartbeat, now) ? 'true' : undefined}
+      >
         {heartbeat
-          ? formatHeartbeat(heartbeat)
+          ? formatHeartbeat(heartbeat, now)
           : 'No agent is working this ticket right now — this fills in live while a run holds it.'}
       </p>
 

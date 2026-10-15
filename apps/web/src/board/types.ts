@@ -100,9 +100,26 @@ export interface ProblemDetails {
   evidence?: unknown;
 }
 
-/** `loop.heartbeat` WS payload (API_DESIGN §3), keyed by the ticket a berth works on. */
+/**
+ * `loop.heartbeat` WS payload (API_DESIGN §3), keyed by the ticket a berth
+ * works on. Every field but `ticket` and `age_s` is optional: the server sends
+ * only what a ledgered event has stated (review R1), and omits the rest.
+ */
 export interface HeartbeatData {
   ticket: string;
-  pass: string;
+  /** Legacy attempt label ("2/3"); the run producer does not send it. */
+  pass?: string;
+  /** Seconds since the last ledgered activity, as of when the server sent it. */
   age_s: number;
+  run?: string;
+  phase?: string;
+  berth?: string;
+  step?: string;
+  model?: string;
+  rung?: string;
+  elapsed_s?: number;
+  started_at?: string;
+  last_activity_at?: string;
+  /** Client-only: when this heartbeat arrived (ms since epoch). Never on the wire. */
+  receivedAtMs?: number;
 }
