@@ -228,3 +228,103 @@ describe('the approval is asked once', () => {
     expect(screen.queryByTestId('approved-build-preview')).toBeNull();
   });
 });
+
+describe('review fixes (A1, A2, A3, A4, R4, UX-04)', () => {
+  it('RED FIXTURE (A1): Resume shows the preview and records NOTHING until Approve is clicked', async () => {
+    const s = server({
+      '/approved-build/preview': PREVIEW,
+      '/build-runs': { runs: [RUN({ phase: 'stopped', outcome: 'stopped' })] },
+    });
+    render(<ApprovedBuildPanel apiOpts={s.opts} projectId="p1" budgetUsd={5} pollMs={null} />);
+    fireEvent.click(await screen.findByTestId('approved-build-resume'));
+    expect(await screen.findByTestId('approved-build-preview')).toBeTruthy();
+    expect(s.calls.filter((c) => c.method === 'POST')).toEqual([]);
+    // One entry point at a time: the Resume button gives way to the preview.
+    expect(screen.queryByTestId('approved-build-resume')).toBeNull();
+  });
+
+  it('RED FIXTURE (A1/R3): a non-approved run is not adopted as this panel\'s progress', async () => {
+    const s = server({
+      '/build-runs': { runs: [RUN({ approvedBuild: false, phase: 'failed', outcome: 'failed' })] },
+    });
+    render(<ApprovedBuildPanel apiOpts={s.opts} projectId="p1" pollMs={null} />);
+    expect(await screen.findByTestId('approved-build-review')).toBeTruthy();
+    expect(screen.queryByTestId('approved-build-progress')).toBeNull();
+    expect(screen.queryByTestId('approved-build-resume')).toBeNull();
+  });
+
+  it('RED FIXTURE (A2): no budget cap set → says so; never "a budget of $0.00"', async () => {
+    const s = server({ '/approved-build/preview': { ...PREVIEW, budget_usd: 0 }, '/build-runs': { runs: [] } });
+    render(<ApprovedBuildPanel apiOpts={s.opts} projectId="p1" budgetUsd={null} pollMs={null} />);
+    fireEvent.click(await screen.findByTestId('approved-build-review'));
+    const summary = await screen.findByTestId('approved-build-summary');
+    expect(summary.textContent).toContain('no budget cap set');
+    expect(summary.textContent).not.toContain('$0.00');
+  });
+
+  it('A2: a configured run limit is what the approval names and sends', async () => {
+    const s = server({ '/approved-build/preview': PREVIEW, '/build-runs': { runs: [] } });
+    render(<ApprovedBuildPanel apiOpts={s.opts} projectId="p1" budgetUsd={12.5} pollMs={null} />);
+    fireEvent.click(await screen.findByTestId('approved-build-review'));
+    expect((await screen.findByTestId('approved-build-summary')).textContent).toContain('$12.50');
+    expect(s.calls.some((c) => c.url.includes('budget_usd=12.5'))).toBe(true);
+  });
+
+  it('A2: while the budget is unknown nothing is offered for approval', async () => {
+    const s = server({ '/approved-build/preview': PREVIEW, '/build-runs': { runs: [] } });
+    render(<ApprovedBuildPanel apiOpts={s.opts} projectId="p1" budgetStatus="error" pollMs={null} />);
+    fireEvent.click(await screen.findByTestId('approved-build-review'));
+    expect((await screen.findByTestId('approved-build-problem')).textContent).toContain('budget');
+    expect(screen.queryByTestId('approved-build-preview')).toBeNull();
+  });
+
+  it('A3/UX-04: no maker model → Approve is disabled and the reason is linked to it', async () => {
+    const s = server({ '/approved-build/preview': { ...PREVIEW, maker_model: null }, '/build-runs': { runs: [] } });
+    render(<ApprovedBuildPanel apiOpts={s.opts} projectId="p1" pollMs={null} />);
+    fireEvent.click(await screen.findByTestId('approved-build-review'));
+    const approve = (await screen.findByTestId('approved-build-approve')) as HTMLButtonElement;
+    expect(approve.disabled).toBe(true);
+    expect(approve.getAttribute('aria-describedby')).toBe('approved-build-no-model');
+    expect(screen.getByTestId('approved-build-no-model').textContent).toContain('Settings → Providers');
+  });
+
+  it('UX-04: when the board knows there is no model, Resume is hidden and Set up is disabled', async () => {
+    const s = server({ '/build-runs': { runs: [RUN({ phase: 'failed', outcome: 'failed' })] } });
+    render(
+      <ApprovedBuildPanel apiOpts={s.opts} projectId="p1" noModelReason="no model" pollMs={null} />,
+    );
+    await screen.findByTestId('approved-build-progress');
+    expect(screen.queryByTestId('approved-build-resume')).toBeNull();
+  });
+
+  it('A4: ticket states read as words — "Ready to review", not "ready to_review"', async () => {
+    const s = server({
+      '/build-runs': {
+        runs: [
+          RUN({
+            tickets: [
+              { ticketId: 'T-1', state: 'ready_to_review', reason: null, ruleId: null, repairRounds: 0 },
+              { ticketId: 'T-2', state: 'some_new_state_name', reason: null, ruleId: null, repairRounds: 0 },
+            ],
+          }),
+        ],
+      },
+    });
+    render(<ApprovedBuildPanel apiOpts={s.opts} projectId="p1" pollMs={null} />);
+    const list = (await screen.findByTestId('approved-build-tickets')).textContent ?? '';
+    expect(list).toContain('Ready to review');
+    expect(list).toContain('some new state name');
+    expect(list).not.toContain('_');
+  });
+
+  it('RED FIXTURE (R4): a refused stop is reported and Stop is usable again', async () => {
+    // '/stop' first, answering 404: the stop route refuses.
+    const s = server({ '/stop': null, '/build-runs': { runs: [RUN()] } });
+    render(<ApprovedBuildPanel apiOpts={s.opts} projectId="p1" pollMs={null} />);
+    fireEvent.click(await screen.findByTestId('approved-build-stop'));
+    expect((await screen.findByTestId('approved-build-problem')).textContent).toContain(
+      'could not be stopped',
+    );
+    expect((screen.getByTestId('approved-build-stop') as HTMLButtonElement).disabled).toBe(false);
+  });
+});

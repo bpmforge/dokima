@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActiveBerthsStrip } from './ActiveBerthsStrip.js';
 import {
   buildRunRefusalLine,
@@ -20,7 +20,24 @@ import { RunSummary } from './RunSummary.js';
 import { ApprovedBuildPanel } from './ApprovedBuildPanel.js';
 import { ShippedTicker } from './ShippedTickerStrip.js';
 import { useBoardData } from './useBoardData.js';
-import { putProjectSettings } from '../settings/api.js';
+import { fetchBudget, putProjectSettings } from '../settings/api.js';
+import { fetchApprovedBuildPreview } from './approvedBuildApi.js';
+
+/** Why nothing can build yet, as the person reads it — providers first, then models. */
+const NO_MODEL_REASON =
+  'Nothing can build yet: no model is set up for the coding agent. Add a provider in Settings → Providers, then pick a model in Settings → Models.';
+
+/**
+ * Opens Settings in-app. A real href keeps middle-click and "copy link"
+ * working; the click itself pushes the URL and lets the app's popstate
+ * listener (App/navigation.ts — the URL is the source of truth) switch view.
+ */
+function openSettingsLink(event: React.MouseEvent<HTMLAnchorElement>) {
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+  event.preventDefault();
+  window.history.pushState({}, '', event.currentTarget.href);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+}
 
 export interface BoardViewProps {
   baseUrl: string;
@@ -44,7 +61,49 @@ export function BoardView({
 }: BoardViewProps) {
   const [buildRun, setBuildRun] = useState<BuildRunOutcome | null>(null);
   const [stopping, setStopping] = useState(false);
+  const [stopError, setStopError] = useState<string | null>(null);
   const apiOpts = { baseUrl, token };
+
+  /**
+   * Review A2: the project's real run limit, so an approval never reads "a
+   * budget of $0.00" the person did not choose. `null` = no cap is set.
+   */
+  const [runLimitUsd, setRunLimitUsd] = useState<number | null>(null);
+  const [budgetStatus, setBudgetStatus] = useState<'loading' | 'ready' | 'error'>(
+    'loading',
+  );
+  /**
+   * Review UX-04: whether a maker model exists, read BEFORE the person
+   * clicks — from the same preview read the approval shows, which resolves the
+   * coding-agent model exactly as a run does. 'unknown' (read failed) leaves
+   * the buttons enabled: the run's own refusal is still the honest backstop.
+   */
+  const [makerModel, setMakerModel] = useState<'unknown' | 'ready' | 'missing'>('unknown');
+
+  useEffect(() => {
+    let cancelled = false;
+    setBudgetStatus('loading');
+    fetchBudget(projectId, { getToken: () => token })
+      .then((budget) => {
+        if (cancelled) return;
+        setRunLimitUsd(budget.runLimitUsd);
+        setBudgetStatus('ready');
+      })
+      .catch(() => {
+        if (!cancelled) setBudgetStatus('error');
+      });
+    fetchApprovedBuildPreview({ baseUrl, token }, projectId, 0)
+      .then((result) => {
+        if (cancelled || !result.ok) return;
+        setMakerModel(result.data.makerModel === null ? 'missing' : 'ready');
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [baseUrl, token, projectId]);
+
+  const noModel = makerModel === 'missing';
 
   // W17-07: the way out the live UAT lacked. The loop stops at its next
   // ticket boundary; in-flight work finishes or parks honestly.
@@ -55,10 +114,29 @@ export function BoardView({
     await handleStartRun();
   };
 
+  /**
+   * Review R4: the stop result was ignored and a rejection escaped, so a
+   * refused stop left "Stopping at the next ticket…" disabled forever with
+   * nothing said. Now a failure is shown and the button comes back.
+   */
   const handleStopRun = async () => {
     if (!buildRun || buildRun.status !== 'running') return;
     setStopping(true);
-    await stopBuildRun(apiOpts, projectId, buildRun.runId);
+    setStopError(null);
+    try {
+      const result = await stopBuildRun(apiOpts, projectId, buildRun.runId);
+      if (!result.ok) {
+        setStopping(false);
+        setStopError(
+          `The run could not be stopped: ${result.problem.detail ?? result.problem.title}`,
+        );
+      }
+    } catch (err) {
+      setStopping(false);
+      setStopError(
+        `The run could not be stopped: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   };
 
   /**
@@ -135,8 +213,17 @@ export function BoardView({
 
   const refusalLine = buildRun ? buildRunRefusalLine(buildRun) : null;
 
-  const { tickets, heartbeats, loading, refusal, dismissRefusal, fireVerb, handleDrop } =
-    useBoardData({
+  const {
+    tickets,
+    heartbeats,
+    loading,
+    loadError,
+    retryLoad,
+    refusal,
+    dismissRefusal,
+    fireVerb,
+    handleDrop,
+  } = useBoardData({
       baseUrl,
       token,
       projectId,
@@ -165,6 +252,20 @@ export function BoardView({
     return (
       <div className="board-view" data-testid="board-view-loading">
         <p className="board-view__loading">Loading the board…</p>
+      </div>
+    );
+  }
+  // Review R6: a failed read is not an empty project. Showing onboarding here
+  // told a person with a server problem that their board was empty.
+  if (loadError !== null && tickets.length === 0) {
+    return (
+      <div className="board-view" data-testid="board-view-load-error">
+        <p role="alert" className="board-view__load-error">
+          Couldn&apos;t load the board: {loadError}
+        </p>
+        <button type="button" className="btn-quiet" onClick={retryLoad}>
+          Retry
+        </button>
       </div>
     );
   }
@@ -212,9 +313,11 @@ export function BoardView({
         <button
           type="button"
           className="btn-primary"
-          disabled={buildRun?.status === 'running'}
+          disabled={buildRun?.status === 'running' || noModel}
+          aria-describedby={noModel ? 'board-run-blocked-reason' : undefined}
           onClick={() => {
             setStopping(false);
+            setStopError(null);
             void handleStartRun();
           }}
         >
@@ -232,6 +335,18 @@ export function BoardView({
             {stopping ? 'Stopping at the next ticket…' : 'Stop the run'}
           </button>
         )}
+        {noModel && (
+          <p id="board-run-blocked-reason" data-testid="board-run-blocked-reason">
+            {NO_MODEL_REASON}{' '}
+            <a
+              href={`?project=${encodeURIComponent(projectId)}&view=settings`}
+              onClick={openSettingsLink}
+              data-testid="board-run-open-providers"
+            >
+              Open Settings → Providers
+            </a>
+          </p>
+        )}
         {/* W13-59: the novice's single next step was a bare button with an
             unstated consequence. One line: what a run is (VOCABULARY.md) and
             the wizard-standard reassurance about what it may use. */}
@@ -240,7 +355,11 @@ export function BoardView({
           the work, and hands back receipts. It uses only the models you chose in Settings
           → Models, within your Autonomy setting — nothing else is contacted.
         </p>
-        {buildRun && (
+        {/* Review R3: a refused run is described ONCE — by the refusal line
+            below. The id-and-status span, the approved-build panel's
+            "Did not finish" and a "0 closed · $0.00" summary used to say the
+            same thing three ways, the last as if the run had happened. */}
+        {buildRun && buildRun.status !== 'refused' && (
           <span data-testid="board-runbar-status">
             {buildRun.runId} — {buildRun.status}
             {/* W13-63: "finished" alone read as success-toned nothing when a
@@ -251,7 +370,12 @@ export function BoardView({
         )}
         {refusalLine && (
           <p role="alert" data-testid="board-runbar-refusal">
-            {refusalLine}
+            Run refused: {refusalLine}
+          </p>
+        )}
+        {stopError && (
+          <p role="alert" data-testid="board-runbar-stop-error">
+            {stopError}
           </p>
         )}
         {/* W23-14: the approved-build surface. Mounted HERE, on the route
@@ -260,11 +384,14 @@ export function BoardView({
         <ApprovedBuildPanel
           apiOpts={apiOpts}
           projectId={projectId}
+          budgetUsd={runLimitUsd}
+          budgetStatus={budgetStatus}
+          noModelReason={noModel ? NO_MODEL_REASON : null}
           onSelectTicket={onSelectTicket}
         />
         {/* W19-04: once the run ends, one card says what it did — derived
             from the run's own event slice, nothing new to keep in sync. */}
-        {buildRun && buildRun.status !== 'running' && (
+        {buildRun && buildRun.status !== 'running' && buildRun.status !== 'refused' && (
           <RunSummary apiOpts={apiOpts} projectId={projectId} runId={buildRun.runId} />
         )}
       </div>
