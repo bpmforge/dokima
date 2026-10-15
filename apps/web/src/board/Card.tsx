@@ -14,7 +14,8 @@ import {
 } from './badges.js';
 import type { LifecycleVerb } from './api.js';
 import { consumeCardFocus, requestCardFocus } from './focusRequest.js';
-import { formatHeartbeat } from './heartbeat.js';
+import { formatHeartbeat, isHeartbeatStale } from './heartbeat.js';
+import { useHeartbeatClock } from './useLiveRun.js';
 import { availableVerbsFrom, verbMenuLabel } from './transitions.js';
 import type { BoardTicket, HeartbeatData } from './types.js';
 
@@ -51,6 +52,8 @@ export function Card({
   onRaiseBudgetRetry,
 }: CardProps) {
   const verbs = availableVerbsFrom(ticket.status);
+  // Review R1/R2: a live line's age ticks, and a silent one says so.
+  const now = useHeartbeatClock(heartbeat !== undefined);
   const [chosen, setChosen] = useState<Exclude<LifecycleVerb, 'comment'> | ''>('');
   const openRef = useRef<HTMLButtonElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -188,7 +191,15 @@ export function Card({
           {ticket.manifest?.closeReceipt ? '●' : '○'}
         </span>
       </div>
-      {heartbeat && <p className="board-card__heartbeat">{formatHeartbeat(heartbeat)}</p>}
+      {heartbeat && (
+        <p
+          className="board-card__heartbeat"
+          data-testid={`card-heartbeat-${ticket.id}`}
+          data-stale={isHeartbeatStale(heartbeat, now) ? 'true' : undefined}
+        >
+          {formatHeartbeat(heartbeat, now)}
+        </p>
+      )}
       {isParked(ticket) && (
         <p className="board-card__badge board-card__badge--stale">{PARKED_BADGE_LABEL}</p>
       )}

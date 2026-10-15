@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Card } from './Card.js';
 import { makeBoardTicket } from './test-helpers.js';
@@ -83,6 +83,45 @@ describe('Card keyboard and move safety', () => {
       const open = screen.getByTestId(`open-T-${status}`);
       expect(open.tagName).toBe('BUTTON');
       cleanup();
+    }
+  });
+});
+
+describe('Card live heartbeat (review R1)', () => {
+  it('shows what the agent is doing, and marks the line stale when beats stop', () => {
+    vi.useFakeTimers();
+    try {
+      const start = Date.parse('2026-10-15T10:00:00Z');
+      vi.setSystemTime(start);
+      const ticket = makeBoardTicket({ id: 'T-1', status: 'in_progress' });
+      render(
+        <Card
+          ticket={ticket}
+          heartbeat={{
+            ticket: 'T-1',
+            run: 'run-1',
+            phase: 'waiting_on_model',
+            model: 'fake-model',
+            age_s: 2,
+            elapsed_s: 10,
+            receivedAtMs: start,
+          }}
+          onDragStart={vi.fn()}
+          onFireVerb={vi.fn()}
+        />,
+      );
+      const line = screen.getByTestId('card-heartbeat-T-1');
+      expect(line.textContent).toBe(
+        'Waiting on the model · fake-model · 10s in · last activity 2s ago',
+      );
+      expect(line.getAttribute('data-stale')).toBeNull();
+      act(() => {
+        vi.advanceTimersByTime(16_000);
+      });
+      expect(line.getAttribute('data-stale')).toBe('true');
+      expect(line.textContent).toContain('last activity 18s ago · no update for 16s');
+    } finally {
+      vi.useRealTimers();
     }
   });
 });

@@ -301,6 +301,15 @@
   opacity: 0.7;
 }
 
+/* Review R1: no heartbeat for STALE_AFTER_S — the line says so in words
+   ("no update for …"); the colour only repeats it. */
+.board-card__heartbeat[data-stale='true'],
+.board-strip__item[data-stale='true'],
+[data-testid='drawer-heartbeat'][data-stale='true'] {
+  color: var(--sw-warning);
+  opacity: 1;
+}
+
 .board-card__badge {
   margin: var(--sw-space-1) 0 0;
   font-size: var(--sw-text-xs);

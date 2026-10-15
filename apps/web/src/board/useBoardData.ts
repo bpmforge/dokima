@@ -18,6 +18,7 @@ import {
   boardSubscription,
   runSubscription,
 } from './projection.js';
+import { useLiveRunId } from './useLiveRun.js';
 import { COLUMN_LABEL, verbForDrop, verbTargetColumn } from './transitions.js';
 import type {
   BoardTicket,
@@ -107,9 +108,17 @@ export function useBoardData(opts: UseBoardDataOptions): UseBoardDataResult {
     };
   }, [opts.projectId, loadAttempt]);
 
+  // Review R1: the board listens to the LIVE run's heartbeats even when no
+  // caller names one — nothing in the app ever passed `runId`.
+  const runId = useLiveRunId(
+    { baseUrl: opts.baseUrl, token: opts.token, fetchImpl: opts.fetchImpl },
+    opts.projectId,
+    opts.runId,
+  );
+
   useEffect(() => {
     const subscriptions = [boardSubscription(opts.projectId)];
-    if (opts.runId) subscriptions.push(runSubscription(opts.runId));
+    if (runId) subscriptions.push(runSubscription(runId));
     const client = new WsClient({
       url: opts.wsUrl,
       token: opts.token,
@@ -121,8 +130,13 @@ export function useBoardData(opts: UseBoardDataOptions): UseBoardDataResult {
       },
     });
     client.connect();
-    return () => client.close();
-  }, [opts.projectId, opts.runId, opts.wsUrl, opts.token, opts.WebSocketImpl]);
+    return () => {
+      client.close();
+      // A new run (or none) is a fresh slate: old lines would claim work no
+      // one is doing any more.
+      setHeartbeats(new Map());
+    };
+  }, [opts.projectId, runId, opts.wsUrl, opts.token, opts.WebSocketImpl]);
 
   const fireVerb = useCallback(
     async (ticketId: string, verb: LifecycleVerb) => {
