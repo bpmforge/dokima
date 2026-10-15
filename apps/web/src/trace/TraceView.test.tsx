@@ -313,3 +313,29 @@ describe('human labels and the field-report explainer (W13-60)', () => {
     ).toBeTruthy();
   });
 });
+
+describe('TraceView fetch failures (review T1)', () => {
+  it('RED FIXTURE: a failed runs read shows an error with Retry, not Loading… forever', async () => {
+    mockedTraceApi.fetchTicketRuns.mockRejectedValueOnce(new Error('HTTP 500'));
+    mockedTraceApi.fetchTicketRuns.mockResolvedValueOnce([]);
+    render(<TraceView apiOpts={API_OPTS} projectId="p1" ticketId="W1-01" onClose={vi.fn()} />);
+    const error = await screen.findByTestId('trace-view-error');
+    expect(error.textContent).toContain('HTTP 500');
+    expect(screen.queryByText('Loading…')).toBeNull();
+    fireEvent.click(within(error).getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByTestId('trace-view-empty')).toBeTruthy();
+    expect(mockedTraceApi.fetchTicketRuns).toHaveBeenCalledTimes(2);
+  });
+
+  it('a failed run-trace read shows an error with Retry', async () => {
+    mockedTraceApi.fetchTicketRuns.mockResolvedValue(['run-1']);
+    mockedTraceApi.fetchRunTrace.mockRejectedValueOnce(new Error('HTTP 502'));
+    mockedTraceApi.fetchRunTrace.mockResolvedValueOnce([LIFECYCLE_EVENT]);
+    render(<TraceView apiOpts={API_OPTS} projectId="p1" ticketId="W1-01" onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: /View session trace/ }));
+    const error = await screen.findByTestId('trace-view-error');
+    expect(error.textContent).toContain('HTTP 502');
+    fireEvent.click(within(error).getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByTestId('trace-view-events')).toBeTruthy();
+  });
+});
