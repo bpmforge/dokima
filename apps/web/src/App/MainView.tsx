@@ -27,6 +27,7 @@ import type { View } from './navigation.js';
 interface MainViewProps {
   view: View;
   projectId: string | null;
+  projectName?: string | null;
   apiOpts: ApiOpts | null;
   traceTicketId: string | null;
   token: string | undefined;
@@ -48,6 +49,7 @@ interface MainViewProps {
 export function MainView({
   view,
   projectId,
+  projectName,
   apiOpts,
   traceTicketId,
   token,
@@ -92,7 +94,7 @@ export function MainView({
     return (
       <InterviewPanel
         projectId={projectId}
-        projectName={'Untitled'}
+        projectName={projectName ?? 'Untitled'}
         onComplete={closeView}
         token={token}
       />
@@ -202,6 +204,7 @@ export function MainView({
             wsUrl={wsUrl}
             ticketId={openTicketId}
             onClose={() => setOpenTicketId(null)}
+            onOpenTicket={setOpenTicketId}
           />
         )}
         <DrawerTraceLink ticketId={openTicketId} onOpenTrace={openTraceView} />

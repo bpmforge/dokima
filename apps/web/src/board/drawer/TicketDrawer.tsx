@@ -19,6 +19,8 @@ export interface TicketDrawerProps {
   wsUrl: string;
   ticketId: string;
   onClose: () => void;
+  /** Opens another ticket in this drawer (a dependency link). */
+  onOpenTicket?: (ticketId: string) => void;
 }
 
 /**
@@ -36,6 +38,7 @@ export function TicketDrawer({
   wsUrl,
   ticketId,
   onClose,
+  onOpenTicket,
 }: TicketDrawerProps) {
   const { tickets, heartbeats, loading, refusal, dismissRefusal, fireVerb } =
     useBoardData({
@@ -111,7 +114,13 @@ export function TicketDrawer({
               ))}
             </section>
 
-            <ContractPanel ticket={ticket} />
+            <ContractPanel
+              ticket={ticket}
+              blockers={ticket.dependsOn.filter(
+                (id) => tickets.find((t) => t.id === id)?.status !== 'done',
+              )}
+              onOpenTicket={onOpenTicket}
+            />
             <EvidencePanel
               baseUrl={baseUrl}
               token={token}

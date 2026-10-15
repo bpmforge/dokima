@@ -191,9 +191,13 @@ export function ProvidersPanel({
   };
 
   const handleSubmit = useCallback(async () => {
-    const id = draft.id.trim();
+    // An empty ID takes the kind's own name (every kind is a valid id), so the
+    // default form submits as-is instead of failing on a field nobody filled.
+    const id = draft.id.trim() || draft.kind;
     if (!isValidProviderId(id)) {
-      setDraftError('provider id must be lowercase alphanumeric with dashes, 1-64 chars');
+      setDraftError(
+        'ID can use lowercase letters, numbers and dashes, up to 64 characters — for example "ollama"',
+      );
       return;
     }
     if (needsBaseUrl(draft.kind) && draft.baseUrl.trim() === '') {

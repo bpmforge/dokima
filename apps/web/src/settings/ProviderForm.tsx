@@ -75,7 +75,9 @@ export function ProviderForm({
             value={draft.id}
             onChange={(e) => setDraft((d) => ({ ...d, id: e.target.value }))}
             disabled={editingId !== null}
-            placeholder="lm-studio"
+            placeholder={draft.kind}
+            aria-invalid={draftError?.startsWith('ID ') ? true : undefined}
+            aria-describedby={draftError ? 'provider-draft-error' : undefined}
           />
         </label>
         {!hasFixedEndpoint(draft.kind) && (
@@ -130,7 +132,7 @@ export function ProviderForm({
           Enabled
         </label>
         {draftError && (
-          <p role="alert" className="settings__error">
+          <p role="alert" className="settings__error" id="provider-draft-error">
             {draftError}
           </p>
         )}

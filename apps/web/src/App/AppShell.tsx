@@ -5,6 +5,7 @@ import { useApiBootstrap, useDecideBadgeCount } from './bootstrap.js';
 import { AppHeader } from './Header.js';
 import { MainView } from './MainView.js';
 import { useAppNavigation } from './navigation.js';
+import { useProjectName } from './projectName.js';
 import { useArtifactsPaneNode, useBoardPaneNode, useChatPaneNode } from './paneNodes.js';
 
 export function AppShell() {
@@ -32,11 +33,13 @@ export function AppShell() {
   const artifactsPaneNode = useArtifactsPaneNode();
   const { token, apiOpts, wsUrl } = useApiBootstrap();
   const decideBadgeCount = useDecideBadgeCount();
+  const projectName = useProjectName(projectId);
 
   return (
     <div className="app-shell">
       <AppHeader
         appName={APP_NAME}
+        projectName={projectName}
         view={view}
         projectId={projectId}
         decideBadgeCount={decideBadgeCount}
@@ -46,6 +49,7 @@ export function AppShell() {
       <MainView
         view={view}
         projectId={projectId}
+        projectName={projectName}
         apiOpts={apiOpts}
         traceTicketId={traceTicketId}
         token={token}

@@ -70,6 +70,8 @@ const DESTINATIONS: ReadonlyArray<{
 
 interface AppHeaderProps {
   appName: string;
+  /** The open project's name, so it's always clear which project this is. */
+  projectName?: string | null;
   view: View;
   projectId: string | null;
   decideBadgeCount: number;
@@ -79,6 +81,7 @@ interface AppHeaderProps {
 
 export function AppHeader({
   appName,
+  projectName,
   view,
   projectId,
   decideBadgeCount,
@@ -87,7 +90,17 @@ export function AppHeader({
 }: AppHeaderProps) {
   return (
     <header className="app-shell__header">
-      <span>{appName}</span>
+      <span>
+        {appName}
+        {projectName && (
+          <>
+            <span aria-hidden="true"> · </span>
+            <span className="app-shell__project-name" data-testid="header-project-name">
+              {projectName}
+            </span>
+          </>
+        )}
+      </span>
       <div className="app-shell__header-actions">
         {/*
           W13-01: THE DESTINATION SET IS STABLE. This used to collapse to a

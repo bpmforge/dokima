@@ -1,14 +1,27 @@
+import { blockedExplanation } from '../badges.js';
+import { COLUMN_LABEL } from '../transitions.js';
 import type { ContractTicket } from './types.js';
 
 export interface ContractPanelProps {
   ticket: ContractTicket;
+  /** Unfinished dependencies, for saying why a blocked ticket waits. */
+  blockers?: readonly string[];
+  /** Opens a dependency in the drawer; without it ids render as text. */
+  onOpenTicket?: (ticketId: string) => void;
 }
 
 /** Full contract + history timeline (UX_SPEC §4 detail drawer). */
-export function ContractPanel({ ticket }: ContractPanelProps) {
+export function ContractPanel({ ticket, blockers, onOpenTicket }: ContractPanelProps) {
   return (
     <section aria-label="Contract" data-testid="drawer-contract">
       <dl className="ticket-drawer__contract-grid">
+        <dt>State</dt>
+        <dd data-testid="drawer-state">
+          {COLUMN_LABEL[ticket.status] ?? ticket.status}
+          {ticket.status === 'blocked' && (
+            <p className="ticket-drawer__blocked-why">{blockedExplanation(blockers ?? [])}</p>
+          )}
+        </dd>
         <dt>Lane</dt>
         <dd>{ticket.lane}</dd>
         <dt>Owner</dt>
@@ -28,7 +41,27 @@ export function ContractPanel({ ticket }: ContractPanelProps) {
           )}
         </dd>
         <dt>Depends on</dt>
-        <dd>{ticket.dependsOn.length > 0 ? ticket.dependsOn.join(', ') : 'none'}</dd>
+        <dd data-testid="drawer-depends-on">
+          {ticket.dependsOn.length === 0
+            ? 'none'
+            : ticket.dependsOn.map((id, index) => (
+                <span key={id}>
+                  {index > 0 && ', '}
+                  {onOpenTicket ? (
+                    <button
+                      type="button"
+                      className="btn-quiet"
+                      onClick={() => onOpenTicket(id)}
+                      aria-label={`Open ticket ${id}`}
+                    >
+                      {id}
+                    </button>
+                  ) : (
+                    id
+                  )}
+                </span>
+              ))}
+        </dd>
       </dl>
 
       <h3>Acceptance</h3>
