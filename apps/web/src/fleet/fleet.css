@@ -332,3 +332,8 @@
   font-size: var(--sw-text-sm);
   margin: 0 0 var(--sw-space-3);
 }
+
+/* Archive confirmation with Undo; empty until something is archived. */
+.fleet__notice {
+  margin: 0;
+}

@@ -135,8 +135,16 @@ export function BoardView({
 
   const refusalLine = buildRun ? buildRunRefusalLine(buildRun) : null;
 
-  const { tickets, heartbeats, loading, refusal, dismissRefusal, fireVerb, handleDrop } =
-    useBoardData({
+  const {
+    tickets,
+    heartbeats,
+    loading,
+    refusal,
+    dismissRefusal,
+    fireVerb,
+    handleDrop,
+    announcement,
+  } = useBoardData({
       baseUrl,
       token,
       projectId,
@@ -280,6 +288,9 @@ export function BoardView({
           onSelectTicket={onSelectTicket}
         />
       </div>
+      <p className="sr-only" role="status" aria-live="polite" data-testid="board-announcer">
+        {announcement}
+      </p>
       {refusal && refusalTicket && (
         <RefusalPopover
           ticketId={refusal.ticketId}

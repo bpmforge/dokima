@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useModalLayer } from '../lib/useModalLayer.js';
 import {
   fetchArtifactDoc,
   fetchArtifactList,
@@ -10,7 +11,7 @@ import { ReceiptInspector } from '../artifacts/ReceiptInspector.js';
 import type { ArtifactDoc, ReceiptRecord } from '../artifacts/types.js';
 import { fetchBoardTickets, fireTicketVerb, type LifecycleVerb } from '../board/api.js';
 import { explainRefusal } from '../board/refusal.js';
-import { availableVerbsFrom, verbTargetColumn } from '../board/transitions.js';
+import { availableVerbsFrom, verbMenuLabel } from '../board/transitions.js';
 import type { BoardTicket, ProblemDetails } from '../board/types.js';
 import { queryCodeIndex, type CodeSearchHit } from './codeIndex.js';
 import './palette.css';
@@ -69,13 +70,14 @@ export function CommandPalette({
       if (isPaletteOpenKey(event)) {
         event.preventDefault();
         setOpen((current) => !current);
-      } else if (open && isPaletteCloseKey(event)) {
-        close();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open, close]);
+
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalLayer(dialogRef, close, open);
 
   useEffect(() => {
     if (!open) return;
@@ -195,8 +197,15 @@ export function CommandPalette({
   const listboxId = 'command-palette-listbox';
 
   return (
-    <div className="command-palette__backdrop" data-testid="command-palette-backdrop">
+    <div
+      className="command-palette__backdrop"
+      data-testid="command-palette-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) close();
+      }}
+    >
       <div
+        ref={dialogRef}
         className="command-palette"
         role="dialog"
         aria-modal="true"
@@ -320,11 +329,11 @@ export function CommandPalette({
                           }}
                         >
                           <option value="" disabled>
-                            Fire verb…
+                            Move to…
                           </option>
                           {availableVerbsFrom(ticket.status).map((verb) => (
                             <option key={verb} value={verb}>
-                              {verb} → {verbTargetColumn(verb)}
+                              {verbMenuLabel(verb)}
                             </option>
                           ))}
                         </select>

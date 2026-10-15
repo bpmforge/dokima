@@ -1,6 +1,17 @@
 import type { LifecycleVerb } from './api.js';
 import type { TicketStatus } from './types.js';
 
+/** Column headings, also used to announce where a ticket moved. */
+export const COLUMN_LABEL: Record<TicketStatus, string> = {
+  ready: 'Ready',
+  claimed: 'Claimed',
+  in_progress: 'In Progress',
+  in_review: 'In Review',
+  blocked: 'Blocked',
+  done: 'Done',
+  waived: 'Waived',
+};
+
 /**
  * Board columns in display order (UX_SPEC §4). Mirrors
  * `packages/tickets/src/transitions.ts` TRANSITIONS graph — apps/web may

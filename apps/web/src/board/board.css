@@ -295,8 +295,32 @@
 }
 
 .board-card__verb-menu {
-  display: block;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sw-space-1);
+  align-items: center;
   margin-top: var(--sw-space-1);
+}
+
+.board-card__verb-menu label {
+  flex: 1 1 6rem;
+  min-width: 0;
+}
+
+/* The title doubles as the keyboard way into the drawer; it reads as text. */
+.board-card__open {
+  all: unset;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.board-card__open:hover {
+  text-decoration: underline;
+}
+
+.board-card__open:focus-visible {
+  outline: var(--sw-focus-ring-width) solid var(--sw-accent);
+  outline-offset: 2px;
 }
 
 .board-empty {

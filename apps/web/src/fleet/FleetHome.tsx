@@ -82,12 +82,19 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
     [onOpenProject],
   );
 
+  // Archive is reversible (Reopen keeps the same project), so it says what
+  // happened and offers the undo right where the card was.
+  const [lastArchived, setLastArchived] = useState<{ name: string; path: string } | null>(
+    null,
+  );
   const handleArchive = useCallback(
     async (id: string) => {
+      const card = cards.find((c) => c.id === id);
       await archiveProjectRequest(id);
+      if (card) setLastArchived({ name: card.name, path: card.path });
       await refresh();
     },
-    [refresh],
+    [cards, refresh],
   );
 
   /** W9-15: forgets the registry entry only — the server never touches the folder. */
@@ -173,6 +180,25 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
           )}
         </div>
       </header>
+      <p className="fleet__notice" role="status" data-testid="fleet-archive-status">
+        {lastArchived && (
+          <>
+            Archived {lastArchived.name}.{' '}
+            <button
+              type="button"
+              className="btn-quiet"
+              data-testid="fleet-archive-undo"
+              onClick={() => {
+                const { path } = lastArchived;
+                setLastArchived(null);
+                void handleReopen(path);
+              }}
+            >
+              Undo
+            </button>
+          </>
+        )}
+      </p>
       {/* W18-08: the removal semantics, stated once for the whole page —
           each dead card used to repeat this paragraph. */}
       {unavailableCount > 0 && (

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Card } from './Card.js';
 import { makeBoardTicket } from './test-helpers.js';
@@ -47,5 +47,42 @@ describe('Card (W13-60)', () => {
     expect(claim.textContent).toContain('starts no agent');
     expect(claim.textContent).toContain('Claimed');
     expect(within(menu).queryByRole('option', { name: /^claim → claimed$/ })).toBeNull();
+  });
+});
+
+describe('Card keyboard and move safety', () => {
+  it('choosing in the Move menu fires nothing until Move is pressed', () => {
+    const onFireVerb = vi.fn();
+    const ticket = makeBoardTicket({ id: 'T-1', status: 'ready' });
+    render(<Card ticket={ticket} onDragStart={vi.fn()} onFireVerb={onFireVerb} />);
+
+    const move = screen.getByTestId('move-T-1') as HTMLButtonElement;
+    expect(move.disabled).toBe(true);
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'claim' } });
+    expect(onFireVerb).not.toHaveBeenCalled();
+    fireEvent.click(move);
+    expect(onFireVerb).toHaveBeenCalledWith('T-1', 'claim');
+  });
+
+  it('accepting as Done needs a second press, because it cannot be undone', () => {
+    const onFireVerb = vi.fn();
+    const ticket = makeBoardTicket({ id: 'T-4', status: 'in_review' });
+    render(<Card ticket={ticket} onDragStart={vi.fn()} onFireVerb={onFireVerb} />);
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'accept' } });
+    fireEvent.click(screen.getByTestId('move-T-4'));
+    expect(onFireVerb).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('move-T-4'));
+    expect(onFireVerb).toHaveBeenCalledWith('T-4', 'accept');
+  });
+
+  it('every card, including Done and Blocked, has a focusable way into the drawer', () => {
+    for (const status of ['done', 'blocked'] as const) {
+      const ticket = makeBoardTicket({ id: `T-${status}`, status, title: 'Title' });
+      render(<Card ticket={ticket} onDragStart={vi.fn()} onFireVerb={vi.fn()} />);
+      const open = screen.getByTestId(`open-T-${status}`);
+      expect(open.tagName).toBe('BUTTON');
+      cleanup();
+    }
   });
 });

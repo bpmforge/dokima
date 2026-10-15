@@ -18,7 +18,7 @@ import {
   boardSubscription,
   runSubscription,
 } from './projection.js';
-import { verbForDrop, verbTargetColumn } from './transitions.js';
+import { COLUMN_LABEL, verbForDrop, verbTargetColumn } from './transitions.js';
 import type {
   BoardTicket,
   HeartbeatData,
@@ -49,6 +49,8 @@ export interface UseBoardDataResult {
   dismissRefusal: () => void;
   fireVerb: (ticketId: string, verb: LifecycleVerb) => Promise<void>;
   handleDrop: (ticketId: string, toColumn: TicketStatus) => void;
+  /** Polite live-region text: where a ticket moved, or why it didn't. */
+  announcement: string;
 }
 
 /**
@@ -64,6 +66,7 @@ export function useBoardData(opts: UseBoardDataOptions): UseBoardDataResult {
   );
   const [loading, setLoading] = useState(true);
   const [refusal, setRefusal] = useState<BoardRefusal | null>(null);
+  const [announcement, setAnnouncement] = useState('');
   const apiOpts = useRef<BoardApiOptions>({
     baseUrl: opts.baseUrl,
     token: opts.token,
@@ -133,7 +136,9 @@ export function useBoardData(opts: UseBoardDataOptions): UseBoardDataResult {
       if (result.ok) {
         setTickets((current) => confirmOptimisticMove(current, ticketId, result.data));
         setRefusal(null);
+        if (toStatus) setAnnouncement(`${ticketId} moved to ${COLUMN_LABEL[toStatus]}`);
       } else {
+        setAnnouncement(`${ticketId} was not moved: ${result.problem.title}`);
         if (move)
           setTickets((current) =>
             rollbackOptimisticMove(current, ticketId, move.snapshot),
@@ -149,7 +154,15 @@ export function useBoardData(opts: UseBoardDataOptions): UseBoardDataResult {
       const ticket = tickets.get(ticketId);
       if (!ticket) return;
       const verb = verbForDrop(ticket.status, toColumn);
-      if (!verb) return; // illegal drop — snaps back, never reaches the network (UX_SPEC §4)
+      if (!verb) {
+        // Illegal drop: snaps back, never reaches the network (UX_SPEC §4),
+        // but says why instead of failing silently.
+        if (ticket.status !== toColumn)
+          setAnnouncement(
+            `${ticketId} can't move from ${COLUMN_LABEL[ticket.status]} to ${COLUMN_LABEL[toColumn]} directly`,
+          );
+        return;
+      }
       void fireVerb(ticketId, verb);
     },
     [tickets, fireVerb],
@@ -163,5 +176,6 @@ export function useBoardData(opts: UseBoardDataOptions): UseBoardDataResult {
     dismissRefusal: () => setRefusal(null),
     fireVerb,
     handleDrop,
+    announcement,
   };
 }

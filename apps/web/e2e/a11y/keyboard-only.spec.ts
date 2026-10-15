@@ -76,6 +76,10 @@ test('a ready ticket can be claimed keyboard-only (Tab to the verb menu, ArrowDo
   await tabUntilFocused(page, select);
 
   await select.selectOption('claim');
+  // Choosing only selects; the move fires from the Move button, by keyboard.
+  await page.keyboard.press('Tab');
+  await expect(card.getByTestId('move-E2E-DRAG-1')).toBeFocused();
+  await page.keyboard.press('Enter');
 
   const claimedCard = page
     .getByTestId('lane-ui')

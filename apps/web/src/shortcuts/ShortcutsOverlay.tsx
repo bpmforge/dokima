@@ -1,6 +1,6 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { useModalLayer } from '../lib/useModalLayer.js';
 import {
-  isShortcutOverlayCloseKey,
   isShortcutOverlayOpenKey,
   shortcutsFor,
 } from './shortcuts.js';
@@ -37,13 +37,15 @@ export function ShortcutsOverlay() {
         })
       ) {
         setOpen((current) => !current);
-      } else if (open && isShortcutOverlayCloseKey({ key: event.key })) {
-        setOpen(false);
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open]);
+
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setOpen(false), []);
+  useModalLayer(dialogRef, close, open);
 
   if (!open) return null;
 
@@ -52,7 +54,9 @@ export function ShortcutsOverlay() {
   return (
     <div className="shortcuts-overlay__backdrop" data-testid="shortcuts-overlay-backdrop">
       <div
+        ref={dialogRef}
         className="shortcuts-overlay"
+        tabIndex={-1}
         role="dialog"
         aria-label="Keyboard shortcuts"
         data-testid="shortcuts-overlay"

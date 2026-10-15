@@ -29,6 +29,7 @@ function boardData(overrides: Partial<UseBoardDataResult> = {}): UseBoardDataRes
     dismissRefusal: vi.fn(),
     fireVerb: vi.fn(),
     handleDrop: vi.fn(),
+    announcement: '',
     ...overrides,
   };
 }
