@@ -75,3 +75,9 @@ export function searchReceipts(
 export function resultKey(result: PaletteResult): string {
   return result.kind === 'doc' ? `doc:${result.path}` : `${result.kind}:${result.id}`;
 }
+
+/** The small kind label shown before a result's title. */
+export function resultKindLabel(result: PaletteResult): string {
+  if (result.kind !== 'nav') return result.kind;
+  return result.target.kind === 'project' ? 'project' : 'go to';
+}

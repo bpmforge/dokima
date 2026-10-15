@@ -1,3 +1,4 @@
+import { paletteShortcutLabel, requestOpenPalette } from '../palette/index.js';
 import { useTheme } from '../theme/ThemeProvider.js';
 import type { View } from './navigation.js';
 
@@ -175,6 +176,19 @@ export function AppHeader({
               {decideBadgeCount}
             </span>
           )}
+        </button>
+        {/* The command palette, for a pointer or a finger: ⌘K/Ctrl+K is
+            invisible to anyone who does not already know it. The shortcut is
+            shown as the platform spells it. */}
+        <button
+          type="button"
+          className="btn-quiet app-shell__search"
+          onClick={requestOpenPalette}
+          aria-keyshortcuts="Meta+K Control+K"
+          data-testid="header-search"
+        >
+          Search{' '}
+          <kbd className="app-shell__kbd">{paletteShortcutLabel(navigator.platform)}</kbd>
         </button>
         {/* W12-29: header chrome recedes. Navigation is reachable, not
             competing with the page's actual action. */}

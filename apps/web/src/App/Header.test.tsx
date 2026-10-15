@@ -33,12 +33,12 @@ function renderHeader(overrides: Partial<Parameters<typeof AppHeader>[0]> = {}) 
   return render(
     <ThemeProvider>
       <AppHeader
-      appName="Dokima"
-      view={null}
-      projectId="p1"
-      decideBadgeCount={0}
-      openView={vi.fn()}
-      closeView={vi.fn()}
+        appName="Dokima"
+        view={null}
+        projectId="p1"
+        decideBadgeCount={0}
+        openView={vi.fn()}
+        closeView={vi.fn()}
         {...overrides}
       />
     </ThemeProvider>,
@@ -46,9 +46,9 @@ function renderHeader(overrides: Partial<Parameters<typeof AppHeader>[0]> = {}) 
 }
 
 function destinationNames(): string[] {
-  return Array.from(
-    within(screen.getByRole('navigation')).getAllByRole('button'),
-  ).map((b) => b.getAttribute('aria-label') ?? b.textContent ?? '');
+  return Array.from(within(screen.getByRole('navigation')).getAllByRole('button')).map(
+    (b) => b.getAttribute('aria-label') ?? b.textContent ?? '',
+  );
 }
 
 describe('the destination set is stable across views (W13-01)', () => {
@@ -150,5 +150,22 @@ describe('the morning queue has a named entry point (W13-62)', () => {
     renderHeader();
     const bell = screen.getByRole('button', { name: /^Morning queue/ });
     expect(bell.textContent).toContain('Morning queue');
+  });
+});
+
+describe('the header Search button opens the command palette', () => {
+  it('shows the platform shortcut and dispatches the open-palette event', async () => {
+    const { OPEN_PALETTE_EVENT } = await import('../palette/openPalette.js');
+    const heard = vi.fn();
+    window.addEventListener(OPEN_PALETTE_EVENT, heard);
+    try {
+      renderHeader({ projectId: null });
+      const button = screen.getByTestId('header-search');
+      expect(button.textContent).toMatch(/^Search (⌘K|Ctrl\+K)$/);
+      button.click();
+      expect(heard).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener(OPEN_PALETTE_EVENT, heard);
+    }
   });
 });

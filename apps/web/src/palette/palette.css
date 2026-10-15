@@ -114,3 +114,9 @@
   padding: 0;
   border-radius: 0;
 }
+
+.command-palette__hint {
+  font-size: var(--sw-text-sm);
+  color: var(--sw-fg-muted);
+  margin: var(--sw-space-2) 0 0;
+}

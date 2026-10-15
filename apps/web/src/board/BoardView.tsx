@@ -13,6 +13,8 @@ import { EmptyState } from './BoardEmptyState.js';
 import { startOnboardAnalysis } from './api.js';
 import { ClaimNowStrip } from './ClaimNowStrip.js';
 import { openBlockers } from './badges.js';
+import { BoardFilterBar } from './BoardFilterBar.js';
+import { countByFilter, filterTickets } from './boardFilter.js';
 import { groupIntoLanes } from './lanes.js';
 import { Lane } from './Lane.js';
 import { RefusalPopover } from './RefusalPopover.js';
@@ -22,6 +24,7 @@ import { ShippedTicker } from './ShippedTickerStrip.js';
 import { BoardLoadError, NO_MODEL_REASON, NoModelReason } from './BoardNotices.js';
 import { useBoardData } from './useBoardData.js';
 import { useRunReadiness } from './useRunReadiness.js';
+import { useBoardFilter } from './useBoardFilter.js';
 import { putProjectSettings } from '../settings/api.js';
 
 export interface BoardViewProps {
@@ -48,8 +51,13 @@ export function BoardView({
   const [stopping, setStopping] = useState(false);
   const [stopError, setStopError] = useState<string | null>(null);
   const apiOpts = { baseUrl, token };
+  const [filter, setFilter] = useBoardFilter(projectId);
 
-  const { runLimitUsd, budgetStatus, noModel } = useRunReadiness(baseUrl, token, projectId);
+  const { runLimitUsd, budgetStatus, noModel } = useRunReadiness(
+    baseUrl,
+    token,
+    projectId,
+  );
 
   // W17-07: the way out the live UAT lacked. The loop stops at its next
   // ticket boundary; in-flight work finishes or parks honestly.
@@ -230,7 +238,9 @@ export function BoardView({
     );
   }
 
-  const lanes = groupIntoLanes(tickets);
+  // Filtering keeps the lanes × columns layout: a lane with no matching card
+  // is dropped, every remaining lane keeps all of its columns.
+  const lanes = groupIntoLanes(filterTickets(tickets, filter));
   const blockedDeps = new Map(
     tickets
       .filter((t) => t.status === 'blocked')
@@ -346,6 +356,19 @@ export function BoardView({
           problem={refusal.problem}
           onDismiss={dismissRefusal}
         />
+      )}
+      <BoardFilterBar
+        filter={filter}
+        counts={countByFilter(tickets)}
+        onChange={setFilter}
+      />
+      {lanes.length === 0 && (
+        <p className="board-view__filter-empty" data-testid="board-filter-empty">
+          No cards match this filter.{' '}
+          <button type="button" className="btn-quiet" onClick={() => setFilter('all')}>
+            Show all
+          </button>
+        </p>
       )}
       <div className="board-view__lanes">
         {lanes.map((lane) => (
