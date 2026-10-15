@@ -105,31 +105,48 @@ export function TraceView({ apiOpts, projectId, ticketId, onClose }: TraceViewPr
   const [runs, setRuns] = useState<string[] | null>(null);
   const [selectedRun, setSelectedRun] = useState<string | null>(null);
   const [events, setEvents] = useState<TraceEvent[] | null>(null);
+  // Review T1: these fetches reject on any non-2xx and nothing caught them, so
+  // a failed read showed "Loading…" forever. Each read now has an error state
+  // with a Retry, never an infinite spinner.
+  const [runsError, setRunsError] = useState<string | null>(null);
+  const [eventsError, setEventsError] = useState<string | null>(null);
+  const [runsAttempt, setRunsAttempt] = useState(0);
+  const [eventsAttempt, setEventsAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setRuns(null);
+    setRunsError(null);
     setSelectedRun(null);
     setEvents(null);
-    void fetchTicketRuns(apiOpts, projectId, ticketId).then((items) => {
-      if (!cancelled) setRuns(items);
-    });
+    fetchTicketRuns(apiOpts, projectId, ticketId)
+      .then((items) => {
+        if (!cancelled) setRuns(items);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setRunsError(err instanceof Error ? err.message : String(err));
+      });
     return () => {
       cancelled = true;
     };
-  }, [apiOpts, projectId, ticketId]);
+  }, [apiOpts, projectId, ticketId, runsAttempt]);
 
   useEffect(() => {
     if (!selectedRun) return;
     let cancelled = false;
     setEvents(null);
-    void fetchRunTrace(apiOpts, projectId, selectedRun, ticketId).then((items) => {
-      if (!cancelled) setEvents(items);
-    });
+    setEventsError(null);
+    fetchRunTrace(apiOpts, projectId, selectedRun, ticketId)
+      .then((items) => {
+        if (!cancelled) setEvents(items);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setEventsError(err instanceof Error ? err.message : String(err));
+      });
     return () => {
       cancelled = true;
     };
-  }, [apiOpts, projectId, selectedRun, ticketId]);
+  }, [apiOpts, projectId, selectedRun, ticketId, eventsAttempt]);
 
   return (
     <section
@@ -153,7 +170,14 @@ export function TraceView({ apiOpts, projectId, ticketId, onClose }: TraceViewPr
         board — it only records what you saw.
       </p>
 
-      {runs === null ? (
+      {runsError !== null ? (
+        <div role="alert" className="trace-view__error" data-testid="trace-view-error">
+          <p>Couldn&apos;t load the session trace: {runsError}</p>
+          <button type="button" onClick={() => setRunsAttempt((n) => n + 1)}>
+            Retry
+          </button>
+        </div>
+      ) : runs === null ? (
         <p>Loading…</p>
       ) : runs.length === 0 ? (
         <p className="trace-view__empty" data-testid="trace-view-empty">
@@ -225,6 +249,16 @@ export function TraceView({ apiOpts, projectId, ticketId, onClose }: TraceViewPr
             })}
           </ol>
         </>
+      ) : selectedRun && eventsError !== null ? (
+        <div role="alert" className="trace-view__error" data-testid="trace-view-error">
+          <p>Couldn&apos;t load this run&apos;s trace: {eventsError}</p>
+          <button type="button" onClick={() => setEventsAttempt((n) => n + 1)}>
+            Retry
+          </button>
+          <button type="button" onClick={() => setSelectedRun(null)}>
+            ← Back to runs
+          </button>
+        </div>
       ) : selectedRun ? (
         <p>Loading…</p>
       ) : (

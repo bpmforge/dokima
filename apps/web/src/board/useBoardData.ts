@@ -45,6 +45,9 @@ export interface UseBoardDataResult {
   tickets: BoardTicket[];
   heartbeats: ReadonlyMap<string, HeartbeatData>;
   loading: boolean;
+  /** Review R6: a failed board read, so it is never mistaken for an empty project. */
+  loadError: string | null;
+  retryLoad: () => void;
   refusal: BoardRefusal | null;
   dismissRefusal: () => void;
   fireVerb: (ticketId: string, verb: LifecycleVerb) => Promise<void>;
@@ -65,6 +68,8 @@ export function useBoardData(opts: UseBoardDataOptions): UseBoardDataResult {
     new Map(),
   );
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [refusal, setRefusal] = useState<BoardRefusal | null>(null);
   const [announcement, setAnnouncement] = useState('');
   const apiOpts = useRef<BoardApiOptions>({
@@ -81,17 +86,26 @@ export function useBoardData(opts: UseBoardDataOptions): UseBoardDataResult {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetchBoardTickets(apiOpts.current, opts.projectId).then((result) => {
-      if (cancelled) return;
-      if (result.ok) {
-        setTickets(new Map(result.data.map((t) => [t.id, t])));
-      }
-      setLoading(false);
-    });
+    setLoadError(null);
+    fetchBoardTickets(apiOpts.current, opts.projectId)
+      .then((result) => {
+        if (cancelled) return;
+        if (result.ok) {
+          setTickets(new Map(result.data.map((t) => [t.id, t])));
+        } else {
+          setLoadError(result.problem.detail ?? result.problem.title);
+        }
+        setLoading(false);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setLoadError(err instanceof Error ? err.message : String(err));
+        setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, [opts.projectId]);
+  }, [opts.projectId, loadAttempt]);
 
   useEffect(() => {
     const subscriptions = [boardSubscription(opts.projectId)];
@@ -172,6 +186,8 @@ export function useBoardData(opts: UseBoardDataOptions): UseBoardDataResult {
     tickets: Array.from(tickets.values()),
     heartbeats,
     loading,
+    loadError,
+    retryLoad: () => setLoadAttempt((n) => n + 1),
     refusal,
     dismissRefusal: () => setRefusal(null),
     fireVerb,

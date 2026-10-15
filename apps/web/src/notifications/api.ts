@@ -139,13 +139,15 @@ export async function decideApproval(
   projectId: string,
   decision: 'approved' | 'rejected',
   opts: NotificationsApiOptions = {},
+  /** Optional reason, recorded with the decision (the route's existing `note`). */
+  note?: string,
 ): Promise<void> {
   await request(
     `/api/v1/approvals/${encodeURIComponent(id)}/decide?project=${encodeURIComponent(projectId)}`,
     {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ decision }),
+      body: JSON.stringify(note ? { decision, note } : { decision }),
     },
     opts,
   );

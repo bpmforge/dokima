@@ -77,5 +77,11 @@
 }
 
 .trace-event--escalation {
-  border-color: var(--sw-danger);
+  /* Review T3: climbing a rung is normal behaviour, not an error — warning
+     tone, never the danger red a person reads as "something broke". */
+  border-color: var(--sw-warning);
+}
+
+.trace-view__error {
+  color: var(--sw-danger);
 }

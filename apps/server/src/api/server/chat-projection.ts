@@ -35,10 +35,55 @@ interface Envelope {
   data: Record<string, unknown>;
 }
 
+type LogEvent = ReturnType<typeof listEvents>[number];
+
+/**
+ * The real receipt behind a card, or `''` when there is none.
+ *
+ * The cost chip used to carry a hard-coded `receipt_id: ''`, so every chip
+ * linked to `/api/v1/receipts/` — a dead link (review C2). A receipt id is only
+ * ever taken from an anchoring `gate.receipt_minted` event for this ticket at
+ * or before the card's own event (the same walk `harbormaster/resume.ts` uses);
+ * a `receipts` row with no anchoring event is never surfaced. No receipt → the
+ * empty string, which the client renders as plain text, never as a link.
+ */
+function receiptIdFor(
+  events: readonly LogEvent[],
+  ticketId: string | null,
+  uptoSeq: number,
+): string {
+  if (ticketId === null) return '';
+  let receiptId = '';
+  for (const event of events) {
+    if (event.seq > uptoSeq) break;
+    if (event.eventType !== 'gate.receipt_minted' || event.ticketId !== ticketId) continue;
+    const id = (event.payload as { receiptId?: unknown } | null)?.receiptId;
+    if (typeof id === 'string' && id.length > 0) receiptId = id;
+  }
+  return receiptId;
+}
+
+/**
+ * In-app evidence link for a card (review C3). It used to be `?view=board`,
+ * which the client's safe-link check rejected, so every finding read
+ * "evidence unavailable". This emits only the query keys the client accepts
+ * (`project`, `view=trace`, `ticket`) — the ticket's session trace, the
+ * surface that shows what the agent did before it parked.
+ */
+export function evidenceHrefFor(projectId: string, ticketId: string | null): string {
+  const params = new URLSearchParams({ project: projectId });
+  if (ticketId !== null) {
+    params.set('view', 'trace');
+    params.set('ticket', ticketId);
+  }
+  return `?${params.toString()}`;
+}
+
 function provenanceFor(
-  events: readonly ReturnType<typeof listEvents>[number][],
+  events: readonly LogEvent[],
   ticketId: string | null,
   actorId: string,
+  uptoSeq: number,
 ): Record<string, unknown> {
   let model = '—';
   let costUsd = 0;
@@ -54,7 +99,7 @@ function provenanceFor(
     model,
     ticket_id: ticketId ?? '—',
     cost_usd: Math.round(costUsd * 10000) / 10000,
-    receipt_id: '',
+    receipt_id: receiptIdFor(events, ticketId, uptoSeq),
   };
 }
 
@@ -90,18 +135,22 @@ export function projectChatEnvelopes(log: EventLog, projectId: string): Envelope
         data: {
           id: `finding-${event.seq}`,
           thread_id: 'thread-program',
-          provenance: provenanceFor(events, event.ticketId, event.actorId),
+          provenance: provenanceFor(events, event.ticketId, event.actorId, event.seq),
           severity: 'high',
           issue: body.length > 600 ? `${body.slice(0, 597)}…` : body,
-          evidence_href: `?view=board`,
+          evidence_href: evidenceHrefFor(projectId, event.ticketId),
         },
       });
       continue;
     }
     if (event.eventType === 'ticket.closed') {
       const manifest = (event.payload as { manifest?: unknown }).manifest as
-        | { files?: unknown; verify?: { exit?: unknown } }
+        | { files?: unknown; verify?: { exitCode?: unknown; exit?: unknown } }
         | undefined;
+      // The manifest's field is `exitCode` (`@dokima/tickets` VerifyResult).
+      // Reading `exit` alone made every manifest card say "verify fail" even
+      // when verify exited 0 (review C1). `exit` stays as a legacy fallback.
+      const exitCode = manifest?.verify?.exitCode ?? manifest?.verify?.exit;
       const files = Array.isArray(manifest?.files)
         ? manifest.files.filter((f): f is string => typeof f === 'string')
         : [];
@@ -114,9 +163,9 @@ export function projectChatEnvelopes(log: EventLog, projectId: string): Envelope
         data: {
           id: `manifest-${event.seq}`,
           thread_id: 'thread-program',
-          provenance: provenanceFor(events, event.ticketId, event.actorId),
+          provenance: provenanceFor(events, event.ticketId, event.actorId, event.seq),
           files,
-          verify_result: manifest?.verify?.exit === 0 ? 'pass' : 'fail',
+          verify_result: exitCode === 0 ? 'pass' : 'fail',
           diff_stat: `${files.length} file(s)`,
         },
       });

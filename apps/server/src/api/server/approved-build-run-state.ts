@@ -192,12 +192,26 @@ export function classifyRunOutcome(input: {
   readonly exitCode: number;
   readonly stopRequested: boolean;
   readonly ticketsAwaitingDecision: number;
+  /**
+   * What the run itself said last on stderr — the refusal or crash reason.
+   * Review UX-04: the recorded detail used to be only "the run exited 2", so
+   * after a reload the reason ("no model is configured…") was gone and a
+   * person read exit-code jargon instead.
+   */
+  readonly reason?: string | null;
 }): { readonly kind: BuildRunOutcomeKind; readonly detail: string } {
   if (input.stopRequested) {
     return { kind: 'stopped', detail: 'a person asked this run to stop' };
   }
   if (input.exitCode !== 0) {
-    return { kind: 'failed', detail: `the run exited ${input.exitCode}` };
+    const reason = input.reason?.trim();
+    return {
+      kind: 'failed',
+      detail:
+        reason && reason.length > 0
+          ? reason
+          : `the run stopped before finishing (exit code ${input.exitCode})`,
+    };
   }
   if (input.ticketsAwaitingDecision > 0) {
     return {

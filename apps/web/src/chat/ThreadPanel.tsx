@@ -3,6 +3,7 @@ import type { Thread } from './types.js';
 
 export interface ThreadPanelProps {
   thread: Thread;
+  onOpenReceipt?: (receiptId: string) => void;
 }
 
 /**
@@ -15,7 +16,7 @@ export interface ThreadPanelProps {
  * for real spend (honesty control C-1, W9-03); drop it once a real
  * producer lands (the same HANDOFF `types.ts` and `fixtures.ts` document).
  */
-export function ThreadPanel({ thread }: ThreadPanelProps) {
+export function ThreadPanel({ thread, onOpenReceipt }: ThreadPanelProps) {
   return (
     <section
       className={`chat__thread chat__thread--${thread.kind}`}
@@ -50,7 +51,7 @@ export function ThreadPanel({ thread }: ThreadPanelProps) {
       </header>
       <div className="chat__thread-cards" role="list">
         {thread.cards.map((card) => (
-          <Card key={card.id} card={card} />
+          <Card key={card.id} card={card} onOpenReceipt={onOpenReceipt} />
         ))}
       </div>
     </section>

@@ -25,6 +25,8 @@ function boardData(overrides: Partial<UseBoardDataResult> = {}): UseBoardDataRes
     tickets: [],
     heartbeats: new Map(),
     loading: false,
+    loadError: null,
+    retryLoad: vi.fn(),
     refusal: null,
     dismissRefusal: vi.fn(),
     fireVerb: vi.fn(),
@@ -462,5 +464,133 @@ describe('opening a project shows something while it loads (W21-88)', () => {
     rerender(<BoardView baseUrl="/api/v1" token="t" projectId="p1" wsUrl="ws://x" onSelectTicket={vi.fn()} />);
 
     expect(screen.getByRole('button', { name: 'Start a run' })).toBe(before);
+  });
+});
+
+
+describe('review fixes: stop failure, refused run, failed load, no model (R4, R3, R6, UX-04)', () => {
+  function renderBoard() {
+    return render(
+      <BoardView baseUrl="/api/v1" token="t" projectId="p1" wsUrl="ws://x" onSelectTicket={vi.fn()} />,
+    );
+  }
+
+  it('RED FIXTURE (R4): a refused stop is shown and the Stop button comes back', async () => {
+    mockedUseBoardData.mockReturnValue(boardData({ tickets: [makeBoardTicket({ id: 'E2E-1' })] }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+        const u = String(url);
+        if (u.endsWith('/build-runs') && init?.method === 'POST') {
+          return new Response(JSON.stringify({ run_id: 'run-x', status: 'running' }), { status: 202 });
+        }
+        if (u.endsWith('/stop')) {
+          return new Response(
+            JSON.stringify({ type: 'about:blank', title: 'conflict', status: 409, detail: 'the run already ended' }),
+            { status: 409 },
+          );
+        }
+        return new Response(JSON.stringify({ run_id: 'run-x', status: 'running' }), { status: 200 });
+      }),
+    );
+    try {
+      renderBoard();
+      fireEvent.click(screen.getByRole('button', { name: 'Start a run' }));
+      fireEvent.click(await screen.findByTestId('board-runbar-stop'));
+      const error = await screen.findByTestId('board-runbar-stop-error');
+      expect(error.textContent).toContain('the run already ended');
+      await vi.waitFor(() =>
+        expect((screen.getByTestId('board-runbar-stop') as HTMLButtonElement).disabled).toBe(false),
+      );
+      expect(screen.getByTestId('board-runbar-stop').textContent).toBe('Stop the run');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('RED FIXTURE (R3): a refused run is described once — no status span, no "what this run did" summary', async () => {
+    mockedUseBoardData.mockReturnValue(boardData({ tickets: [makeBoardTicket({ id: 'E2E-1' })] }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+        if (String(url).endsWith('/build-runs') && init?.method === 'POST') {
+          return new Response(
+            JSON.stringify({ type: 'about:blank', title: 'refused', status: 409, detail: 'no model is configured' }),
+            { status: 409 },
+          );
+        }
+        return new Response(JSON.stringify({ detail: 'nope' }), { status: 404 });
+      }),
+    );
+    try {
+      renderBoard();
+      fireEvent.click(screen.getByRole('button', { name: 'Start a run' }));
+      const refusal = await screen.findByTestId('board-runbar-refusal');
+      expect(refusal.textContent).toBe('Run refused: no model is configured');
+      expect(screen.queryByTestId('board-runbar-status')).toBeNull();
+      expect(screen.queryByTestId('run-summary')).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('RED FIXTURE (R6): a failed board load shows an error with Retry, not the empty-project onboarding', () => {
+    const retryLoad = vi.fn();
+    mockedUseBoardData.mockReturnValue(boardData({ loadError: 'server unavailable', retryLoad }));
+    renderBoard();
+    expect(screen.getByRole('alert').textContent).toContain('server unavailable');
+    expect(screen.queryByTestId('board-empty')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(retryLoad).toHaveBeenCalledOnce();
+  });
+
+  it('RED FIXTURE (UX-04): with no maker model, Start a run is disabled and says why, with a way to Settings → Providers', async () => {
+    mockedUseBoardData.mockReturnValue(boardData({ tickets: [makeBoardTicket({ id: 'E2E-1' })] }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: RequestInfo | URL) => {
+        const u = String(url);
+        if (u.includes('/approved-build/preview')) {
+          return new Response(
+            JSON.stringify({
+              input_digest: 'sha256:x',
+              budget_usd: 0,
+              tickets: [],
+              maker_model: null,
+              reviewer_model: null,
+              independent_review: false,
+              independent_review_reason: 'x',
+              still_asks_you: [],
+            }),
+            { status: 200 },
+          );
+        }
+        if (u.endsWith('/budget')) {
+          return new Response(
+            JSON.stringify({
+              run_limit_usd: null,
+              project_limit_usd: null,
+              breaker_thresholds: { warn: 0.5, downshift: 0.8, hard_stop: 1 },
+            }),
+            { status: 200 },
+          );
+        }
+        return new Response(JSON.stringify({ runs: [] }), { status: 200 });
+      }),
+    );
+    try {
+      renderBoard();
+      const reason = await screen.findByTestId('board-run-blocked-reason');
+      const start = screen.getByRole('button', { name: 'Start a run' }) as HTMLButtonElement;
+      expect(start.disabled).toBe(true);
+      expect(start.getAttribute('aria-describedby')).toBe(reason.id);
+      expect(reason.textContent).toContain('Settings → Providers');
+      expect(screen.getByTestId('board-run-open-providers').getAttribute('href')).toContain(
+        'view=settings',
+      );
+      expect((screen.getByTestId('approved-build-review') as HTMLButtonElement).disabled).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

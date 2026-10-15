@@ -229,6 +229,7 @@ export async function executeBuildRunJob(args: {
         exitCode,
         stopRequested: buildRunStopped(log, args.runId),
         ticketsAwaitingDecision: needsAPerson.size,
+        reason: stderr.filter((line) => line.trim() !== '').at(-1) ?? null,
       });
       finishBuildRun(log, {
         runId: args.runId,

@@ -44,13 +44,19 @@ test('all four structured card types render with agent/model/ticket/cost provena
   }
 });
 
-test("clicking a card's cost click-throughs to its receipt (FR-C2)", async ({ page }) => {
+test("clicking a card's cost opens its receipt in-app, never a raw API page (FR-C2, review C2)", async ({
+  page,
+}) => {
   await page.goto('/?project=chat-e2e-receipt');
-  const costLink = page
-    .getByTestId('pane-chat')
-    .getByTestId('chat-card-card-finding-1')
-    .getByTestId('card-cost-link');
-  await expect(costLink).toHaveAttribute('href', '/api/v1/receipts/rcpt_chat_f1');
+  const chatPane = page.getByTestId('pane-chat');
+  const costLink = chatPane.getByTestId('chat-card-card-finding-1').getByTestId('card-cost-link');
+  await expect(costLink).not.toHaveAttribute('href', /.*/);
+  await costLink.click();
+  await expect(page).toHaveURL(/\?project=chat-e2e-receipt/);
+  // The sample receipt id resolves to a receipt or an honest error — either
+  // way it is shown in the pane, and the tab stays in the app.
+  await expect(chatPane.getByTestId('chat-receipt')).toBeVisible();
+  await expect(chatPane.getByTestId('chat-receipt')).toContainText('rcpt_chat_f1');
 });
 
 test('the chat pane is independently collapsible like the other panes', async ({

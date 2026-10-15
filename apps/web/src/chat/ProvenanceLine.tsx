@@ -2,18 +2,31 @@ import type { Provenance } from './types.js';
 
 export interface ProvenanceLineProps {
   provenance: Provenance;
+  /** Opens the receipt in-app. Absent, or no receipt id → the cost is plain text. */
+  onOpenReceipt?: (receiptId: string) => void;
+}
+
+/** Turn cost in dollars: two decimals, and "<$0.01" for a real but sub-cent spend. */
+export function formatTurnCost(costUsd: number): string {
+  if (costUsd > 0 && costUsd < 0.005) return '<$0.01';
+  return `$${costUsd.toFixed(2)}`;
 }
 
 /**
  * "agent name · model used · ticket ID · turn cost" on every agent message
  * (UX_SPEC §3). The cost is the one click-through: "clicking cost opens the
- * ledger row" (SRS FR-C2 acceptance) — the `budget_ledger` row for this turn
- * (DATABASE.md §3) is reachable via its minting receipt, the only
- * receipt-shaped read documented (API_DESIGN `GET /receipts/{id}`); the
- * Receipt Inspector itself (FR-C5) is a later ticket, so this link is a
- * real, stable href a future viewer can resolve, not a dead-end button.
+ * ledger row" (SRS FR-C2 acceptance), reached through the card's minting
+ * receipt.
+ *
+ * Review C2: this used to be a plain `<a href="/api/v1/receipts/<id>">`. The
+ * projection sent an empty id, and an anchor carries no bearer token, so a
+ * click navigated the tab out of the app to a raw 401 JSON page. The receipt
+ * now opens in-app (the caller fetches it and shows the Receipt Inspector),
+ * and a card with no receipt shows its cost as text — no link to nowhere.
  */
-export function ProvenanceLine({ provenance }: ProvenanceLineProps) {
+export function ProvenanceLine({ provenance, onOpenReceipt }: ProvenanceLineProps) {
+  const cost = formatTurnCost(provenance.costUsd);
+  const receiptId = provenance.receiptId;
   return (
     <div className="chat-card__provenance" data-testid="card-provenance">
       <span className="chat-card__agent" data-testid="card-agent">
@@ -34,13 +47,21 @@ export function ProvenanceLine({ provenance }: ProvenanceLineProps) {
       <span className="chat-card__sep" aria-hidden="true">
         ·
       </span>
-      <a
-        className="chat-card__cost"
-        data-testid="card-cost-link"
-        href={`/api/v1/receipts/${encodeURIComponent(provenance.receiptId)}`}
-      >
-        ${provenance.costUsd.toFixed(4)}
-      </a>
+      {receiptId !== '' && onOpenReceipt ? (
+        <button
+          type="button"
+          className="chat-card__cost chat-card__cost--button"
+          data-testid="card-cost-link"
+          title="Open the receipt for this turn"
+          onClick={() => onOpenReceipt(receiptId)}
+        >
+          {cost}
+        </button>
+      ) : (
+        <span className="chat-card__cost" data-testid="card-cost-link">
+          {cost}
+        </span>
+      )}
     </div>
   );
 }

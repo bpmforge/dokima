@@ -43,3 +43,49 @@ describe('RefusalPopover (W13-60)', () => {
     ).toBeTruthy();
   });
 });
+
+describe('RefusalPopover shows its evidence and its fix (review F1)', () => {
+  it('RED FIXTURE: names the ticket, renders the evidence, and states the fix as an instruction when no action is wired', () => {
+    render(
+      <RefusalPopover
+        ticketId="T-1"
+        problem={{
+          ...PROBLEM,
+          evidence: { gate: 'verify', exitCode: 1, fix: 'Run the ticket verify and fix the failing test.' },
+        }}
+        onDismiss={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('refusal-ticket').textContent).toContain('T-1');
+    const evidence = screen.getByTestId('refusal-evidence');
+    expect(evidence.tagName).toBe('DETAILS');
+    expect(evidence.textContent).toContain('What the board checked');
+    expect(evidence.textContent).toContain('"exitCode": 1');
+    expect(evidence.textContent).not.toContain('Run the ticket verify');
+    expect(screen.getByTestId('refusal-fix').textContent).toBe(
+      'To fix: Run the ticket verify and fix the failing test.',
+    );
+  });
+
+  it('a wired fix action renders as a button instead of the instruction', () => {
+    const onRunFix = vi.fn();
+    render(
+      <RefusalPopover
+        ticketId="T-1"
+        problem={{ ...PROBLEM, evidence: { fix: 'Do the thing' } }}
+        onDismiss={vi.fn()}
+        onRunFix={onRunFix}
+      />,
+    );
+    expect(screen.queryByTestId('refusal-fix')).toBeNull();
+    expect(screen.queryByTestId('refusal-evidence')).toBeNull();
+    screen.getByRole('button', { name: 'Do the thing' }).click();
+    expect(onRunFix).toHaveBeenCalledOnce();
+  });
+
+  it('no evidence → no empty disclosure', () => {
+    render(<RefusalPopover ticketId="T-1" problem={PROBLEM} onDismiss={vi.fn()} />);
+    expect(screen.queryByTestId('refusal-evidence')).toBeNull();
+    expect(screen.queryByTestId('refusal-fix')).toBeNull();
+  });
+});

@@ -188,3 +188,80 @@ describe('a tool-approval card shows the work (W14-04, the W13-61 standard)', ()
     expect(screen.getByRole('button', { name: 'Reject' })).toBeTruthy();
   });
 });
+
+describe('review fixes: decisions that fail say so and stay said (Q1-Q4)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    decisions.fetchSlates.mockResolvedValue([SLATE]);
+  });
+  afterEach(cleanup);
+
+  const plainCard = () =>
+    card({ id: 'note-9', kind: 'approval', refType: null, refId: null, body: { diffStat: '+1 -0' } });
+
+  it('RED FIXTURE (Q1): a failed Approve shows its error ON the card and a later poll does not clear it', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      notifications.fetchMorningQueue.mockResolvedValue([plainCard()]);
+      notifications.decideApproval.mockRejectedValue(new Error('simulated failure'));
+      render(<MorningQueue />);
+      fireEvent.click(await screen.findByRole('button', { name: 'Approve' }));
+      const error = await screen.findByTestId('decide-error-note-9');
+      expect(error.textContent).toContain('simulated failure');
+      await vi.advanceTimersByTimeAsync(12_000);
+      expect(notifications.fetchMorningQueue.mock.calls.length).toBeGreaterThan(2);
+      expect(screen.getByTestId('decide-error-note-9').textContent).toContain('simulated failure');
+      fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+      expect(screen.queryByTestId('decide-error-note-9')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('Q3: the consequence is read before the buttons, and Reject sends an optional reason as the note', async () => {
+    notifications.fetchMorningQueue.mockResolvedValue([plainCard()]);
+    notifications.decideApproval.mockResolvedValue(undefined);
+    render(<MorningQueue />);
+    const approve = await screen.findByRole('button', { name: 'Approve' });
+    const consequence = screen.getByText(/Either choice records your decision/);
+    expect(
+      consequence.compareDocumentPosition(approve) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Reject' }));
+    expect(notifications.decideApproval).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText(/Reason/), { target: { value: 'wrong branch' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm reject' }));
+    await waitFor(() =>
+      expect(notifications.decideApproval).toHaveBeenCalledWith(
+        'note-9',
+        'proj-1',
+        'rejected',
+        {},
+        'wrong branch',
+      ),
+    );
+  });
+
+  it('RED FIXTURE (Q4): Approve is disabled when the tool request details are missing; Reject stays available', async () => {
+    notifications.fetchMorningQueue.mockResolvedValue([
+      card({ id: 'mcp-1', kind: 'approval', refType: 'mcp_tool_call', refId: 'a', body: null }),
+    ]);
+    render(<MorningQueue />);
+    const approve = (await screen.findByRole('button', { name: 'Approve' })) as HTMLButtonElement;
+    expect(approve.disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Reject' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('RED FIXTURE (Q2): a failed Choose keeps the options and shows the server reason in the slate card', async () => {
+    notifications.fetchMorningQueue.mockResolvedValue([card()]);
+    decisions.decideSlate.mockRejectedValue(new Error('slate already decided'));
+    render(<MorningQueue />);
+    await waitFor(() => expect(screen.getByTestId('queue-slate-slate-1')).toBeTruthy());
+    fireEvent.click(screen.getByRole('radio', { name: /Defer to v1.1/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Choose' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('slate already decided');
+    expect(screen.getByText('Ship it in v1')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Choose' })).toBeTruthy();
+  });
+});
