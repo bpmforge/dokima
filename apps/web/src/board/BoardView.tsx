@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActiveBerthsStrip } from './ActiveBerthsStrip.js';
 import {
   buildRunRefusalLine,
@@ -19,25 +19,10 @@ import { RefusalPopover } from './RefusalPopover.js';
 import { RunSummary } from './RunSummary.js';
 import { ApprovedBuildPanel } from './ApprovedBuildPanel.js';
 import { ShippedTicker } from './ShippedTickerStrip.js';
+import { BoardLoadError, NO_MODEL_REASON, NoModelReason } from './BoardNotices.js';
 import { useBoardData } from './useBoardData.js';
-import { fetchBudget, putProjectSettings } from '../settings/api.js';
-import { fetchApprovedBuildPreview } from './approvedBuildApi.js';
-
-/** Why nothing can build yet, as the person reads it — providers first, then models. */
-const NO_MODEL_REASON =
-  'Nothing can build yet: no model is set up for the coding agent. Add a provider in Settings → Providers, then pick a model in Settings → Models.';
-
-/**
- * Opens Settings in-app. A real href keeps middle-click and "copy link"
- * working; the click itself pushes the URL and lets the app's popstate
- * listener (App/navigation.ts — the URL is the source of truth) switch view.
- */
-function openSettingsLink(event: React.MouseEvent<HTMLAnchorElement>) {
-  if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
-  event.preventDefault();
-  window.history.pushState({}, '', event.currentTarget.href);
-  window.dispatchEvent(new PopStateEvent('popstate'));
-}
+import { useRunReadiness } from './useRunReadiness.js';
+import { putProjectSettings } from '../settings/api.js';
 
 export interface BoardViewProps {
   baseUrl: string;
@@ -64,46 +49,7 @@ export function BoardView({
   const [stopError, setStopError] = useState<string | null>(null);
   const apiOpts = { baseUrl, token };
 
-  /**
-   * Review A2: the project's real run limit, so an approval never reads "a
-   * budget of $0.00" the person did not choose. `null` = no cap is set.
-   */
-  const [runLimitUsd, setRunLimitUsd] = useState<number | null>(null);
-  const [budgetStatus, setBudgetStatus] = useState<'loading' | 'ready' | 'error'>(
-    'loading',
-  );
-  /**
-   * Review UX-04: whether a maker model exists, read BEFORE the person
-   * clicks — from the same preview read the approval shows, which resolves the
-   * coding-agent model exactly as a run does. 'unknown' (read failed) leaves
-   * the buttons enabled: the run's own refusal is still the honest backstop.
-   */
-  const [makerModel, setMakerModel] = useState<'unknown' | 'ready' | 'missing'>('unknown');
-
-  useEffect(() => {
-    let cancelled = false;
-    setBudgetStatus('loading');
-    fetchBudget(projectId, { getToken: () => token })
-      .then((budget) => {
-        if (cancelled) return;
-        setRunLimitUsd(budget.runLimitUsd);
-        setBudgetStatus('ready');
-      })
-      .catch(() => {
-        if (!cancelled) setBudgetStatus('error');
-      });
-    fetchApprovedBuildPreview({ baseUrl, token }, projectId, 0)
-      .then((result) => {
-        if (cancelled || !result.ok) return;
-        setMakerModel(result.data.makerModel === null ? 'missing' : 'ready');
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [baseUrl, token, projectId]);
-
-  const noModel = makerModel === 'missing';
+  const { runLimitUsd, budgetStatus, noModel } = useRunReadiness(baseUrl, token, projectId);
 
   // W17-07: the way out the live UAT lacked. The loop stops at its next
   // ticket boundary; in-flight work finishes or parks honestly.
@@ -225,12 +171,12 @@ export function BoardView({
     handleDrop,
     announcement,
   } = useBoardData({
-      baseUrl,
-      token,
-      projectId,
-      runId,
-      wsUrl,
-    });
+    baseUrl,
+    token,
+    projectId,
+    runId,
+    wsUrl,
+  });
 
   /**
    * W21-88: a VISIBLE loading state, not a blank screen.
@@ -256,19 +202,8 @@ export function BoardView({
       </div>
     );
   }
-  // Review R6: a failed read is not an empty project. Showing onboarding here
-  // told a person with a server problem that their board was empty.
   if (loadError !== null && tickets.length === 0) {
-    return (
-      <div className="board-view" data-testid="board-view-load-error">
-        <p role="alert" className="board-view__load-error">
-          Couldn&apos;t load the board: {loadError}
-        </p>
-        <button type="button" className="btn-quiet" onClick={retryLoad}>
-          Retry
-        </button>
-      </div>
-    );
+    return <BoardLoadError message={loadError} onRetry={retryLoad} />;
   }
   if (tickets.length === 0) {
     /**
@@ -336,18 +271,7 @@ export function BoardView({
             {stopping ? 'Stopping at the next ticket…' : 'Stop the run'}
           </button>
         )}
-        {noModel && (
-          <p id="board-run-blocked-reason" data-testid="board-run-blocked-reason">
-            {NO_MODEL_REASON}{' '}
-            <a
-              href={`?project=${encodeURIComponent(projectId)}&view=settings`}
-              onClick={openSettingsLink}
-              data-testid="board-run-open-providers"
-            >
-              Open Settings → Providers
-            </a>
-          </p>
-        )}
+        {noModel && <NoModelReason projectId={projectId} />}
         {/* W13-59: the novice's single next step was a bare button with an
             unstated consequence. One line: what a run is (VOCABULARY.md) and
             the wizard-standard reassurance about what it may use. */}
@@ -408,7 +332,12 @@ export function BoardView({
           onSelectTicket={onSelectTicket}
         />
       </div>
-      <p className="sr-only" role="status" aria-live="polite" data-testid="board-announcer">
+      <p
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        data-testid="board-announcer"
+      >
         {announcement}
       </p>
       {refusal && refusalTicket && (
