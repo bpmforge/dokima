@@ -17717,6 +17717,33 @@
       "stories": [
         "US-402"
       ]
+    },
+    {
+      "id": "W23-63",
+      "title": "a person's Chat reply is recorded on the ticket but no agent ever reads it: only a reviewer's reject reason reaches the next maker attempt",
+      "phase": 23,
+      "module": "harbormaster",
+      "lane": "orchestrator",
+      "write_scope": [
+        "packages/harbormaster/src/loop-land-rungs.ts",
+        "packages/harbormaster/src/loop-land-rungs.test.ts",
+        "apps/web/src/chat/ChatComposer.tsx",
+        "apps/web/src/chat/ChatComposer.test.tsx"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "A comment written by a registered human on a ticket since its last close reaches that ticket's next maker attempt as a named gap, beside a reviewer's rejection reason",
+        "Comment text cannot make a row count as human: an agent-authored comment never reaches the maker by this path (red fixture)",
+        "The Chat composer hint stops saying agents do not read replies, in the same commit"
+      ],
+      "points": 3,
+      "status": "todo",
+      "notes": [
+        "FILED 2026-10-15 by the UX/UI review follow-up (PR #4, Law 1). Brad decided the Chat pane accepts replies; they land through the ticket comment verb and show in history, but latestRejectionReason in loop-land-rungs.ts is the only human text a maker reads. The composer hint says so honestly until this lands."
+      ],
+      "stories": [
+        "US-101"
+      ]
     }
   ]
 }
