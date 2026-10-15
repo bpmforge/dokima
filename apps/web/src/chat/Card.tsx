@@ -1,5 +1,6 @@
 import { plainLeadFor } from './plain-lead.js';
 import { ProvenanceLine } from './ProvenanceLine.js';
+import { ticketOfItem } from './types.js';
 import type {
   ChatCard,
   FindingCard,
@@ -170,10 +171,13 @@ export interface CardProps {
   card: ChatCard;
   /** Opens a receipt in-app (Receipt Inspector). Absent → receipts render as plain text. */
   onOpenReceipt?: (receiptId: string) => void;
+  /** Points the composer at this card's ticket. Absent, or no ticket → no Reply button. */
+  onReply?: (ticketId: string) => void;
 }
 
 /** Dispatches one of UX_SPEC §3's four structured card types (question/finding/manifest/slate). */
-export function Card({ card, onOpenReceipt }: CardProps) {
+export function Card({ card, onOpenReceipt, onReply }: CardProps) {
+  const ticket = ticketOfItem(card);
   return (
     <article
       className={`chat-card chat-card--${card.kind}`}
@@ -188,6 +192,17 @@ export function Card({ card, onOpenReceipt }: CardProps) {
       {card.kind === 'manifest' && <ManifestCardBody card={card} />}
       {card.kind === 'slate' && <SlateCardBody card={card} />}
       <ProvenanceLine provenance={card.provenance} onOpenReceipt={onOpenReceipt} />
+      {onReply && ticket !== null && (
+        <button
+          type="button"
+          className="btn-quiet chat-card__reply"
+          data-testid="chat-card-reply"
+          aria-label={`Reply on ${ticket}`}
+          onClick={() => onReply(ticket)}
+        >
+          Reply
+        </button>
+      )}
     </article>
   );
 }

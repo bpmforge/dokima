@@ -20,6 +20,7 @@ describe('reduceChatEvents', () => {
     const cards = threads.flatMap((thread) => thread.cards);
     expect(cards).toHaveLength(4);
     for (const card of cards) {
+      if (card.kind === 'human') throw new Error('the fixture holds no human messages');
       expect(card.provenance.agent).not.toBe('');
       expect(card.provenance.model).not.toBe('');
       expect(card.provenance.ticketId).not.toBe('');

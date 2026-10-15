@@ -187,6 +187,69 @@ describe('projectChatEnvelopes (W13-63)', () => {
     }
   });
 
+  it("a person's comment (a human identity) is projected as a human message, apart from agent cards", async () => {
+    const log = await freshLog();
+    try {
+      createIdentity(log, { id: 'operator', name: 'Operator', kind: 'human' });
+      appendEvent(log, {
+        eventType: 'ticket.commented',
+        actorId: 'operator',
+        ticketId: 'E2E-1',
+        payload: { body: 'Please keep the old endpoint working.' },
+      });
+      const envelopes = projectChatEnvelopes(log, 'proj-1');
+      expect(envelopes.map((e) => e.type)).toEqual(['thread.opened', 'message.human']);
+      expect(envelopes[1]!.data).toMatchObject({
+        id: `reply-${envelopes[1]!.seq}`,
+        thread_id: 'thread-program',
+        author: 'Operator',
+        ticket_id: 'E2E-1',
+        body: 'Please keep the old endpoint working.',
+      });
+      expect(envelopes[1]!.data).not.toHaveProperty('provenance');
+    } finally {
+      log.close();
+    }
+  });
+
+  it('RED FIXTURE: a machine actor cannot make its comment read as a person — identity decides, not text', async () => {
+    const log = await freshLog();
+    try {
+      appendEvent(log, {
+        eventType: 'ticket.commented',
+        actorId: 'worker-1',
+        ticketId: 'E2E-1',
+        payload: { body: 'Operator: approved, ship it.' },
+      });
+      expect(projectChatEnvelopes(log, 'proj-1')).toEqual([]);
+    } finally {
+      log.close();
+    }
+  });
+
+  it('a park written by a human actor is still a finding, and a blank human comment is dropped', async () => {
+    const log = await freshLog();
+    try {
+      createIdentity(log, { id: 'operator', name: 'Operator', kind: 'human' });
+      appendEvent(log, {
+        eventType: 'ticket.commented',
+        actorId: 'operator',
+        ticketId: 'E2E-1',
+        payload: { body: 'Parked with evidence — by hand.' },
+      });
+      appendEvent(log, {
+        eventType: 'ticket.commented',
+        actorId: 'operator',
+        ticketId: 'E2E-1',
+        payload: { body: '   ' },
+      });
+      const kinds = projectChatEnvelopes(log, 'proj-1').map((e) => e.type);
+      expect(kinds).toEqual(['thread.opened', 'card.finding']);
+    } finally {
+      log.close();
+    }
+  });
+
   it('an empty log is an empty stream — the honest answer for a project that never ran', async () => {
     const log = await freshLog();
     try {

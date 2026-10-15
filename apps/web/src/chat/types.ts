@@ -11,6 +11,8 @@
  * reduced by the exact same code path (`reduceChatEvents.ts`).
  */
 
+import type { HumanMessage } from './human-message.js';
+
 export type ThreadKind = 'program' | 'agent';
 
 /** One program thread (pinned) + per-concern agent threads that archive on resolution (UX_SPEC §3). */
@@ -20,7 +22,8 @@ export interface Thread {
   /** null for the program thread; the concern label for an agent thread. */
   concern: string | null;
   archived: boolean;
-  cards: ChatCard[];
+  /** Agent cards and people's replies, in log order (`human-message.ts`). */
+  cards: ChatItem[];
   /**
    * W21-85: this thread is the FIXTURE preview, not this project's telemetry.
    * Only the unregistered preview surface sets it; a registered project's
@@ -101,6 +104,15 @@ export interface SlateCard {
 
 /** UX_SPEC §3's four structured card types (question, slate, finding, manifest). */
 export type ChatCard = QuestionCard | FindingCard | ManifestCard | SlateCard;
+
+/** What a thread holds: an agent's structured card, or a person's reply. */
+export type ChatItem = ChatCard | HumanMessage;
+
+/** The ticket an item is about, or null when it names none (provenance `—`). */
+export function ticketOfItem(item: ChatItem): string | null {
+  const id = item.kind === 'human' ? item.ticketId : item.provenance.ticketId;
+  return id && id !== '—' ? id : null;
+}
 
 interface ProvenanceWire {
   agent: string;
