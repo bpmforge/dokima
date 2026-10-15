@@ -146,9 +146,10 @@ name what a change means for that boundary, not just what moved.
   now derived and landed through the ordinary close gate instead of retried;
   an endpoint failure over unfinished work still retries for free.
 
-## [1.0.1] — Unreleased (not yet tagged)
+## [1.0.1] — 2026-10-15
 
-A packaging fix release that also closes one gate bypass. v1.0.0's tarball
+A packaging fix release that also closes one gate bypass, and the web app's
+first expert UX/UI review (#4). v1.0.0's tarball
 could not start, so the guard the boundary relies on — "the CLI refuses an
 unsupported Node before anything native loads" — never ran for an installed
 user: the module that implements it was not in the package. And on Node 24,
@@ -194,6 +195,39 @@ Both are closed; no verb, receipt or event shape changed.
   name instead of failing ~50 tests with a raw ABI error.
 - The W8 dogfood receipts (`docs/dogfood/` report and JSON) ship in the
   package, as VISION's dogfood gate says they do.
+
+### Changed — web app UX/UI review (#4)
+
+Four expert reviews (UX, interaction, visual design, agent UI) run against a
+live seeded build found about 90 findings, 3 of them P0 (all phone layout).
+All are fixed, together with seven product decisions taken on the review.
+
+- **Phones and narrow windows:** the header wraps and the three panes stack
+  (Board, Chat, Artifacts) below 48rem with readable cards.
+- **Keyboard and focus:** pane dividers resize from the keyboard; the drawer,
+  palette and shortcuts overlay trap and return focus, and Escape closes only
+  the top layer; cards open from a title button and move with a select plus a
+  Move button, announced to screen readers.
+- **Board:** a failed move rolls back with its reason; accepting as Done takes
+  two presses; one **Start a run** button opens the approved-run preview (the
+  separate plain run is gone); a **status filter** with counts, saved per
+  project and in `?filter=`; Fleet's Blocked count opens the board filtered.
+- **Live run heartbeat:** the server publishes `loop.heartbeat` on
+  `run:{runId}`, read-only from the event log; cards, berths and the drawer
+  show phase, step, elapsed time and a stale warning.
+- **Chat takes replies,** recorded through the existing ticket `comment` verb.
+  Agents do not read them yet (W23-63), and the composer says so.
+- **Morning queue:** a tool call that looks destructive (delete, recursive or
+  force flags, `rm -rf`, hard reset) is flagged on its card and takes a second
+  press to approve; Reject takes an optional reason; failed decisions stay on
+  the card.
+- **Command palette on every screen** (⌘K / Ctrl+K and a header button), with
+  go-to entries when no project is open.
+- **Agent surfaces:** Chat shows the real verify result and receipt ids; run
+  errors persist with Retry; the approval preview shows the real budget; runs
+  explain what is missing when no model is set up.
+- **Type and colour:** 14px body at line-height 1.5, prose capped at 70ch;
+  contrast fixes; the header shows the project name.
 
 ### Known gaps
 
@@ -355,6 +389,6 @@ reach a registry — this section is kept for the history it records.
   or fabricating a $0 cost. Local kinds work today.
 
 [Unreleased]: https://github.com/bpmforge/dokima/compare/v1.0.0...HEAD
-[1.0.1]: https://github.com/bpmforge/dokima/compare/v1.0.0...HEAD
+[1.0.1]: https://github.com/bpmforge/dokima/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/bpmforge/dokima/releases/tag/v1.0.0
 [0.1.0]: https://github.com/bpmforge/dokima/releases/tag/v0.1.0
