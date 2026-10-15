@@ -209,3 +209,25 @@ describe('TicketEvidence — a close that reversed a rejection (W22-13)', () => 
     expect(screen.queryByTestId('reversal-PLAN-auth-setup')).toBeNull();
   });
 });
+
+describe('TicketEvidence reports whether there is work to approve (review Q4)', () => {
+  it('ready only once the ticket loads WITH a manifest', async () => {
+    const onReady = vi.fn();
+    vi.mocked(boardApi.fetchBoardTickets).mockResolvedValue({ ok: true, data: [ticket()] });
+    render(<TicketEvidence projectId="p1" ticketId="PLAN-auth-setup" onReadyChange={onReady} />);
+    await screen.findByTestId('evidence-PLAN-auth-setup');
+    expect(onReady.mock.calls[0]).toEqual([false]);
+    expect(onReady).toHaveBeenLastCalledWith(true);
+  });
+
+  it('RED FIXTURE: no manifest → not ready, so Approve stays disabled', async () => {
+    const onReady = vi.fn();
+    vi.mocked(boardApi.fetchBoardTickets).mockResolvedValue({
+      ok: true,
+      data: [ticket({ manifest: null as never })],
+    });
+    render(<TicketEvidence projectId="p1" ticketId="PLAN-auth-setup" onReadyChange={onReady} />);
+    await screen.findByText(/nothing to approve/);
+    expect(onReady).not.toHaveBeenCalledWith(true);
+  });
+});

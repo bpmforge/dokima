@@ -70,6 +70,12 @@ export function standingReversalNotice(
 export interface TicketEvidenceProps {
   projectId: string;
   ticketId: string;
+  /**
+   * Review Q4: reports whether there is work to approve — true only once the
+   * ticket loaded WITH a Completion Manifest. The card disables Approve
+   * otherwise, so the button never contradicts "There is nothing to approve".
+   */
+  onReadyChange?: (ready: boolean) => void;
 }
 
 type State =
@@ -77,8 +83,13 @@ type State =
   | { kind: 'missing' }
   | { kind: 'loaded'; ticket: BoardTicket };
 
-export function TicketEvidence({ projectId, ticketId }: TicketEvidenceProps) {
+export function TicketEvidence({ projectId, ticketId, onReadyChange }: TicketEvidenceProps) {
   const [state, setState] = useState<State>({ kind: 'loading' });
+  const ready = state.kind === 'loaded' && Boolean(state.ticket.manifest);
+
+  useEffect(() => {
+    onReadyChange?.(ready);
+  }, [ready, onReadyChange]);
 
   useEffect(() => {
     let cancelled = false;
