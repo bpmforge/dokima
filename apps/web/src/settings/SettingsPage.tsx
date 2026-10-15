@@ -108,7 +108,7 @@ export function SettingsPage({ projectId, onOpenWizard, onClose }: SettingsPageP
       <div className="page settings" data-testid="settings-page">
         <div className="page__inner">
           <header className="settings__header">
-            <h1>Settings</h1>
+            <h1 className="page__title">Settings</h1>
             <button type="button" onClick={onClose}>
               Close
             </button>
@@ -165,7 +165,7 @@ export function SettingsPage({ projectId, onOpenWizard, onClose }: SettingsPageP
               key={t.id}
               type="button"
               className={
-                t.id === tab ? 'settings__tab settings__tab--active' : 'settings__tab'
+                t.id === tab ? 'tab settings__tab settings__tab--active' : 'tab settings__tab'
               }
               aria-current={t.id === tab ? 'true' : undefined}
               onClick={() => setTab(t.id)}
@@ -175,7 +175,7 @@ export function SettingsPage({ projectId, onOpenWizard, onClose }: SettingsPageP
           ))}
           <button
             type="button"
-            className="settings__tab settings__tab--advanced-toggle"
+            className="tab settings__tab settings__tab--advanced-toggle"
             data-testid="settings-advanced-toggle"
             aria-expanded={showAdvanced}
             onClick={() => setAdvancedOpen((open) => !open)}
@@ -188,7 +188,7 @@ export function SettingsPage({ projectId, onOpenWizard, onClose }: SettingsPageP
                 key={t.id}
                 type="button"
                 className={
-                  t.id === tab ? 'settings__tab settings__tab--active' : 'settings__tab'
+                  t.id === tab ? 'tab settings__tab settings__tab--active' : 'tab settings__tab'
                 }
                 aria-current={t.id === tab ? 'true' : undefined}
                 onClick={() => setTab(t.id)}

@@ -135,7 +135,7 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
   return (
     <div className="page fleet" data-testid="fleet-home">
       <header className="fleet__header">
-        <h1>Fleet</h1>
+        <h1 className="page__title">Fleet</h1>
         <div className="fleet__actions">
           {/* W12-29: one primary per screen. With projects on the board, New
               project is what a person came to Fleet to do; on a cold start
@@ -243,31 +243,48 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
             const readings: {
               label: string;
               value: number | string;
-              attention?: boolean;
-              idle?: boolean;
+              tone?: 'attention' | 'blocked';
+              idle: boolean;
             }[] = [
-              { label: 'ready', value: total((c) => c.board.ready) },
               {
+                label: 'ready',
+                value: total((c) => c.board.ready),
+                idle: total((c) => c.board.ready) === 0,
+              },
+              {
+                // Review UI-11: blocked is stuck, not "needs a person" — the
+                // warning tone, never the accent.
                 label: 'blocked',
                 value: total((c) => c.board.blocked),
-                attention: total((c) => c.board.blocked) > 0,
+                ...(total((c) => c.board.blocked) > 0 ? { tone: 'blocked' as const } : {}),
+                idle: total((c) => c.board.blocked) === 0,
               },
               {
                 label: 'needs you',
                 value: total((c) => c.pendingDecideCount),
-                attention: total((c) => c.pendingDecideCount) > 0,
+                ...(total((c) => c.pendingDecideCount) > 0
+                  ? { tone: 'attention' as const }
+                  : {}),
+                idle: total((c) => c.pendingDecideCount) === 0,
               },
-              { label: 'agents running', value: total((c) => c.berthsRunning) },
+              {
+                label: 'agents running',
+                value: total((c) => c.berthsRunning),
+                idle: total((c) => c.berthsRunning) === 0,
+              },
               {
                 label: 'spend today',
                 value: `$${total((c) => Math.round(c.spendTodayUsd * 100) / 100).toFixed(2)}`,
+                // Idle from the number, not the formatted string: "$0.00" was
+                // never `=== 0`, so a zero spend never receded.
+                idle: total((c) => c.spendTodayUsd) === 0,
               },
             ];
             return readings.map((r) => (
               <div
                 key={r.label}
-                className={`readout${r.attention ? ' readout--attention' : ''}${
-                  r.value === 0 ? ' readout--idle' : ''
+                className={`readout${r.tone ? ` readout--${r.tone}` : ''}${
+                  r.idle ? ' readout--idle' : ''
                 }`}
               >
                 <dd className="readout__value">{r.value}</dd>

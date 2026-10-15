@@ -162,21 +162,16 @@
      it computes to `none`, verified via getComputedStyle). Positions
      belong in the separate `background-position` property, one entry
      per image, same order. */
-  --board-scroll-shadow: rgba(0, 0, 0, 0.22);
   background-color: var(--sw-bg);
   background-repeat: no-repeat;
   background-image:
     linear-gradient(to right, var(--sw-bg) 40%, transparent),
     linear-gradient(to left, var(--sw-bg) 40%, transparent),
-    linear-gradient(to right, var(--board-scroll-shadow), transparent),
-    linear-gradient(to left, var(--board-scroll-shadow), transparent);
+    linear-gradient(to right, var(--sw-scroll-shadow), transparent),
+    linear-gradient(to left, var(--sw-scroll-shadow), transparent);
   background-position: 0 0, 100% 0, 0 0, 100% 0;
   background-size: 28px 100%, 28px 100%, 10px 100%, 10px 100%;
   background-attachment: local, local, scroll, scroll;
-}
-
-:root[data-theme='dark'] .board-lane__columns {
-  --board-scroll-shadow: rgba(255, 255, 255, 0.22);
 }
 
 .board-lane__columns::-webkit-scrollbar {
@@ -196,7 +191,10 @@
   /* Grows into whatever the empty columns do not need, never below the
      measured minimum. */
   flex: 1 1 var(--sw-board-column-min);
-  min-width: 0;
+  /* Review IX-01 / UI-03: `min-width: 0` let an occupied column shrink to
+     34px, one letter per line. It now holds the measured minimum and the lane
+     scrolls sideways instead (its edge fade already says so). */
+  min-width: var(--sw-board-column-min);
   border: var(--sw-border-width) solid var(--sw-border);
   border-radius: var(--sw-radius-md);
   padding: var(--sw-space-2);
@@ -212,7 +210,11 @@
      that has something. It still shrinks, and still shows its own name, so the
      six lifecycle states remain readable as a pipeline. */
   flex: 0 1 var(--sw-board-column-empty-min);
-  opacity: 0.55;
+  /* Shrinks only as far as its own label, so headers never overlap. */
+  min-width: min-content;
+  /* Review UX-19: receded by colour, not `opacity: 0.55` (4.08:1 in light). */
+  color: var(--sw-fg-muted);
+  border-style: dashed;
 }
 
 .board-column--empty .board-column__cards {

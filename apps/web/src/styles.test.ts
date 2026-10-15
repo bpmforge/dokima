@@ -185,6 +185,9 @@ function isSpacingScaleExempt(d: Declaration): boolean {
   );
 }
 
+/** rgb()/rgba()/hsl()/hsla() — a colour literal in functional notation. */
+const RAW_COLOUR_FUNCTION = /\b(?:rgba?|hsla?)\(/;
+
 function cssFiles(): string[] {
   return readdirSync(testDir, { recursive: true, encoding: 'utf-8' })
     .filter((f) => f.endsWith('.css'))
@@ -266,6 +269,24 @@ describe('design tokens (W10-06)', () => {
       violations,
       `A hex colour outside the token block cannot follow the data-theme flip.\n` +
         `Use a semantic --sw-* role (danger/warning/success/fg-muted/on-accent):\n` +
+        describeAll(violations),
+    ).toEqual([]);
+  });
+
+  it('declares no rgb()/hsl() colour literal outside the styles.css token block (review UI-12)', () => {
+    // The hex scan above was blind to functional colour notation, and ten
+    // rgb() values slipped through it — one an off-brand blue that never
+    // flipped for dark. Same rule as hex: legal only on a --sw-* definition.
+    // `color-mix(in srgb, var(--sw-*) N%, transparent)` stays legal: it has
+    // no literal colour in it, so it follows the theme.
+    const violations = all.filter(
+      (d) => !isTokenDefinition(d) && RAW_COLOUR_FUNCTION.test(d.value),
+    );
+    expect(
+      violations,
+      `A raw rgb()/hsl() colour cannot follow the data-theme flip. Use a\n` +
+        `--sw-* token (--sw-scrim, --sw-shadow-overlay, --sw-scroll-shadow) or\n` +
+        `color-mix() over one:\n` +
         describeAll(violations),
     ).toEqual([]);
   });
@@ -417,6 +438,21 @@ describe('gate integrity: the spacing/font-size scale checks can fail (W10-28 re
   it('does not flag a font-size already expressed as a --sw-text-* token', () => {
     const declarationValue = 'var(--sw-text-lg)';
     expect(remLiterals(declarationValue)).toEqual([]);
+  });
+
+  it('catches rgb()/rgba()/hsl() colour literals and lets color-mix over a token through (review UI-12)', () => {
+    expect(RAW_COLOUR_FUNCTION.test('rgb(46 107 255 / 12%)')).toBe(true);
+    expect(RAW_COLOUR_FUNCTION.test('rgba(0, 0, 0, 0.22)')).toBe(true);
+    expect(RAW_COLOUR_FUNCTION.test('0 12px 32px hsl(200 10% 10% / 35%)')).toBe(true);
+    expect(
+      RAW_COLOUR_FUNCTION.test('color-mix(in srgb, var(--sw-accent) 14%, transparent)'),
+    ).toBe(false);
+    expect(
+      isTokenDefinition({ prop: '--sw-scrim', value: 'rgb(0 0 0 / 60%)', file: '/x/styles.css', line: 1 }),
+    ).toBe(true);
+    expect(
+      isTokenDefinition({ prop: 'background', value: 'rgb(0 0 0 / 60%)', file: '/x/palette.css', line: 1 }),
+    ).toBe(false);
   });
 
   it('exempts only the exact declaration named in SPACING_SCALE_EXEMPT, not the property everywhere', () => {
@@ -803,7 +839,8 @@ describe('shortcuts overlay scrim and position (W10-34)', () => {
     const backdropRule = ruleBody('.shortcuts-overlay__backdrop');
     expect(backdropRule).toMatch(/position:\s*fixed/);
     expect(backdropRule).toMatch(/inset:\s*0/);
-    expect(backdropRule).toMatch(/background:\s*rgb\(0 0 0 \/ \d+%\)/);
+    // Review UI-13: the scrim is a theme token now, not a local rgb().
+    expect(backdropRule).toMatch(/background:\s*var\(--sw-scrim\)/);
   });
 
   it("positions the panel via the backdrop's layout, not a fixed inset of its own", () => {

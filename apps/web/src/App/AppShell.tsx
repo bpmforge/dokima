@@ -37,6 +37,10 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
+      {/* Review UX-12: a skip link and a <main> landmark — there was neither. */}
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
       <AppHeader
         appName={APP_NAME}
         projectName={projectName}
@@ -46,26 +50,28 @@ export function AppShell() {
         openView={openView}
         closeView={closeView}
       />
-      <MainView
-        view={view}
-        projectId={projectId}
-        projectName={projectName}
-        apiOpts={apiOpts}
-        traceTicketId={traceTicketId}
-        token={token}
-        wsUrl={wsUrl}
-        chatPaneNode={chatPaneNode}
-        boardPaneNode={boardPaneNode}
-        artifactsPaneNode={artifactsPaneNode}
-        openTicketId={openTicketId}
-        setOpenTicketId={setOpenTicketId}
-        openProject={openProject}
-        backToFleet={backToFleet}
-        openView={openView}
-        closeView={closeView}
-        openTraceView={openTraceView}
-        onSelectPaletteMode={onSelectPaletteMode}
-      />
+      <main id="main" className="app-shell__main" tabIndex={-1}>
+        <MainView
+          view={view}
+          projectId={projectId}
+          projectName={projectName}
+          apiOpts={apiOpts}
+          traceTicketId={traceTicketId}
+          token={token}
+          wsUrl={wsUrl}
+          chatPaneNode={chatPaneNode}
+          boardPaneNode={boardPaneNode}
+          artifactsPaneNode={artifactsPaneNode}
+          openTicketId={openTicketId}
+          setOpenTicketId={setOpenTicketId}
+          openProject={openProject}
+          backToFleet={backToFleet}
+          openView={openView}
+          closeView={closeView}
+          openTraceView={openTraceView}
+          onSelectPaletteMode={onSelectPaletteMode}
+        />
+      </main>
       {modeNotice && (
         <p className="app-shell__mode-notice" role="status" data-testid="mode-notice">
           {modeNotice}{' '}
