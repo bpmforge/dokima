@@ -203,6 +203,11 @@ body {
     -apple-system,
     'Segoe UI',
     sans-serif;
+  /* Review 2026-10-15 (Brad: "do recommended"): one body size and a reading
+     line-height. Text inherited the UA 16px in some views and 13px in others;
+     the system stack stays — no web font to load or self-host. */
+  font-size: var(--sw-text-md);
+  line-height: 1.5;
   transition:
     background var(--sw-transition-duration) ease,
     color var(--sw-transition-duration) ease;
@@ -217,6 +222,11 @@ body {
    declaring it once here covers every anchor, present and future. */
 a {
   color: var(--sw-accent);
+}
+
+/* Review 2026-10-15: prose lines stop at a readable measure on wide panes. */
+p {
+  max-width: 70ch;
 }
 
 /* W10-32: applied at five call sites (board/Card.tsx, drawer/DagEditPanel.tsx,
