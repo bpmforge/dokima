@@ -1,5 +1,7 @@
 import { APP_NAME } from '../index.js';
+import { useCallback } from 'react';
 import { useReducedMotion } from '../lib/useReducedMotion.js';
+import { CommandPalette, type PaletteNavTarget } from '../palette/index.js';
 import { ShortcutsOverlay } from '../shortcuts/ShortcutsOverlay.js';
 import { useApiBootstrap, useDecideBadgeCount } from './bootstrap.js';
 import { AppHeader } from './Header.js';
@@ -35,6 +37,26 @@ export function AppShell() {
   const decideBadgeCount = useDecideBadgeCount();
   const projectName = useProjectName(projectId);
 
+  // The palette lives here, not inside the project canvas, so ⌘K answers on
+  // every screen. A ticket picked from a sub-view (Plan, Team, …) returns to
+  // the board first, because the drawer it opens belongs to the board.
+  const jumpToTicket = useCallback(
+    (ticketId: string) => {
+      if (view !== null) closeView();
+      setOpenTicketId(ticketId);
+    },
+    [view, closeView, setOpenTicketId],
+  );
+  const navigate = useCallback(
+    (target: PaletteNavTarget) => {
+      if (target.kind === 'fleet') backToFleet();
+      else if (target.kind === 'board') closeView();
+      else if (target.kind === 'project') openProject(target.projectId);
+      else openView(target.view);
+    },
+    [backToFleet, closeView, openProject, openView],
+  );
+
   return (
     <div className="app-shell">
       {/* Review UX-12: a skip link and a <main> landmark — there was neither. */}
@@ -69,9 +91,16 @@ export function AppShell() {
           openView={openView}
           closeView={closeView}
           openTraceView={openTraceView}
-          onSelectPaletteMode={onSelectPaletteMode}
         />
       </main>
+      <CommandPalette
+        baseUrl="/api/v1"
+        token={token}
+        projectId={projectId}
+        onJumpToTicket={jumpToTicket}
+        onSelectMode={onSelectPaletteMode}
+        onNavigate={navigate}
+      />
       {modeNotice && (
         <p className="app-shell__mode-notice" role="status" data-testid="mode-notice">
           {modeNotice}{' '}

@@ -16,3 +16,13 @@ export function isPaletteOpenKey(event: {
 export function isPaletteCloseKey(event: { key: string }): boolean {
   return event.key === 'Escape';
 }
+
+/** Whether the viewer is on a Mac-family platform, where the modifier is ⌘ rather than Ctrl. */
+export function isMacPlatform(platform: string): boolean {
+  return /mac|iphone|ipad|ipod/i.test(platform);
+}
+
+/** The shortcut as the header button shows it: "⌘K" on a Mac, "Ctrl+K" elsewhere. */
+export function paletteShortcutLabel(platform: string): string {
+  return isMacPlatform(platform) ? '⌘K' : 'Ctrl+K';
+}

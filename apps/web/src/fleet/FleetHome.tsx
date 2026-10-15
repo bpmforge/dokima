@@ -26,7 +26,8 @@ function errorMessage(err: unknown, fallback: string): string {
 }
 
 export interface FleetHomeProps {
-  onOpenProject: (id: string) => void;
+  /** `boardFilter` opens the board pre-filtered (`?filter=`), e.g. `'blocked'` from a card's Blocked count. */
+  onOpenProject: (id: string, boardFilter?: string) => void;
   onOpenGuidedSample: () => void;
 }
 
@@ -190,8 +191,8 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
           each dead card used to repeat this paragraph. */}
       {unavailableCount > 0 && (
         <p className="fleet__unavailable-hint" data-testid="fleet-unavailable-hint">
-          Removing an unavailable entry only forgets it — nothing on disk is touched,
-          and onboarding the folder again restores it.
+          Removing an unavailable entry only forgets it — nothing on disk is touched, and
+          onboarding the folder again restores it.
         </p>
       )}
 
@@ -243,7 +244,9 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
                 // warning tone, never the accent.
                 label: 'blocked',
                 value: total((c) => c.board.blocked),
-                ...(total((c) => c.board.blocked) > 0 ? { tone: 'blocked' as const } : {}),
+                ...(total((c) => c.board.blocked) > 0
+                  ? { tone: 'blocked' as const }
+                  : {}),
                 idle: total((c) => c.board.blocked) === 0,
               },
               {
@@ -297,6 +300,7 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
               card={card}
               archivedView={archivedFilter}
               onOpen={() => onOpenProject(card.id)}
+              onOpenBlocked={() => onOpenProject(card.id, 'blocked')}
               onArchive={() => void handleArchive(card.id)}
               onReopen={() => void handleReopen(card.path)}
               onRemove={() => void handleRemove(card.id)}

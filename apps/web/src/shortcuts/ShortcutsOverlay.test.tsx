@@ -51,28 +51,20 @@ describe('ShortcutsOverlay', () => {
     expect(backdrop.contains(panel)).toBe(true);
   });
 
-  it('on the Fleet screen (no ?project=), lists "?" and Esc but not the inert palette shortcut', () => {
-    render(<ShortcutsOverlay />);
-    pressOpenKey();
+  // The palette now mounts on every screen, so the row is listed on every
+  // screen — Fleet, an open project, and a project sub-view alike.
+  it.each(['/', '/?project=proj-1', '/?project=proj-1&view=roster', '/?view=settings'])(
+    'at %s, lists "?", Esc and the command-palette shortcut',
+    (url) => {
+      window.history.pushState({}, '', url);
+      render(<ShortcutsOverlay />);
+      pressOpenKey();
 
-    expect(screen.getByText('Toggle this shortcuts overlay')).toBeTruthy();
-    expect(screen.getByText('Close overlay / dismiss')).toBeTruthy();
-    expect(screen.queryByText('Open command palette')).toBeNull();
-  });
-
-  it('inside an open project, lists the command-palette shortcut too', () => {
-    window.history.pushState({}, '', '/?project=proj-1');
-    render(<ShortcutsOverlay />);
-    pressOpenKey();
-
-    expect(screen.getByText('Open command palette')).toBeTruthy();
-  });
-
-  it('in a project sub-view (palette unmounted, e.g. Roster), omits the palette shortcut again', () => {
-    window.history.pushState({}, '', '/?project=proj-1&view=roster');
-    render(<ShortcutsOverlay />);
-    pressOpenKey();
-
-    expect(screen.queryByText('Open command palette')).toBeNull();
-  });
+      expect(screen.getByText('Toggle this shortcuts overlay')).toBeTruthy();
+      expect(screen.getByText('Close overlay / dismiss')).toBeTruthy();
+      expect(
+        screen.getByText('Open command palette (search and go anywhere)'),
+      ).toBeTruthy();
+    },
+  );
 });

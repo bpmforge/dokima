@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { PaletteMode } from '../palette/index.js';
+import { BOARD_FILTER_PARAM } from '../board/boardFilter.js';
 import { pushTraceViewUrl, readTraceTicketId } from '../trace/urlParams.js';
 
 export type View =
@@ -60,7 +61,8 @@ export interface AppNavigation {
   setOpenTicketId: (id: string | null) => void;
   modeNotice: string | null;
   setModeNotice: (notice: string | null) => void;
-  openProject: (id: string) => void;
+  /** `boardFilter` opens the board pre-filtered (`?filter=blocked`) — the Fleet card's Blocked count uses it. */
+  openProject: (id: string, boardFilter?: string) => void;
   backToFleet: () => void;
   openView: (next: Exclude<View, null>) => void;
   closeView: () => void;
@@ -86,10 +88,12 @@ export function useAppNavigation(): AppNavigation {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
-  const openProject = useCallback((id: string) => {
+  const openProject = useCallback((id: string, boardFilter?: string) => {
     const url = new URL(window.location.href);
     url.searchParams.set('project', id);
     url.searchParams.delete('view');
+    if (boardFilter) url.searchParams.set(BOARD_FILTER_PARAM, boardFilter);
+    else url.searchParams.delete(BOARD_FILTER_PARAM);
     window.history.pushState({}, '', url);
     setProjectId(id);
     setView(null);
@@ -99,6 +103,7 @@ export function useAppNavigation(): AppNavigation {
     const url = new URL(window.location.href);
     url.searchParams.delete('project');
     url.searchParams.delete('view');
+    url.searchParams.delete(BOARD_FILTER_PARAM);
     window.history.pushState({}, '', url);
     setProjectId(null);
     setView(null);
@@ -142,6 +147,7 @@ export function useAppNavigation(): AppNavigation {
     if (mode === 'new' || mode === 'onboard') {
       const url = new URL(window.location.href);
       url.searchParams.delete('project');
+      url.searchParams.delete(BOARD_FILTER_PARAM);
       url.searchParams.set('view', 'wizard');
       window.history.pushState({}, '', url);
       setProjectId(null);

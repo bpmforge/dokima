@@ -64,6 +64,7 @@ function openPalette() {
       projectId="proj-1"
       onJumpToTicket={vi.fn()}
       onSelectMode={vi.fn()}
+      onNavigate={vi.fn()}
     />,
   );
   fireEvent.keyDown(window, { key: 'k', metaKey: true });

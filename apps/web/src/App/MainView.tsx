@@ -9,8 +9,6 @@ import { FleetHome } from '../fleet/FleetHome.js';
 import { SplitPaneWorkspace } from '../layout/SplitPaneWorkspace.js';
 import { NotificationsView } from '../notifications/NotificationsView.js';
 import '../notifications/notifications.css';
-import { CommandPalette } from '../palette/index.js';
-import type { PaletteMode } from '../palette/index.js';
 import { InterviewPanel } from '../onboarding/InterviewPanel.js';
 import { PlanView } from '../plans/PlanView.js';
 import '../plans/plans.css';
@@ -37,12 +35,11 @@ interface MainViewProps {
   artifactsPaneNode: HTMLElement | null;
   openTicketId: string | null;
   setOpenTicketId: (id: string | null) => void;
-  openProject: (id: string) => void;
+  openProject: (id: string, boardFilter?: string) => void;
   backToFleet: () => void;
   openView: (next: Exclude<View, null>) => void;
   closeView: () => void;
   openTraceView: (ticketId: string) => void;
-  onSelectPaletteMode: (mode: PaletteMode) => void;
 }
 
 /** Per-view prop wiring chapter: the view ? ... : ... composition that used to live inline in AppShell. */
@@ -64,7 +61,6 @@ export function MainView({
   openView,
   closeView,
   openTraceView,
-  onSelectPaletteMode,
 }: MainViewProps) {
   if (view === 'roster') {
     return <RosterView projectId={projectId} />;
@@ -187,15 +183,6 @@ export function MainView({
             <ArtifactViewer token={token} projectId={projectId} />,
             artifactsPaneNode,
           )}
-        {token && (
-          <CommandPalette
-            baseUrl="/api/v1"
-            token={token}
-            projectId={projectId}
-            onJumpToTicket={setOpenTicketId}
-            onSelectMode={onSelectPaletteMode}
-          />
-        )}
         {token && openTicketId && (
           <TicketDrawer
             baseUrl="/api/v1"

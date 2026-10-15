@@ -344,6 +344,19 @@ p {
   color: var(--sw-fg);
 }
 
+/* The header's Search button shows its shortcut as a key cap. */
+.app-shell__search {
+  gap: var(--sw-space-2);
+}
+
+.app-shell__kbd {
+  font-family: var(--sw-font-mono);
+  font-size: var(--sw-text-sm);
+  padding: 0 var(--sw-space-1);
+  border: var(--sw-border-width) solid var(--sw-border);
+  border-radius: var(--sw-radius-sm);
+}
+
 /* Groups, so a destination does not read the same as a preference. */
 .app-shell__header-actions {
   display: flex;

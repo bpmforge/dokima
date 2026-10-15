@@ -92,6 +92,20 @@
   gap: var(--sw-space-2);
 }
 
+/* Status filter chips: the shared .tab primitive (aria-pressed marks the
+   chosen one), wrapping on a narrow screen rather than scrolling. */
+.board-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sw-space-1);
+  align-items: center;
+}
+
+.board-filter__count {
+  color: var(--sw-fg-muted);
+  margin-left: var(--sw-space-1);
+}
+
 .board-view__lanes {
   display: flex;
   flex-direction: column;
@@ -188,8 +202,16 @@
     linear-gradient(to left, var(--sw-bg) 40%, transparent),
     linear-gradient(to right, var(--sw-scroll-shadow), transparent),
     linear-gradient(to left, var(--sw-scroll-shadow), transparent);
-  background-position: 0 0, 100% 0, 0 0, 100% 0;
-  background-size: 28px 100%, 28px 100%, 10px 100%, 10px 100%;
+  background-position:
+    0 0,
+    100% 0,
+    0 0,
+    100% 0;
+  background-size:
+    28px 100%,
+    28px 100%,
+    10px 100%,
+    10px 100%;
   background-attachment: local, local, scroll, scroll;
 }
 
@@ -206,7 +228,7 @@
   border-radius: var(--sw-radius-sm);
 }
 
- .board-column {
+.board-column {
   /* Grows into whatever the empty columns do not need, never below the
      measured minimum. */
   flex: 1 1 var(--sw-board-column-min);
@@ -219,7 +241,7 @@
   padding: var(--sw-space-2);
 }
 
- .board-column--empty {
+.board-column--empty {
   /* Recedes, never disappears: it is still a drop target, and a lane where
      empty columns vanished would move the remaining ones under the cursor
      mid-drag. Muted rather than removed — W13-06 changes its WIDTH, never its
@@ -251,7 +273,7 @@
   gap: var(--sw-space-2);
 }
 
- /* W13-06: border/radius/padding come from `.surface` (W13-04) — one of the
+/* W13-06: border/radius/padding come from `.surface` (W13-04) — one of the
    local re-declarations the ratchet counts. */
 .board-card {
   cursor: grab;
