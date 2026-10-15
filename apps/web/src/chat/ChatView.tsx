@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { fetchReceipt } from '../artifacts/api.js';
+import { ReceiptInspector } from '../artifacts/ReceiptInspector.js';
+import type { ReceiptRecord } from '../artifacts/types.js';
 import { WsClient, type ServerEnvelope } from '../lib/ws-client.js';
 import './chat.css';
 import { fetchChatEvents } from './api.js';
@@ -29,6 +32,42 @@ export function ChatView({ token, projectId = 'default' }: ChatViewProps) {
   const [loaded, setLoaded] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Review C2: a card's receipt opens HERE, fetched with the bearer token,
+  // instead of a bare link that navigated the tab to a raw 401 API page.
+  const [openReceipt, setOpenReceipt] = useState<
+    | { id: string; state: 'loading' }
+    | { id: string; state: 'ready'; receipt: ReceiptRecord }
+    | { id: string; state: 'error'; message: string }
+    | null
+  >(null);
+
+  const onOpenReceipt = useCallback(
+    (receiptId: string) => {
+      setOpenReceipt({ id: receiptId, state: 'loading' });
+      fetchReceipt(projectId, receiptId, { getToken: () => token })
+        .then((receipt) => {
+          setOpenReceipt((current) =>
+            current?.id === receiptId ? { id: receiptId, state: 'ready', receipt } : current,
+          );
+        })
+        .catch((error: unknown) => {
+          setOpenReceipt((current) =>
+            current?.id === receiptId
+              ? {
+                  id: receiptId,
+                  state: 'error',
+                  message: error instanceof Error ? error.message : 'Request failed',
+                }
+              : current,
+          );
+        });
+    },
+    [projectId, token],
+  );
+
+  useEffect(() => {
+    setOpenReceipt(null);
+  }, [projectId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,10 +127,38 @@ export function ChatView({ token, projectId = 'default' }: ChatViewProps) {
         <ChatEmptyState />
       ) : (
         <>
-          {programThread && <ThreadPanel thread={programThread} />}
+          {openReceipt && (
+            <section
+              className="chat__receipt"
+              data-testid="chat-receipt"
+              aria-label={`Receipt ${openReceipt.id}`}
+            >
+              <header className="chat__receipt-header">
+                <span>Receipt {openReceipt.id}</span>
+                <button
+                  type="button"
+                  className="chat__archived-toggle"
+                  data-testid="chat-receipt-close"
+                  onClick={() => setOpenReceipt(null)}
+                >
+                  Close
+                </button>
+              </header>
+              {openReceipt.state === 'loading' && <p>Loading the receipt…</p>}
+              {openReceipt.state === 'error' && (
+                <p className="chat__receipt-error" role="alert" data-testid="chat-receipt-error">
+                  Couldn&apos;t load this receipt: {openReceipt.message}
+                </p>
+              )}
+              {openReceipt.state === 'ready' && <ReceiptInspector receipt={openReceipt.receipt} />}
+            </section>
+          )}
+          {programThread && (
+            <ThreadPanel thread={programThread} onOpenReceipt={onOpenReceipt} />
+          )}
           <div className="chat__agent-threads">
             {agentThreads.map((thread) => (
-              <ThreadPanel key={thread.id} thread={thread} />
+              <ThreadPanel key={thread.id} thread={thread} onOpenReceipt={onOpenReceipt} />
             ))}
           </div>
           {threads.some((t) => t.kind === 'agent' && t.archived) && (

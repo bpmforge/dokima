@@ -9,7 +9,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { appendEvent, createIdentity, openEventLog } from '@dokima/events';
-import { chatEnvelopesForProject, projectChatEnvelopes } from './chat-projection.js';
+import {
+  chatEnvelopesForProject,
+  evidenceHrefFor,
+  projectChatEnvelopes,
+} from './chat-projection.js';
 
 const dirs: string[] = [];
 afterEach(async () => {
@@ -95,6 +99,89 @@ describe('projectChatEnvelopes (W13-63)', () => {
       const data = envelopes[1]!.data as { files: string[]; verify_result: string };
       expect(data.files).toEqual(['src/auth.ts', 'src/auth.test.ts']);
       expect(data.verify_result).toBe('pass');
+    } finally {
+      log.close();
+    }
+  });
+
+  it('RED FIXTURE (review C1): a manifest whose verify.exitCode is 0 reads pass, non-zero reads fail', async () => {
+    const log = await freshLog();
+    try {
+      appendEvent(log, {
+        eventType: 'ticket.closed',
+        actorId: 'worker-1',
+        ticketId: 'T-pass',
+        payload: { manifest: { files: ['a.ts'], verify: { command: 'pnpm test', exitCode: 0 } } },
+      });
+      appendEvent(log, {
+        eventType: 'ticket.closed',
+        actorId: 'worker-1',
+        ticketId: 'T-fail',
+        payload: { manifest: { files: ['b.ts'], verify: { command: 'pnpm test', exitCode: 1 } } },
+      });
+      const manifests = projectChatEnvelopes(log, 'proj-1').filter(
+        (e) => e.type === 'card.manifest',
+      );
+      expect(manifests.map((m) => (m.data as { verify_result: string }).verify_result)).toEqual([
+        'pass',
+        'fail',
+      ]);
+    } finally {
+      log.close();
+    }
+  });
+
+  it('RED FIXTURE (review C2): receipt_id is the anchored receipt for the ticket, or empty — never a fabricated id', async () => {
+    const log = await freshLog();
+    try {
+      appendEvent(log, {
+        eventType: 'ticket.closed',
+        actorId: 'worker-1',
+        ticketId: 'T-none',
+        payload: { manifest: { files: [], verify: { command: 'x', exitCode: 0 } } },
+      });
+      appendEvent(log, {
+        eventType: 'gate.receipt_minted',
+        actorId: 'worker-1',
+        ticketId: 'T-1',
+        payload: { receiptId: 'rcpt-close-1', kind: 'close', contentMac: 'm' },
+      });
+      appendEvent(log, {
+        eventType: 'ticket.closed',
+        actorId: 'worker-1',
+        ticketId: 'T-1',
+        payload: { manifest: { files: [], verify: { command: 'x', exitCode: 0 } } },
+      });
+      // A receipt minted AFTER the card is not that card's receipt.
+      appendEvent(log, {
+        eventType: 'gate.receipt_minted',
+        actorId: 'worker-1',
+        ticketId: 'T-none',
+        payload: { receiptId: 'rcpt-later', kind: 'close', contentMac: 'm' },
+      });
+      const ids = projectChatEnvelopes(log, 'proj-1')
+        .filter((e) => e.type === 'card.manifest')
+        .map((e) => (e.data as { provenance: { receipt_id: string } }).provenance.receipt_id);
+      expect(ids).toEqual(['', 'rcpt-close-1']);
+    } finally {
+      log.close();
+    }
+  });
+
+  it('RED FIXTURE (review C3): a finding links to the ticket trace in-app, in the shape the client accepts', async () => {
+    const log = await freshLog();
+    try {
+      appendEvent(log, {
+        eventType: 'ticket.commented',
+        actorId: 'worker-1',
+        ticketId: 'T-9',
+        payload: { body: 'Parked with evidence — cap reached' },
+      });
+      const finding = projectChatEnvelopes(log, 'proj 1').find((e) => e.type === 'card.finding')!;
+      expect((finding.data as { evidence_href: string }).evidence_href).toBe(
+        '?project=proj+1&view=trace&ticket=T-9',
+      );
+      expect(evidenceHrefFor('p', null)).toBe('?project=p');
     } finally {
       log.close();
     }

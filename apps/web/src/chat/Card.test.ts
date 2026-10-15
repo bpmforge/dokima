@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isSafeEvidenceHref } from './Card.js';
+import { classifyEvidenceHref, isSafeEvidenceHref } from './Card.js';
 import { plainLeadFor } from './plain-lead.js';
 
 describe('isSafeEvidenceHref', () => {
@@ -25,6 +25,33 @@ describe('isSafeEvidenceHref', () => {
 
   it('rejects other relative paths outside the API namespace', () => {
     expect(isSafeEvidenceHref('/other/path')).toBe(false);
+  });
+
+  it('rejects API paths that are not a receipt — never navigate the tab to a raw API URL (review C2)', () => {
+    expect(isSafeEvidenceHref('/api/v1/projects/p/chat')).toBe(false);
+    expect(isSafeEvidenceHref('/api/v1/receipts/')).toBe(false);
+  });
+
+  it('RED FIXTURE (review C3): accepts exactly the in-app link the server projection emits', () => {
+    expect(classifyEvidenceHref('?project=proj+1&view=trace&ticket=T-9')).toEqual({
+      kind: 'app',
+      href: '?project=proj+1&view=trace&ticket=T-9',
+    });
+    expect(classifyEvidenceHref('?project=p')).toEqual({ kind: 'app', href: '?project=p' });
+  });
+
+  it('rejects query links with unknown keys, other views, or nothing in them', () => {
+    expect(isSafeEvidenceHref('?view=settings&project=p')).toBe(false);
+    expect(isSafeEvidenceHref('?project=p&redirect=https://evil.example')).toBe(false);
+    expect(isSafeEvidenceHref('?')).toBe(false);
+    expect(isSafeEvidenceHref('?project=')).toBe(false);
+  });
+
+  it('classifies a receipt path as an in-app receipt, not a link', () => {
+    expect(classifyEvidenceHref('/api/v1/receipts/rcpt_chat_f1')).toEqual({
+      kind: 'receipt',
+      receiptId: 'rcpt_chat_f1',
+    });
   });
 });
 
