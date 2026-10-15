@@ -13,6 +13,8 @@
     "Roster",
     "Morning queue",
     "2",
+    "Search",
+    "Ctrl+K",
     "Settings",
     "Light",
     "No field reports awaiting triage."
@@ -26,8 +28,8 @@
       "rect": {
         "x": 8,
         "y": -48,
-        "w": 140,
-        "h": 38
+        "w": 125,
+        "h": 39
       }
     },
     {
@@ -36,7 +38,7 @@
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 560,
+        "x": 411,
         "y": 12,
         "w": 65,
         "h": 32
@@ -48,7 +50,7 @@
       "name": "Team",
       "disabled": false,
       "rect": {
-        "x": 630,
+        "x": 480,
         "y": 12,
         "w": 62,
         "h": 32
@@ -60,7 +62,7 @@
       "name": "Describe",
       "disabled": false,
       "rect": {
-        "x": 696,
+        "x": 546,
         "y": 12,
         "w": 85,
         "h": 32
@@ -72,7 +74,7 @@
       "name": "Plan",
       "disabled": false,
       "rect": {
-        "x": 785,
+        "x": 636,
         "y": 12,
         "w": 54,
         "h": 32
@@ -84,7 +86,7 @@
       "name": "Decisions",
       "disabled": false,
       "rect": {
-        "x": 844,
+        "x": 694,
         "y": 12,
         "w": 91,
         "h": 32
@@ -96,7 +98,7 @@
       "name": "Lessons",
       "disabled": false,
       "rect": {
-        "x": 938,
+        "x": 789,
         "y": 12,
         "w": 82,
         "h": 32
@@ -108,7 +110,7 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1025,
+        "x": 875,
         "y": 12,
         "w": 68,
         "h": 32
@@ -120,9 +122,21 @@
       "name": "Morning queue, 2 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1105,
+        "x": 956,
         "y": 12,
         "w": 134,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Search Ctrl+K",
+      "disabled": false,
+      "rect": {
+        "x": 1102,
+        "y": 12,
+        "w": 137,
         "h": 32
       }
     },
@@ -157,9 +171,9 @@
       "disabled": false,
       "rect": {
         "x": 0,
-        "y": 73,
-        "w": 1440,
-        "h": 20
+        "y": 71,
+        "w": 618,
+        "h": 21
       }
     }
   ],
@@ -182,13 +196,15 @@
     "app-shell__decide-badge": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
+    "app-shell__kbd": 1,
     "app-shell__main": 1,
     "app-shell__nav": 1,
     "app-shell__nav-item": 7,
     "app-shell__notifications-bell": 1,
     "app-shell__project-name": 1,
+    "app-shell__search": 1,
     "app-shell__wordmark": 1,
-    "btn-quiet": 1,
+    "btn-quiet": 2,
     "icon": 2,
     "skip-link": 1,
     "theme-toggle": 1,

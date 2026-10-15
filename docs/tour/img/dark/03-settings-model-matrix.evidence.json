@@ -12,6 +12,8 @@
     "Lessons",
     "Roster",
     "Morning queue",
+    "Search",
+    "Ctrl+K",
     "Settings",
     "Dark",
     "Setup Wizard",
@@ -59,8 +61,8 @@
       "rect": {
         "x": 8,
         "y": -48,
-        "w": 140,
-        "h": 38
+        "w": 125,
+        "h": 39
       }
     },
     {
@@ -69,7 +71,7 @@
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 562,
+        "x": 412,
         "y": 12,
         "w": 65,
         "h": 32
@@ -81,7 +83,7 @@
       "name": "Team",
       "disabled": false,
       "rect": {
-        "x": 631,
+        "x": 481,
         "y": 12,
         "w": 62,
         "h": 32
@@ -93,7 +95,7 @@
       "name": "Describe",
       "disabled": false,
       "rect": {
-        "x": 697,
+        "x": 548,
         "y": 12,
         "w": 85,
         "h": 32
@@ -105,7 +107,7 @@
       "name": "Plan",
       "disabled": false,
       "rect": {
-        "x": 786,
+        "x": 637,
         "y": 12,
         "w": 54,
         "h": 32
@@ -117,7 +119,7 @@
       "name": "Decisions",
       "disabled": false,
       "rect": {
-        "x": 845,
+        "x": 695,
         "y": 12,
         "w": 91,
         "h": 32
@@ -129,7 +131,7 @@
       "name": "Lessons",
       "disabled": false,
       "rect": {
-        "x": 939,
+        "x": 790,
         "y": 12,
         "w": 81,
         "h": 32
@@ -141,7 +143,7 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1024,
+        "x": 875,
         "y": 12,
         "w": 68,
         "h": 32
@@ -153,9 +155,21 @@
       "name": "Morning queue, 0 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1105,
+        "x": 955,
         "y": 12,
         "w": 134,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Search Ctrl+K",
+      "disabled": false,
+      "rect": {
+        "x": 1101,
+        "y": 12,
+        "w": 137,
         "h": 32
       }
     },
@@ -189,10 +203,10 @@
       "name": "Setup Wizard",
       "disabled": false,
       "rect": {
-        "x": 1091,
+        "x": 1110,
         "y": 90,
-        "w": 128,
-        "h": 38
+        "w": 115,
+        "h": 39
       }
     },
     {
@@ -201,10 +215,10 @@
       "name": "Close",
       "disabled": false,
       "rect": {
-        "x": 1227,
+        "x": 1232,
         "y": 90,
-        "w": 69,
-        "h": 38
+        "w": 64,
+        "h": 39
       }
     },
     {
@@ -214,9 +228,9 @@
       "disabled": false,
       "rect": {
         "x": 144,
-        "y": 185,
+        "y": 186,
         "w": 87,
-        "h": 27
+        "h": 31
       }
     },
     {
@@ -226,9 +240,9 @@
       "disabled": false,
       "rect": {
         "x": 235,
-        "y": 185,
+        "y": 186,
         "w": 74,
-        "h": 27
+        "h": 31
       }
     },
     {
@@ -238,9 +252,9 @@
       "disabled": false,
       "rect": {
         "x": 313,
-        "y": 185,
+        "y": 186,
         "w": 112,
-        "h": 27
+        "h": 31
       }
     },
     {
@@ -250,9 +264,9 @@
       "disabled": false,
       "rect": {
         "x": 428,
-        "y": 185,
+        "y": 186,
         "w": 206,
-        "h": 27
+        "h": 31
       }
     },
     {
@@ -262,9 +276,9 @@
       "disabled": false,
       "rect": {
         "x": 638,
-        "y": 185,
+        "y": 186,
         "w": 102,
-        "h": 27
+        "h": 31
       }
     },
     {
@@ -274,9 +288,9 @@
       "disabled": false,
       "rect": {
         "x": 744,
-        "y": 185,
+        "y": 186,
         "w": 63,
-        "h": 27
+        "h": 31
       }
     },
     {
@@ -286,9 +300,9 @@
       "disabled": false,
       "rect": {
         "x": 811,
-        "y": 185,
+        "y": 186,
         "w": 115,
-        "h": 27
+        "h": 31
       }
     },
     {
@@ -298,9 +312,9 @@
       "disabled": false,
       "rect": {
         "x": 930,
-        "y": 185,
+        "y": 186,
         "w": 139,
-        "h": 27
+        "h": 31
       }
     },
     {
@@ -310,9 +324,9 @@
       "disabled": false,
       "rect": {
         "x": 1073,
-        "y": 185,
+        "y": 186,
         "w": 111,
-        "h": 27
+        "h": 31
       }
     },
     {
@@ -322,9 +336,9 @@
       "disabled": false,
       "rect": {
         "x": 144,
-        "y": 216,
+        "y": 221,
         "w": 126,
-        "h": 27
+        "h": 31
       }
     },
     {
@@ -334,9 +348,9 @@
       "disabled": false,
       "rect": {
         "x": 274,
-        "y": 216,
+        "y": 221,
         "w": 136,
-        "h": 27
+        "h": 31
       }
     },
     {
@@ -346,9 +360,9 @@
       "disabled": false,
       "rect": {
         "x": 414,
-        "y": 216,
+        "y": 221,
         "w": 116,
-        "h": 27
+        "h": 31
       }
     },
     {
@@ -358,9 +372,9 @@
       "disabled": false,
       "rect": {
         "x": 534,
-        "y": 216,
+        "y": 221,
         "w": 114,
-        "h": 27
+        "h": 31
       }
     },
     {
@@ -370,9 +384,9 @@
       "disabled": false,
       "rect": {
         "x": 651,
-        "y": 216,
+        "y": 221,
         "w": 135,
-        "h": 27
+        "h": 31
       }
     },
     {
@@ -382,9 +396,9 @@
       "disabled": false,
       "rect": {
         "x": 791,
-        "y": 216,
+        "y": 221,
         "w": 71,
-        "h": 27
+        "h": 31
       }
     },
     {
@@ -394,9 +408,9 @@
       "disabled": false,
       "rect": {
         "x": 144,
-        "y": 487,
+        "y": 568,
         "w": 244,
-        "h": 35
+        "h": 39
       }
     },
     {
@@ -406,7 +420,7 @@
       "disabled": false,
       "rect": {
         "x": 400,
-        "y": 493,
+        "y": 578,
         "w": 112,
         "h": 29
       }
@@ -418,7 +432,7 @@
       "disabled": true,
       "rect": {
         "x": 524,
-        "y": 493,
+        "y": 578,
         "w": 548,
         "h": 29
       }
@@ -430,7 +444,7 @@
       "disabled": false,
       "rect": {
         "x": 1088,
-        "y": 502,
+        "y": 586,
         "w": 13,
         "h": 13
       }
@@ -442,9 +456,9 @@
       "disabled": false,
       "rect": {
         "x": 144,
-        "y": 534,
-        "w": 157,
-        "h": 38
+        "y": 619,
+        "w": 140,
+        "h": 39
       }
     }
   ],
@@ -466,13 +480,15 @@
     "app-shell__bell-label": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
+    "app-shell__kbd": 1,
     "app-shell__main": 1,
     "app-shell__nav": 1,
     "app-shell__nav-item": 7,
     "app-shell__notifications-bell": 1,
     "app-shell__project-name": 1,
+    "app-shell__search": 1,
     "app-shell__wordmark": 1,
-    "btn-quiet": 1,
+    "btn-quiet": 2,
     "icon": 2,
     "page": 1,
     "page__header": 1,

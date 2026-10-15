@@ -12,6 +12,8 @@
     "Lessons",
     "Roster",
     "Morning queue",
+    "Search",
+    "Ctrl+K",
     "Settings",
     "Light",
     "Session trace —",
@@ -26,16 +28,16 @@
     "The run made a pass over the ticket",
     "loop.pass",
     "agent-1",
-    "Oct 15, 2026, 1:46 AM",
+    "Oct 15, 2026, 12:06 PM",
     "Gate result",
     "A gate checked the work and minted a receipt",
     "gate.receipt_minted",
-    "Oct 15, 2026, 1:46 AM (+2ms)",
+    "Oct 15, 2026, 12:06 PM (+2ms)",
     "Escalation",
     "Escalated to a stronger model",
     "escalation.rung_advanced",
     "rung R0 → R1",
-    "Oct 15, 2026, 1:46 AM (+0ms)"
+    "Oct 15, 2026, 12:06 PM (+1ms)"
   ],
   "interactive": [
     {
@@ -46,8 +48,8 @@
       "rect": {
         "x": 8,
         "y": -48,
-        "w": 140,
-        "h": 38
+        "w": 125,
+        "h": 39
       }
     },
     {
@@ -56,7 +58,7 @@
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 562,
+        "x": 412,
         "y": 12,
         "w": 65,
         "h": 32
@@ -68,7 +70,7 @@
       "name": "Team",
       "disabled": false,
       "rect": {
-        "x": 631,
+        "x": 482,
         "y": 12,
         "w": 62,
         "h": 32
@@ -80,7 +82,7 @@
       "name": "Describe",
       "disabled": false,
       "rect": {
-        "x": 697,
+        "x": 548,
         "y": 12,
         "w": 85,
         "h": 32
@@ -92,7 +94,7 @@
       "name": "Plan",
       "disabled": false,
       "rect": {
-        "x": 787,
+        "x": 637,
         "y": 12,
         "w": 54,
         "h": 32
@@ -104,7 +106,7 @@
       "name": "Decisions",
       "disabled": false,
       "rect": {
-        "x": 845,
+        "x": 696,
         "y": 12,
         "w": 91,
         "h": 32
@@ -116,7 +118,7 @@
       "name": "Lessons",
       "disabled": false,
       "rect": {
-        "x": 940,
+        "x": 790,
         "y": 12,
         "w": 81,
         "h": 32
@@ -128,7 +130,7 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1025,
+        "x": 875,
         "y": 12,
         "w": 68,
         "h": 32
@@ -140,9 +142,21 @@
       "name": "Morning queue, 0 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1105,
+        "x": 956,
         "y": 12,
         "w": 134,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Search Ctrl+K",
+      "disabled": false,
+      "rect": {
+        "x": 1102,
+        "y": 12,
+        "w": 137,
         "h": 32
       }
     },
@@ -176,10 +190,10 @@
       "name": "Close",
       "disabled": false,
       "rect": {
-        "x": 1347,
-        "y": 96,
-        "w": 69,
-        "h": 38
+        "x": 1352,
+        "y": 95,
+        "w": 64,
+        "h": 39
       }
     },
     {
@@ -189,9 +203,9 @@
       "disabled": false,
       "rect": {
         "x": 24,
-        "y": 191,
-        "w": 140,
-        "h": 38
+        "y": 213,
+        "w": 126,
+        "h": 39
       }
     },
     {
@@ -200,10 +214,10 @@
       "name": "File field report",
       "disabled": false,
       "rect": {
-        "x": 709,
-        "y": 238,
-        "w": 140,
-        "h": 38
+        "x": 677,
+        "y": 261,
+        "w": 126,
+        "h": 39
       }
     },
     {
@@ -212,10 +226,10 @@
       "name": "File field report",
       "disabled": false,
       "rect": {
-        "x": 920,
-        "y": 302,
-        "w": 140,
-        "h": 38
+        "x": 873,
+        "y": 326,
+        "w": 126,
+        "h": 39
       }
     },
     {
@@ -224,10 +238,10 @@
       "name": "File field report",
       "disabled": false,
       "rect": {
-        "x": 299,
-        "y": 422,
-        "w": 140,
-        "h": 38
+        "x": 304,
+        "y": 450,
+        "w": 126,
+        "h": 39
       }
     }
   ],
@@ -249,13 +263,15 @@
     "app-shell__bell-label": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
+    "app-shell__kbd": 1,
     "app-shell__main": 1,
     "app-shell__nav": 1,
     "app-shell__nav-item": 7,
     "app-shell__notifications-bell": 1,
     "app-shell__project-name": 1,
+    "app-shell__search": 1,
     "app-shell__wordmark": 1,
-    "btn-quiet": 1,
+    "btn-quiet": 2,
     "icon": 2,
     "skip-link": 1,
     "theme-toggle": 1,

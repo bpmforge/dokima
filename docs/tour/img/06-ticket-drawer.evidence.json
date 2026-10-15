@@ -12,6 +12,8 @@
     "Lessons",
     "Roster",
     "Morning queue",
+    "Search",
+    "Ctrl+K",
     "Settings",
     "Light",
     "← Fleet",
@@ -28,12 +30,17 @@
     "—",
     "E2E-3",
     "$0.00",
-    "Start a run",
+    "Reply",
+    "Ticket",
+    "Your reply on",
+    "Saved to",
+    "'s history. Agents don't read replies yet — to send work back to an agent, reject the ticket on the board. Ctrl+Enter or ⌘+Enter sends.",
+    "Send reply",
     "Nothing can build yet: no model is set up for the coding agent. Add a provider in Settings → Providers, then pick a model in Settings → Models.",
     "Open Settings → Providers",
-    "A run is one pass of the agent working the board: it claims Ready tickets, does the work, and hands back receipts. It uses only the models you chose in Settings → Models, within your Autonomy setting — nothing else is contacted.",
-    "Approved build",
-    "Set up an approved run",
+    "Run",
+    "A run is one pass of the agent working the board: it claims Ready tickets, does the work, and hands back receipts. You approve exactly which tickets and budget first. It uses only the models you chose in Settings → Models, within your Autonomy setting — nothing else is contacted.",
+    "Start a run",
     "ui",
     ":",
     "E2E-1",
@@ -41,14 +48,19 @@
     "abc1234",
     "→",
     "Ship the strips",
-    "Lane",
-    "gateway",
+    "Show all",
+    "3",
     "Ready",
+    "1",
+    "Parked",
+    "0",
     "Claimed",
     "In Progress",
     "In Review",
     "Blocked",
     "Done",
+    "Lane",
+    "gateway",
     "Story",
     "●",
     "Task",
@@ -106,8 +118,8 @@
       "rect": {
         "x": 8,
         "y": -48,
-        "w": 140,
-        "h": 38
+        "w": 125,
+        "h": 39
       }
     },
     {
@@ -116,7 +128,7 @@
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 561,
+        "x": 412,
         "y": 12,
         "w": 66,
         "h": 32
@@ -128,7 +140,7 @@
       "name": "Team",
       "disabled": false,
       "rect": {
-        "x": 631,
+        "x": 482,
         "y": 12,
         "w": 62,
         "h": 32
@@ -140,7 +152,7 @@
       "name": "Describe",
       "disabled": false,
       "rect": {
-        "x": 697,
+        "x": 548,
         "y": 12,
         "w": 85,
         "h": 32
@@ -152,7 +164,7 @@
       "name": "Plan",
       "disabled": false,
       "rect": {
-        "x": 787,
+        "x": 637,
         "y": 12,
         "w": 54,
         "h": 32
@@ -164,7 +176,7 @@
       "name": "Decisions",
       "disabled": false,
       "rect": {
-        "x": 845,
+        "x": 696,
         "y": 12,
         "w": 91,
         "h": 32
@@ -176,7 +188,7 @@
       "name": "Lessons",
       "disabled": false,
       "rect": {
-        "x": 940,
+        "x": 790,
         "y": 12,
         "w": 81,
         "h": 32
@@ -188,7 +200,7 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1025,
+        "x": 875,
         "y": 12,
         "w": 68,
         "h": 32
@@ -200,9 +212,21 @@
       "name": "Morning queue, 0 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1105,
+        "x": 956,
         "y": 12,
         "w": 134,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Search Ctrl+K",
+      "disabled": false,
+      "rect": {
+        "x": 1102,
+        "y": 12,
+        "w": 137,
         "h": 32
       }
     },
@@ -238,8 +262,8 @@
       "rect": {
         "x": 12,
         "y": 65,
-        "w": 83,
-        "h": 38
+        "w": 76,
+        "h": 39
       }
     },
     {
@@ -249,9 +273,9 @@
       "disabled": false,
       "rect": {
         "x": 211,
-        "y": 111,
+        "y": 112,
         "w": 48,
-        "h": 24
+        "h": 25
       }
     },
     {
@@ -261,21 +285,81 @@
       "disabled": false,
       "rect": {
         "x": 263,
-        "y": 111,
+        "y": 112,
         "w": 24,
-        "h": 24
+        "h": 25
       }
     },
     {
       "tag": "div",
       "role": "list",
-      "name": "manifestc/x.tsverify pass1 file(s)agent-1·—·E2E-3·$0.00",
+      "name": "manifestc/x.tsverify pass1 file(s)agent-1·—·E2E-3·$0.00Reply",
       "disabled": false,
       "rect": {
         "x": 21,
-        "y": 182,
+        "y": 188,
         "w": 257,
-        "h": 102
+        "h": 159
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Reply on E2E-3",
+      "disabled": false,
+      "rect": {
+        "x": 30,
+        "y": 300,
+        "w": 60,
+        "h": 38
+      }
+    },
+    {
+      "tag": "select",
+      "role": null,
+      "name": "TicketE2E-3",
+      "disabled": false,
+      "rect": {
+        "x": 67,
+        "y": 672,
+        "w": 84,
+        "h": 36
+      }
+    },
+    {
+      "tag": "textarea",
+      "role": null,
+      "name": "Your reply on E2E-3",
+      "disabled": false,
+      "rect": {
+        "x": 21,
+        "y": 736,
+        "w": 257,
+        "h": 81
+      }
+    },
+    {
+      "tag": "p",
+      "role": "status",
+      "name": "",
+      "disabled": false,
+      "rect": {
+        "x": 21,
+        "y": 922,
+        "w": 0,
+        "h": 0
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Send reply",
+      "disabled": false,
+      "rect": {
+        "x": 181,
+        "y": 903,
+        "w": 97,
+        "h": 39
       }
     },
     {
@@ -285,9 +369,9 @@
       "disabled": false,
       "rect": {
         "x": 300,
-        "y": 103,
+        "y": 104,
         "w": 6,
-        "h": 797
+        "h": 855
       }
     },
     {
@@ -297,9 +381,9 @@
       "disabled": false,
       "rect": {
         "x": 1045,
-        "y": 111,
+        "y": 112,
         "w": 48,
-        "h": 24
+        "h": 25
       }
     },
     {
@@ -309,9 +393,21 @@
       "disabled": false,
       "rect": {
         "x": 1097,
-        "y": 111,
+        "y": 112,
         "w": 24,
-        "h": 24
+        "h": 25
+      }
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "name": "Open Settings → Providers",
+      "disabled": false,
+      "rect": {
+        "x": 657,
+        "y": 191,
+        "w": 177,
+        "h": 17
       }
     },
     {
@@ -321,33 +417,9 @@
       "disabled": true,
       "rect": {
         "x": 318,
-        "y": 152,
+        "y": 351,
         "w": 113,
-        "h": 35
-      }
-    },
-    {
-      "tag": "a",
-      "role": null,
-      "name": "Open Settings → Providers",
-      "disabled": false,
-      "rect": {
-        "x": 465,
-        "y": 218,
-        "w": 177,
-        "h": 17
-      }
-    },
-    {
-      "tag": "button",
-      "role": null,
-      "name": "Set up an approved run",
-      "disabled": true,
-      "rect": {
-        "x": 318,
-        "y": 353,
-        "w": 199,
-        "h": 35
+        "h": 39
       }
     },
     {
@@ -357,9 +429,9 @@
       "disabled": false,
       "rect": {
         "x": 327,
-        "y": 405,
+        "y": 407,
         "w": 177,
-        "h": 17
+        "h": 21
       }
     },
     {
@@ -369,9 +441,9 @@
       "disabled": false,
       "rect": {
         "x": 530,
-        "y": 405,
+        "y": 407,
         "w": 216,
-        "h": 17
+        "h": 21
       }
     },
     {
@@ -381,9 +453,117 @@
       "disabled": false,
       "rect": {
         "x": 316,
-        "y": 150,
+        "y": 152,
         "w": 2,
         "h": 2
+      }
+    },
+    {
+      "tag": "div",
+      "role": "group",
+      "name": "Filter cards by status",
+      "disabled": false,
+      "rect": {
+        "x": 318,
+        "y": 445,
+        "w": 803,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Show all 3",
+      "disabled": false,
+      "rect": {
+        "x": 318,
+        "y": 445,
+        "w": 97,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Ready 1",
+      "disabled": false,
+      "rect": {
+        "x": 418,
+        "y": 445,
+        "w": 82,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Parked 0",
+      "disabled": false,
+      "rect": {
+        "x": 504,
+        "y": 445,
+        "w": 87,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Claimed 0",
+      "disabled": false,
+      "rect": {
+        "x": 595,
+        "y": 445,
+        "w": 94,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "In Progress 0",
+      "disabled": false,
+      "rect": {
+        "x": 693,
+        "y": 445,
+        "w": 115,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "In Review 0",
+      "disabled": false,
+      "rect": {
+        "x": 813,
+        "y": 445,
+        "w": 104,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Blocked 1",
+      "disabled": false,
+      "rect": {
+        "x": 920,
+        "y": 445,
+        "w": 93,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Done 1",
+      "disabled": false,
+      "rect": {
+        "x": 1018,
+        "y": 445,
+        "w": 75,
+        "h": 32
       }
     },
     {
@@ -393,9 +573,9 @@
       "disabled": false,
       "rect": {
         "x": 318,
-        "y": 460,
+        "y": 514,
         "w": 803,
-        "h": 130
+        "h": 145
       }
     },
     {
@@ -405,7 +585,7 @@
       "disabled": false,
       "rect": {
         "x": 327,
-        "y": 490,
+        "y": 548,
         "w": 82,
         "h": 24
       }
@@ -417,7 +597,7 @@
       "disabled": false,
       "rect": {
         "x": 435,
-        "y": 490,
+        "y": 548,
         "w": 82,
         "h": 24
       }
@@ -429,7 +609,7 @@
       "disabled": false,
       "rect": {
         "x": 543,
-        "y": 490,
+        "y": 548,
         "w": 82,
         "h": 24
       }
@@ -441,7 +621,7 @@
       "disabled": false,
       "rect": {
         "x": 651,
-        "y": 490,
+        "y": 548,
         "w": 82,
         "h": 24
       }
@@ -453,7 +633,7 @@
       "disabled": false,
       "rect": {
         "x": 759,
-        "y": 490,
+        "y": 548,
         "w": 82,
         "h": 24
       }
@@ -465,9 +645,9 @@
       "disabled": false,
       "rect": {
         "x": 867,
-        "y": 490,
+        "y": 548,
         "w": 245,
-        "h": 91
+        "h": 102
       }
     },
     {
@@ -477,9 +657,9 @@
       "disabled": false,
       "rect": {
         "x": 867,
-        "y": 490,
+        "y": 548,
         "w": 245,
-        "h": 91
+        "h": 102
       }
     },
     {
@@ -489,9 +669,9 @@
       "disabled": false,
       "rect": {
         "x": 884,
-        "y": 527,
+        "y": 589,
         "w": 95,
-        "h": 17
+        "h": 21
       }
     },
     {
@@ -501,9 +681,9 @@
       "disabled": false,
       "rect": {
         "x": 318,
-        "y": 636,
+        "y": 709,
         "w": 803,
-        "h": 212
+        "h": 241
       }
     },
     {
@@ -513,9 +693,9 @@
       "disabled": false,
       "rect": {
         "x": 327,
-        "y": 666,
+        "y": 743,
         "w": 164,
-        "h": 171
+        "h": 186
       }
     },
     {
@@ -525,9 +705,9 @@
       "disabled": false,
       "rect": {
         "x": 327,
-        "y": 666,
+        "y": 743,
         "w": 164,
-        "h": 171
+        "h": 186
       }
     },
     {
@@ -537,9 +717,9 @@
       "disabled": false,
       "rect": {
         "x": 344,
-        "y": 703,
+        "y": 784,
         "w": 98,
-        "h": 17
+        "h": 21
       }
     },
     {
@@ -549,7 +729,7 @@
       "disabled": false,
       "rect": {
         "x": 344,
-        "y": 744,
+        "y": 832,
         "w": 130,
         "h": 37
       }
@@ -561,9 +741,9 @@
       "disabled": true,
       "rect": {
         "x": 344,
-        "y": 785,
+        "y": 873,
         "w": 63,
-        "h": 35
+        "h": 39
       }
     },
     {
@@ -573,7 +753,7 @@
       "disabled": false,
       "rect": {
         "x": 517,
-        "y": 666,
+        "y": 743,
         "w": 82,
         "h": 24
       }
@@ -585,7 +765,7 @@
       "disabled": false,
       "rect": {
         "x": 625,
-        "y": 666,
+        "y": 743,
         "w": 82,
         "h": 24
       }
@@ -597,7 +777,7 @@
       "disabled": false,
       "rect": {
         "x": 733,
-        "y": 666,
+        "y": 743,
         "w": 82,
         "h": 24
       }
@@ -609,9 +789,9 @@
       "disabled": false,
       "rect": {
         "x": 841,
-        "y": 666,
+        "y": 743,
         "w": 164,
-        "h": 173
+        "h": 198
       }
     },
     {
@@ -621,9 +801,9 @@
       "disabled": false,
       "rect": {
         "x": 841,
-        "y": 666,
+        "y": 743,
         "w": 164,
-        "h": 173
+        "h": 198
       }
     },
     {
@@ -633,9 +813,9 @@
       "disabled": false,
       "rect": {
         "x": 858,
-        "y": 703,
+        "y": 784,
         "w": 115,
-        "h": 17
+        "h": 21
       }
     },
     {
@@ -645,7 +825,7 @@
       "disabled": false,
       "rect": {
         "x": 1030,
-        "y": 666,
+        "y": 743,
         "w": 82,
         "h": 24
       }
@@ -657,9 +837,9 @@
       "disabled": false,
       "rect": {
         "x": 1134,
-        "y": 103,
+        "y": 104,
         "w": 6,
-        "h": 797
+        "h": 855
       }
     },
     {
@@ -669,9 +849,9 @@
       "disabled": false,
       "rect": {
         "x": 1352,
-        "y": 111,
+        "y": 112,
         "w": 48,
-        "h": 24
+        "h": 25
       }
     },
     {
@@ -681,9 +861,9 @@
       "disabled": false,
       "rect": {
         "x": 1404,
-        "y": 111,
+        "y": 112,
         "w": 24,
-        "h": 24
+        "h": 25
       }
     },
     {
@@ -693,9 +873,9 @@
       "disabled": false,
       "rect": {
         "x": 1152,
-        "y": 152,
+        "y": 154,
         "w": 58,
-        "h": 27
+        "h": 31
       }
     },
     {
@@ -705,9 +885,9 @@
       "disabled": false,
       "rect": {
         "x": 1219,
-        "y": 152,
+        "y": 154,
         "w": 81,
-        "h": 27
+        "h": 31
       }
     },
     {
@@ -717,9 +897,9 @@
       "disabled": false,
       "rect": {
         "x": 1152,
-        "y": 196,
+        "y": 202,
         "w": 276,
-        "h": 94
+        "h": 102
       }
     },
     {
@@ -740,10 +920,10 @@
       "name": "Close",
       "disabled": false,
       "rect": {
-        "x": 1383,
-        "y": 31,
-        "w": 37,
-        "h": 38
+        "x": 1385,
+        "y": 30,
+        "w": 35,
+        "h": 39
       }
     },
     {
@@ -753,9 +933,9 @@
       "disabled": false,
       "rect": {
         "x": 949,
-        "y": 85,
-        "w": 220,
-        "h": 38
+        "y": 82,
+        "w": 195,
+        "h": 39
       }
     },
     {
@@ -765,9 +945,9 @@
       "disabled": false,
       "rect": {
         "x": 949,
-        "y": 123,
-        "w": 471,
-        "h": 58
+        "y": 121,
+        "w": 431,
+        "h": 39
       }
     },
     {
@@ -777,9 +957,9 @@
       "disabled": false,
       "rect": {
         "x": 989,
-        "y": 943,
-        "w": 269,
-        "h": 38
+        "y": 1002,
+        "w": 239,
+        "h": 39
       }
     },
     {
@@ -789,9 +969,9 @@
       "disabled": false,
       "rect": {
         "x": 949,
-        "y": 1066,
-        "w": 274,
-        "h": 38
+        "y": 1130,
+        "w": 244,
+        "h": 39
       }
     },
     {
@@ -800,10 +980,10 @@
       "name": "Add",
       "disabled": false,
       "rect": {
-        "x": 1223,
-        "y": 1066,
-        "w": 57,
-        "h": 38
+        "x": 1193,
+        "y": 1130,
+        "w": 53,
+        "h": 39
       }
     },
     {
@@ -813,9 +993,9 @@
       "disabled": false,
       "rect": {
         "x": 949,
-        "y": 1104,
-        "w": 175,
-        "h": 38
+        "y": 1169,
+        "w": 156,
+        "h": 39
       }
     }
   ],
@@ -838,12 +1018,14 @@
     "app-shell__bell-label": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
+    "app-shell__kbd": 1,
     "app-shell__main": 1,
     "app-shell__nav": 1,
     "app-shell__nav-item": 7,
     "app-shell__notifications-bell": 1,
     "app-shell__open-trace": 1,
     "app-shell__project-name": 1,
+    "app-shell__search": 1,
     "app-shell__wordmark": 1,
     "approved-build": 1,
     "artifact-empty-state": 1,
@@ -867,6 +1049,8 @@
     "board-column--empty": 9,
     "board-column__cards": 12,
     "board-column__header": 12,
+    "board-filter": 1,
+    "board-filter__count": 8,
     "board-lane": 2,
     "board-lane__columns": 2,
     "board-lane__title": 2,
@@ -879,8 +1063,9 @@
     "board-view__run-hint": 1,
     "board-view__runbar": 1,
     "board-view__strips": 1,
-    "btn-primary": 2,
-    "btn-quiet": 8,
+    "btn-primary": 1,
+    "btn-quiet": 10,
+    "btn-secondary": 1,
     "chat": 1,
     "chat-card": 1,
     "chat-card--manifest": 1,
@@ -891,10 +1076,18 @@
     "chat-card__kind": 1,
     "chat-card__model": 1,
     "chat-card__provenance": 1,
+    "chat-card__reply": 1,
     "chat-card__sep": 3,
     "chat-card__ticket": 1,
     "chat-card__verify": 1,
     "chat-card__verify--pass": 1,
+    "chat-composer": 1,
+    "chat-composer__actions": 1,
+    "chat-composer__field": 1,
+    "chat-composer__hint": 1,
+    "chat-composer__status": 1,
+    "chat-composer__text": 1,
+    "chat-composer__ticket": 1,
     "chat__agent-threads": 1,
     "chat__thread": 1,
     "chat__thread--program": 1,
@@ -912,8 +1105,9 @@
     "state--blocked": 1,
     "surface": 3,
     "surface--blocked": 1,
-    "tab": 2,
+    "tab": 10,
     "tab--active": 1,
+    "tabular": 8,
     "theme-toggle": 1,
     "ticket-drawer": 1,
     "ticket-drawer__backdrop": 1,

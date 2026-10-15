@@ -5,6 +5,8 @@
     "Fleet",
     "Roster",
     "Morning queue",
+    "Search",
+    "Ctrl+K",
     "Settings",
     "Light",
     "New project",
@@ -25,8 +27,8 @@
       "rect": {
         "x": 8,
         "y": -48,
-        "w": 140,
-        "h": 38
+        "w": 125,
+        "h": 39
       }
     },
     {
@@ -35,7 +37,7 @@
       "name": "Fleet",
       "disabled": false,
       "rect": {
-        "x": 961,
+        "x": 812,
         "y": 12,
         "w": 59,
         "h": 32
@@ -47,7 +49,7 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1025,
+        "x": 875,
         "y": 12,
         "w": 68,
         "h": 32
@@ -59,9 +61,21 @@
       "name": "Morning queue, 0 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1105,
+        "x": 956,
         "y": 12,
         "w": 134,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Search Ctrl+K",
+      "disabled": false,
+      "rect": {
+        "x": 1102,
+        "y": 12,
+        "w": 137,
         "h": 32
       }
     },
@@ -95,10 +109,10 @@
       "name": "New project",
       "disabled": false,
       "rect": {
-        "x": 483,
+        "x": 502,
         "y": 89,
-        "w": 135,
-        "h": 38
+        "w": 124,
+        "h": 39
       }
     },
     {
@@ -107,10 +121,10 @@
       "name": "Onboard existing repo",
       "disabled": false,
       "rect": {
-        "x": 626,
+        "x": 634,
         "y": 89,
-        "w": 194,
-        "h": 38
+        "w": 173,
+        "h": 39
       }
     },
     {
@@ -119,10 +133,10 @@
       "name": "Import",
       "disabled": false,
       "rect": {
-        "x": 828,
+        "x": 815,
         "y": 89,
-        "w": 75,
-        "h": 38
+        "w": 69,
+        "h": 39
       }
     },
     {
@@ -131,7 +145,7 @@
       "name": "Show archived",
       "disabled": false,
       "rect": {
-        "x": 915,
+        "x": 896,
         "y": 102,
         "w": 13,
         "h": 13
@@ -143,9 +157,9 @@
       "name": "",
       "disabled": false,
       "rect": {
-        "x": 403,
-        "y": 151,
-        "w": 633,
+        "x": 423,
+        "y": 152,
+        "w": 595,
         "h": 0
       }
     },
@@ -155,10 +169,10 @@
       "name": "Project name",
       "disabled": false,
       "rect": {
-        "x": 420,
-        "y": 266,
+        "x": 440,
+        "y": 268,
         "w": 350,
-        "h": 35
+        "h": 39
       }
     },
     {
@@ -167,10 +181,10 @@
       "name": "Folder",
       "disabled": false,
       "rect": {
-        "x": 420,
-        "y": 330,
+        "x": 440,
+        "y": 340,
         "w": 350,
-        "h": 35
+        "h": 39
       }
     },
     {
@@ -179,10 +193,10 @@
       "name": "Create project",
       "disabled": false,
       "rect": {
-        "x": 420,
-        "y": 373,
-        "w": 134,
-        "h": 38
+        "x": 440,
+        "y": 387,
+        "w": 120,
+        "h": 39
       }
     },
     {
@@ -191,10 +205,10 @@
       "name": "Cancel",
       "disabled": false,
       "rect": {
-        "x": 562,
-        "y": 373,
-        "w": 78,
-        "h": 38
+        "x": 568,
+        "y": 387,
+        "w": 72,
+        "h": 39
       }
     }
   ],
@@ -216,13 +230,15 @@
     "app-shell__bell-label": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
+    "app-shell__kbd": 1,
     "app-shell__main": 1,
     "app-shell__nav": 1,
     "app-shell__nav-item": 2,
     "app-shell__notifications-bell": 1,
+    "app-shell__search": 1,
     "app-shell__wordmark": 1,
     "btn-primary": 1,
-    "btn-quiet": 2,
+    "btn-quiet": 3,
     "btn-secondary": 1,
     "fleet": 1,
     "fleet__actions": 1,

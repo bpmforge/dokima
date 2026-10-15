@@ -6,6 +6,8 @@
     "Roster",
     "Morning queue",
     "2",
+    "Search",
+    "Ctrl+K",
     "Settings",
     "Light",
     "Close",
@@ -23,8 +25,8 @@
       "rect": {
         "x": 8,
         "y": -48,
-        "w": 140,
-        "h": 38
+        "w": 125,
+        "h": 39
       }
     },
     {
@@ -33,7 +35,7 @@
       "name": "Fleet",
       "disabled": false,
       "rect": {
-        "x": 960,
+        "x": 811,
         "y": 12,
         "w": 59,
         "h": 32
@@ -45,7 +47,7 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1023,
+        "x": 873,
         "y": 12,
         "w": 68,
         "h": 32
@@ -57,9 +59,21 @@
       "name": "Morning queue, 2 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1103,
+        "x": 954,
         "y": 12,
         "w": 134,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Search Ctrl+K",
+      "disabled": false,
+      "rect": {
+        "x": 1100,
+        "y": 12,
+        "w": 137,
         "h": 32
       }
     },
@@ -93,10 +107,10 @@
       "name": "Close",
       "disabled": false,
       "rect": {
-        "x": 1227,
+        "x": 1232,
         "y": 89,
-        "w": 69,
-        "h": 38
+        "w": 64,
+        "h": 39
       }
     },
     {
@@ -106,9 +120,9 @@
       "disabled": false,
       "rect": {
         "x": 144,
-        "y": 383,
-        "w": 173,
-        "h": 38
+        "y": 414,
+        "w": 157,
+        "h": 39
       }
     },
     {
@@ -117,10 +131,10 @@
       "name": "Run Setup Wizard",
       "disabled": false,
       "rect": {
-        "x": 329,
-        "y": 383,
-        "w": 161,
-        "h": 38
+        "x": 313,
+        "y": 414,
+        "w": 144,
+        "h": 39
       }
     }
   ],
@@ -143,13 +157,15 @@
     "app-shell__decide-badge": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
+    "app-shell__kbd": 1,
     "app-shell__main": 1,
     "app-shell__nav": 1,
     "app-shell__nav-item": 2,
     "app-shell__notifications-bell": 1,
+    "app-shell__search": 1,
     "app-shell__wordmark": 1,
     "btn-primary": 1,
-    "btn-quiet": 1,
+    "btn-quiet": 2,
     "btn-secondary": 1,
     "empty-state": 1,
     "empty-state__actions": 1,

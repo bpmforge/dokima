@@ -6,6 +6,8 @@
     "Roster",
     "Morning queue",
     "2",
+    "Search",
+    "Ctrl+K",
     "Settings",
     "Light",
     "New project",
@@ -36,7 +38,9 @@
     "?",
     "Toggle this shortcuts overlay",
     "Esc",
-    "Close overlay / dismiss"
+    "Close overlay / dismiss",
+    "⌘K / Ctrl+K",
+    "Open command palette (search and go anywhere)"
   ],
   "interactive": [
     {
@@ -47,8 +51,8 @@
       "rect": {
         "x": 8,
         "y": -48,
-        "w": 140,
-        "h": 38
+        "w": 125,
+        "h": 39
       }
     },
     {
@@ -57,7 +61,7 @@
       "name": "Fleet",
       "disabled": false,
       "rect": {
-        "x": 961,
+        "x": 812,
         "y": 12,
         "w": 59,
         "h": 32
@@ -69,7 +73,7 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1025,
+        "x": 875,
         "y": 12,
         "w": 68,
         "h": 32
@@ -81,9 +85,21 @@
       "name": "Morning queue, 2 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1105,
+        "x": 956,
         "y": 12,
         "w": 134,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Search Ctrl+K",
+      "disabled": false,
+      "rect": {
+        "x": 1102,
+        "y": 12,
+        "w": 137,
         "h": 32
       }
     },
@@ -117,10 +133,10 @@
       "name": "New project",
       "disabled": false,
       "rect": {
-        "x": 511,
+        "x": 549,
         "y": 89,
-        "w": 135,
-        "h": 38
+        "w": 124,
+        "h": 39
       }
     },
     {
@@ -129,10 +145,10 @@
       "name": "Onboard existing repo",
       "disabled": false,
       "rect": {
-        "x": 654,
+        "x": 681,
         "y": 89,
-        "w": 194,
-        "h": 38
+        "w": 173,
+        "h": 39
       }
     },
     {
@@ -141,10 +157,10 @@
       "name": "Import",
       "disabled": false,
       "rect": {
-        "x": 856,
+        "x": 862,
         "y": 89,
-        "w": 75,
-        "h": 38
+        "w": 69,
+        "h": 39
       }
     },
     {
@@ -166,9 +182,21 @@
       "disabled": false,
       "rect": {
         "x": 376,
-        "y": 151,
-        "w": 689,
+        "y": 152,
+        "w": 618,
         "h": 0
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "1 blocked — show on the board",
+      "disabled": false,
+      "rect": {
+        "x": 449,
+        "y": 293,
+        "w": 32,
+        "h": 32
       }
     },
     {
@@ -178,9 +206,9 @@
       "disabled": false,
       "rect": {
         "x": 393,
-        "y": 383,
-        "w": 60,
-        "h": 30
+        "y": 411,
+        "w": 54,
+        "h": 31
       }
     },
     {
@@ -189,10 +217,10 @@
       "name": "Archive",
       "disabled": false,
       "rect": {
-        "x": 460,
-        "y": 383,
-        "w": 75,
-        "h": 30
+        "x": 455,
+        "y": 411,
+        "w": 68,
+        "h": 31
       }
     },
     {
@@ -204,7 +232,7 @@
         "x": 496,
         "y": 144,
         "w": 448,
-        "h": 147
+        "h": 194
       }
     }
   ],
@@ -227,13 +255,15 @@
     "app-shell__decide-badge": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
+    "app-shell__kbd": 1,
     "app-shell__main": 1,
     "app-shell__nav": 1,
     "app-shell__nav-item": 2,
     "app-shell__notifications-bell": 1,
+    "app-shell__search": 1,
     "app-shell__wordmark": 1,
     "btn-primary": 2,
-    "btn-quiet": 3,
+    "btn-quiet": 4,
     "btn-secondary": 1,
     "fleet": 1,
     "fleet__actions": 1,
@@ -252,6 +282,7 @@
     "project-card__board": 1,
     "project-card__header": 1,
     "project-card__phase-chip": 1,
+    "project-card__readout-link": 1,
     "project-card__spend": 1,
     "readout": 8,
     "readout--blocked": 1,
