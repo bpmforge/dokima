@@ -88,3 +88,47 @@ test('a failed chat history fetch surfaces a distinct error state, not a fabrica
   await expect(chatPane.getByTestId('chat-load-error')).toBeVisible();
   await expect(chatPane.getByTestId('chat-empty-state')).toHaveCount(0);
 });
+
+test('a person replies from the chat pane through the ticket comment verb, and the reply shows as a human message', async ({
+  page,
+}) => {
+  // Both ends are routed: this pins the WIRING (pane → `POST /tickets/:id/comment`
+  // → re-read of the chat), not the server's projection, which
+  // `chat-projection.test.ts` covers against a real event log.
+  const sub = 'chat:chat-e2e-reply';
+  const prov = { agent: 'worker-1', model: 'm', ticket_id: 'E2E-1', cost_usd: 0, receipt_id: '' };
+  const base = [
+    { sub, seq: 1, type: 'thread.opened', at: '2026-10-15T10:00:00Z', data: { id: 'thread-program', kind: 'program', concern: null } },
+    {
+      sub, seq: 2, type: 'card.finding', at: '2026-10-15T10:00:00Z',
+      data: { id: 'finding-2', thread_id: 'thread-program', provenance: prov, severity: 'high', issue: 'Parked with evidence', evidence_href: '' },
+    },
+  ];
+  const reply = {
+    sub, seq: 3, type: 'message.human', at: '2026-10-15T10:01:00Z',
+    data: { id: 'reply-3', thread_id: 'thread-program', author: 'Operator', ticket_id: 'E2E-1', body: 'Keep the old endpoint.', at: '2026-10-15T10:01:00Z' },
+  };
+  let sent: unknown = null;
+  await page.route('**/api/v1/projects/chat-e2e-reply/chat', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ items: sent ? [...base, reply] : base }),
+    }),
+  );
+  await page.route('**/api/v1/tickets/E2E-1/comment?project=chat-e2e-reply', (route) => {
+    sent = route.request().postDataJSON();
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '{"id":"E2E-1"}' });
+  });
+
+  await page.goto('/?project=chat-e2e-reply');
+  const chatPane = page.getByTestId('pane-chat');
+  await chatPane.getByRole('button', { name: 'Reply on E2E-1' }).click();
+  const box = chatPane.getByLabel('Your reply on E2E-1');
+  await expect(box).toBeFocused();
+  await box.fill('Keep the old endpoint.');
+  await box.press('Control+Enter');
+  await expect(chatPane.getByTestId('chat-human-reply-3')).toContainText('Keep the old endpoint.');
+  expect(sent).toEqual({ body: 'Keep the old endpoint.' });
+  await expect(chatPane.getByTestId('chat-composer-status')).toHaveText('Reply saved to E2E-1.');
+});

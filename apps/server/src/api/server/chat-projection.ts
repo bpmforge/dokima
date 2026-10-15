@@ -23,7 +23,7 @@
  * (`reduceChatEvents`) already speaks them, so the pane needs no change.
  */
 import { existsSync } from 'node:fs';
-import { listEvents, openEventLog, type EventLog } from '@dokima/events';
+import { getIdentity, listEvents, openEventLog, type EventLog } from '@dokima/events';
 
 const PARK_MARKERS = ['Parked with evidence', 'auto-blocked with evidence'];
 
@@ -103,8 +103,41 @@ function provenanceFor(
   };
 }
 
+/**
+ * A person's reply, as the Chat pane shows it (product-owner decision,
+ * 2026-10-15: the pane accepts replies, not only shows agent cards).
+ *
+ * A reply is NOT a new kind of state. The pane sends it through the ticket
+ * `comment` verb (`POST /tickets/:id/comment`, board-routes.ts), so it is an
+ * ordinary `ticket.commented` row in the hash-chained log and in the ticket's
+ * history. This only READS those rows back.
+ *
+ * HUMAN IS DECIDED BY IDENTITY, NOT BY TEXT. The author's `identities.kind`
+ * must be `human` — the operator the REST API writes as, or a CLI actor
+ * registered as one. A comment body is untrusted (agent sessions write
+ * comments too), so nothing in the body can make a row read as a person's.
+ * A park comment written by a human actor (the operator parking by hand) is
+ * still a finding, not a reply: it is the evidence a person must read.
+ */
+const REPLY_MAX = 4000;
+
+function isHumanActor(
+  log: EventLog,
+  cache: Map<string, { human: boolean; name: string }>,
+  actorId: string,
+): { human: boolean; name: string } {
+  let known = cache.get(actorId);
+  if (!known) {
+    const identity = getIdentity(log, actorId);
+    known = { human: identity?.kind === 'human', name: identity?.name ?? actorId };
+    cache.set(actorId, known);
+  }
+  return known;
+}
+
 export function projectChatEnvelopes(log: EventLog, projectId: string): Envelope[] {
   const events = listEvents(log);
+  const actors = new Map<string, { human: boolean; name: string }>();
   const sub = `chat:${projectId}`;
   const out: Envelope[] = [];
   let openedThread = false;
@@ -125,7 +158,26 @@ export function projectChatEnvelopes(log: EventLog, projectId: string): Envelope
     if (event.eventType === 'ticket.commented') {
       const body = (event.payload as { body?: unknown }).body;
       if (typeof body !== 'string') continue;
-      if (!PARK_MARKERS.some((marker) => body.startsWith(marker))) continue;
+      if (!PARK_MARKERS.some((marker) => body.startsWith(marker))) {
+        const author = isHumanActor(log, actors, event.actorId);
+        if (!author.human || event.ticketId === null || body.trim() === '') continue;
+        openThread(at, event.seq);
+        out.push({
+          sub,
+          seq: event.seq,
+          type: 'message.human',
+          at,
+          data: {
+            id: `reply-${event.seq}`,
+            thread_id: 'thread-program',
+            author: author.name,
+            ticket_id: event.ticketId,
+            body: body.length > REPLY_MAX ? `${body.slice(0, REPLY_MAX - 1)}…` : body,
+            at,
+          },
+        });
+        continue;
+      }
       openThread(at, event.seq);
       out.push({
         sub,

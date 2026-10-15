@@ -1,9 +1,12 @@
 import { Card } from './Card.js';
+import { HumanMessageItem } from './HumanMessageItem.js';
 import type { Thread } from './types.js';
 
 export interface ThreadPanelProps {
   thread: Thread;
   onOpenReceipt?: (receiptId: string) => void;
+  /** Present when replies are possible (never on the sample stream). */
+  onReply?: (ticketId: string) => void;
 }
 
 /**
@@ -16,7 +19,7 @@ export interface ThreadPanelProps {
  * for real spend (honesty control C-1, W9-03); drop it once a real
  * producer lands (the same HANDOFF `types.ts` and `fixtures.ts` document).
  */
-export function ThreadPanel({ thread, onOpenReceipt }: ThreadPanelProps) {
+export function ThreadPanel({ thread, onOpenReceipt, onReply }: ThreadPanelProps) {
   return (
     <section
       className={`chat__thread chat__thread--${thread.kind}`}
@@ -50,9 +53,13 @@ export function ThreadPanel({ thread, onOpenReceipt }: ThreadPanelProps) {
         {thread.archived && <span className="chat__thread-badge">archived</span>}
       </header>
       <div className="chat__thread-cards" role="list">
-        {thread.cards.map((card) => (
-          <Card key={card.id} card={card} onOpenReceipt={onOpenReceipt} />
-        ))}
+        {thread.cards.map((item) =>
+          item.kind === 'human' ? (
+            <HumanMessageItem key={item.id} message={item} />
+          ) : (
+            <Card key={item.id} card={item} onOpenReceipt={onOpenReceipt} onReply={onReply} />
+          ),
+        )}
       </div>
     </section>
   );

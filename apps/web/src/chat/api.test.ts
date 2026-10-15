@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ChatApiError, fetchChatEvents } from './api.js';
+import { ChatApiError, fetchChatEvents, sendChatReply } from './api.js';
 import { CHAT_FIXTURE_EVENTS } from './fixtures.js';
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -60,5 +60,47 @@ describe('ChatApiError', () => {
   it('falls back to a generic message when the body has no detail', () => {
     const err = new ChatApiError(500);
     expect(err.message).toContain('500');
+  });
+});
+
+describe('sendChatReply', () => {
+  it('POSTs the ticket comment verb with the body, the token and an Idempotency-Key', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: () => Promise.resolve('{"id":"E2E-1"}'),
+    } as Response);
+    await sendChatReply('proj 1', 'E2E-1', 'hello', { fetchImpl, getToken: () => 'tok' });
+    const [url, init] = fetchImpl.mock.calls[0]! as [string, RequestInit];
+    expect(url).toBe('/api/v1/tickets/E2E-1/comment?project=proj%201');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body as string)).toEqual({ body: 'hello' });
+    const headers = init.headers as Record<string, string>;
+    expect(headers.Authorization).toBe('Bearer tok');
+    expect(headers['Idempotency-Key']).toBeTruthy();
+  });
+
+  it('encodes a ticket id from the wire so it cannot name another path', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: () => Promise.resolve('{}'),
+    } as Response);
+    await sendChatReply('p', '../receipts/x', 'hi', { fetchImpl, getToken: () => 't' });
+    expect(fetchImpl.mock.calls[0]![0]).toBe('/api/v1/tickets/..%2Freceipts%2Fx/comment?project=p');
+  });
+
+  it("throws the server's refusal text when nothing was saved", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      text: () =>
+        Promise.resolve(
+          JSON.stringify({ title: 'Not found', status: 404, detail: 'ticket E2E-9 not found' }),
+        ),
+    } as Response);
+    await expect(
+      sendChatReply('p', 'E2E-9', 'hi', { fetchImpl, getToken: () => 't' }),
+    ).rejects.toThrow('ticket E2E-9 not found');
   });
 });
