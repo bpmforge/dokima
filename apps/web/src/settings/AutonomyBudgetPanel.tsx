@@ -207,7 +207,7 @@ export function AutonomyBudgetPanel({ projectId }: AutonomyBudgetPanelProps) {
             min={1}
             max={8}
             value={berths}
-            aria-label="Default berths"
+            aria-valuetext={`${berths} of 8`}
             onChange={(e) => void handleBerthsChange(Number(e.target.value))}
           />
         </label>

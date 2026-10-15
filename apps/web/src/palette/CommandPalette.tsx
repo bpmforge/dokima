@@ -252,6 +252,7 @@ export function CommandPalette({
               }
               className="command-palette__input"
               placeholder="Jump to a ticket, doc, receipt… or pick a mode"
+              aria-label="Search tickets, docs and receipts, or pick a mode"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={onInputKeyDown}

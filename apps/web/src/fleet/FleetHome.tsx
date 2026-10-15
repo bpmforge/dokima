@@ -326,6 +326,12 @@ function NewProjectForm({ mode, onCancel, onSubmit }: NewProjectFormProps) {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // `required` lets a name of only spaces through; say so on the field
+    // rather than sending it and showing the server's wire wording.
+    if (derivesPath && !showLocation && name.trim() === '') {
+      setFormError('Give the project a name.');
+      return;
+    }
     setSubmitting(true);
     setFormError(null);
     try {
