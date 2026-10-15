@@ -357,7 +357,7 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
             <p className="settings__hint" data-testid="wizard-skip-sample-hint">
               {providerSaved
                 ? 'Your provider is saved and applies to every project you create.'
-                : 'Dokima saves providers through a project, and there are none yet. If you skip the sample, add the provider again in Settings → Providers after you create your first project.'}
+                : 'Dokima saves providers through a project, and there are none yet. If you skip the sample, create your first project, then add the provider again in Settings → Providers.'}
             </p>
           </section>
         )}

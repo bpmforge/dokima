@@ -16,7 +16,7 @@ import type { BoardTicket, ProblemDetails } from '../board/types.js';
 import { queryCodeIndex, type CodeSearchHit } from './codeIndex.js';
 import './palette.css';
 import { searchDocs, searchReceipts, searchTickets, resultKey } from './search.js';
-import { isPaletteCloseKey, isPaletteOpenKey } from './shortcuts.js';
+import { isPaletteOpenKey } from './shortcuts.js';
 import { PALETTE_MODES, type PaletteMode, type PaletteResult } from './types.js';
 
 export interface CommandPaletteProps {
