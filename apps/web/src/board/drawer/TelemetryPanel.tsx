@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { BoardApiOptions } from '../api.js';
-import { formatHeartbeat } from '../heartbeat.js';
+import { formatHeartbeat, isHeartbeatStale } from '../heartbeat.js';
+import { useHeartbeatClock } from '../useLiveRun.js';
 import type { HeartbeatData } from '../types.js';
 import { fetchRunTrace, fetchSpendByRung, fetchTicketRuns } from './api.js';
 import { SpendByRung } from './SpendByRung.js';
@@ -55,6 +56,10 @@ export interface TelemetryPanelProps {
   heartbeat: HeartbeatData | undefined;
 }
 
+function errorText(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 /** Live loop telemetry + spend-by-rung + session-trace link (UX_SPEC §4). */
 export function TelemetryPanel({
   apiOpts,
@@ -62,35 +67,73 @@ export function TelemetryPanel({
   ticketId,
   heartbeat,
 }: TelemetryPanelProps) {
+  const now = useHeartbeatClock(heartbeat !== undefined);
   const [spend, setSpend] = useState<SpendByRungData | null>(null);
   const [runs, setRuns] = useState<string[] | null>(null);
   const [trace, setTrace] = useState<{ runId: string; events: TraceEvent[] } | null>(
     null,
   );
 
-  useEffect(() => {
-    setSpend(null);
-    void fetchSpendByRung(apiOpts, projectId).then(setSpend);
-  }, [apiOpts, projectId]);
+  // Review T1: each read rejects on a non-2xx and nothing caught it, so a
+  // failure showed "Loading…" forever. Now: an error with Retry.
+  const [spendError, setSpendError] = useState<string | null>(null);
+  const [runsError, setRunsError] = useState<string | null>(null);
+  const [traceError, setTraceError] = useState<{ runId: string; message: string } | null>(
+    null,
+  );
+  const [spendAttempt, setSpendAttempt] = useState(0);
+  const [runsAttempt, setRunsAttempt] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
+    setSpend(null);
+    setSpendError(null);
+    fetchSpendByRung(apiOpts, projectId)
+      .then((data) => {
+        if (!cancelled) setSpend(data);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setSpendError(errorText(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiOpts, projectId, spendAttempt]);
+
+  useEffect(() => {
+    let cancelled = false;
     setRuns(null);
+    setRunsError(null);
     setTrace(null);
-    void fetchTicketRuns(apiOpts, projectId, ticketId).then(setRuns);
-  }, [apiOpts, projectId, ticketId]);
+    setTraceError(null);
+    fetchTicketRuns(apiOpts, projectId, ticketId)
+      .then((items) => {
+        if (!cancelled) setRuns(items);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setRunsError(errorText(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiOpts, projectId, ticketId, runsAttempt]);
 
   const openTrace = (runId: string) => {
-    void fetchRunTrace(apiOpts, projectId, runId, ticketId).then((events) =>
-      setTrace({ runId, events }),
-    );
+    setTraceError(null);
+    fetchRunTrace(apiOpts, projectId, runId, ticketId)
+      .then((events) => setTrace({ runId, events }))
+      .catch((err: unknown) => setTraceError({ runId, message: errorText(err) }));
   };
 
   return (
     <section aria-label="Telemetry" data-testid="drawer-telemetry">
       <h3>Live loop telemetry</h3>
-      <p data-testid="drawer-heartbeat">
+      <p
+        data-testid="drawer-heartbeat"
+        data-stale={heartbeat && isHeartbeatStale(heartbeat, now) ? 'true' : undefined}
+      >
         {heartbeat
-          ? formatHeartbeat(heartbeat)
+          ? formatHeartbeat(heartbeat, now)
           : 'No agent is working this ticket right now — this fills in live while a run holds it.'}
       </p>
 
@@ -101,10 +144,34 @@ export function TelemetryPanel({
         A rung is one step on the ladder of models — runs start on the
         cheapest rung and climb only when work stalls.
       </p>
-      <SpendByRung data={spend} />
+      {spendError !== null ? (
+        <div role="alert" data-testid="spend-by-rung-error">
+          <p>Couldn&apos;t load spend: {spendError}</p>
+          <button type="button" onClick={() => setSpendAttempt((n) => n + 1)}>
+            Retry
+          </button>
+        </div>
+      ) : (
+        <SpendByRung data={spend} />
+      )}
 
       <h3>Session trace</h3>
-      {runs === null ? (
+      {traceError !== null && (
+        <div role="alert" data-testid="session-trace-error">
+          <p>Couldn&apos;t load the trace for {traceError.runId}: {traceError.message}</p>
+          <button type="button" onClick={() => openTrace(traceError.runId)}>
+            Retry
+          </button>
+        </div>
+      )}
+      {runsError !== null ? (
+        <div role="alert" data-testid="session-trace-error">
+          <p>Couldn&apos;t load the session trace: {runsError}</p>
+          <button type="button" onClick={() => setRunsAttempt((n) => n + 1)}>
+            Retry
+          </button>
+        </div>
+      ) : runs === null ? (
         <p>Loading…</p>
       ) : runs.length === 0 ? (
         <p className="ticket-drawer__empty" data-testid="session-trace-empty">

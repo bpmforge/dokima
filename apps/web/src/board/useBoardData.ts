@@ -18,7 +18,8 @@ import {
   boardSubscription,
   runSubscription,
 } from './projection.js';
-import { verbForDrop, verbTargetColumn } from './transitions.js';
+import { useLiveRunId } from './useLiveRun.js';
+import { COLUMN_LABEL, verbForDrop, verbTargetColumn } from './transitions.js';
 import type {
   BoardTicket,
   HeartbeatData,
@@ -45,10 +46,15 @@ export interface UseBoardDataResult {
   tickets: BoardTicket[];
   heartbeats: ReadonlyMap<string, HeartbeatData>;
   loading: boolean;
+  /** Review R6: a failed board read, so it is never mistaken for an empty project. */
+  loadError: string | null;
+  retryLoad: () => void;
   refusal: BoardRefusal | null;
   dismissRefusal: () => void;
   fireVerb: (ticketId: string, verb: LifecycleVerb) => Promise<void>;
   handleDrop: (ticketId: string, toColumn: TicketStatus) => void;
+  /** Polite live-region text: where a ticket moved, or why it didn't. */
+  announcement: string;
 }
 
 /**
@@ -63,7 +69,10 @@ export function useBoardData(opts: UseBoardDataOptions): UseBoardDataResult {
     new Map(),
   );
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [refusal, setRefusal] = useState<BoardRefusal | null>(null);
+  const [announcement, setAnnouncement] = useState('');
   const apiOpts = useRef<BoardApiOptions>({
     baseUrl: opts.baseUrl,
     token: opts.token,
@@ -78,21 +87,38 @@ export function useBoardData(opts: UseBoardDataOptions): UseBoardDataResult {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetchBoardTickets(apiOpts.current, opts.projectId).then((result) => {
-      if (cancelled) return;
-      if (result.ok) {
-        setTickets(new Map(result.data.map((t) => [t.id, t])));
-      }
-      setLoading(false);
-    });
+    setLoadError(null);
+    fetchBoardTickets(apiOpts.current, opts.projectId)
+      .then((result) => {
+        if (cancelled) return;
+        if (result.ok) {
+          setTickets(new Map(result.data.map((t) => [t.id, t])));
+        } else {
+          setLoadError(result.problem.detail ?? result.problem.title);
+        }
+        setLoading(false);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setLoadError(err instanceof Error ? err.message : String(err));
+        setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, [opts.projectId]);
+  }, [opts.projectId, loadAttempt]);
+
+  // Review R1: the board listens to the LIVE run's heartbeats even when no
+  // caller names one — nothing in the app ever passed `runId`.
+  const runId = useLiveRunId(
+    { baseUrl: opts.baseUrl, token: opts.token, fetchImpl: opts.fetchImpl },
+    opts.projectId,
+    opts.runId,
+  );
 
   useEffect(() => {
     const subscriptions = [boardSubscription(opts.projectId)];
-    if (opts.runId) subscriptions.push(runSubscription(opts.runId));
+    if (runId) subscriptions.push(runSubscription(runId));
     const client = new WsClient({
       url: opts.wsUrl,
       token: opts.token,
@@ -104,24 +130,43 @@ export function useBoardData(opts: UseBoardDataOptions): UseBoardDataResult {
       },
     });
     client.connect();
-    return () => client.close();
-  }, [opts.projectId, opts.runId, opts.wsUrl, opts.token, opts.WebSocketImpl]);
+    return () => {
+      client.close();
+      // A new run (or none) is a fresh slate: old lines would claim work no
+      // one is doing any more.
+      setHeartbeats(new Map());
+    };
+  }, [opts.projectId, runId, opts.wsUrl, opts.token, opts.WebSocketImpl]);
 
   const fireVerb = useCallback(
     async (ticketId: string, verb: LifecycleVerb) => {
       const toStatus = verb === 'comment' ? undefined : verbTargetColumn(verb);
       const move = toStatus ? beginOptimisticMove(tickets, ticketId, toStatus) : null;
       if (move) setTickets(move.tickets);
+      // A fetch that REJECTS (core down, network gone) must still roll the
+      // optimistic move back and explain itself, same as BoardView's runs.
       const result = await fireTicketVerb(
         apiOpts.current,
         ticketId,
         verb,
         opts.projectId,
-      );
+      ).catch((err: unknown) => ({
+        ok: false as const,
+        problem: {
+          type: 'about:blank',
+          title: 'the core could not be reached',
+          status: 0,
+          detail: err instanceof Error ? err.message : String(err),
+          instance: `/tickets/${ticketId}/${verb}`,
+          request_id: 'unknown',
+        },
+      }));
       if (result.ok) {
         setTickets((current) => confirmOptimisticMove(current, ticketId, result.data));
         setRefusal(null);
+        if (toStatus) setAnnouncement(`${ticketId} moved to ${COLUMN_LABEL[toStatus]}`);
       } else {
+        setAnnouncement(`${ticketId} was not moved: ${result.problem.title}`);
         if (move)
           setTickets((current) =>
             rollbackOptimisticMove(current, ticketId, move.snapshot),
@@ -137,7 +182,15 @@ export function useBoardData(opts: UseBoardDataOptions): UseBoardDataResult {
       const ticket = tickets.get(ticketId);
       if (!ticket) return;
       const verb = verbForDrop(ticket.status, toColumn);
-      if (!verb) return; // illegal drop — snaps back, never reaches the network (UX_SPEC §4)
+      if (!verb) {
+        // Illegal drop: snaps back, never reaches the network (UX_SPEC §4),
+        // but says why instead of failing silently.
+        if (ticket.status !== toColumn)
+          setAnnouncement(
+            `${ticketId} can't move from ${COLUMN_LABEL[ticket.status]} to ${COLUMN_LABEL[toColumn]} directly`,
+          );
+        return;
+      }
       void fireVerb(ticketId, verb);
     },
     [tickets, fireVerb],
@@ -147,9 +200,12 @@ export function useBoardData(opts: UseBoardDataOptions): UseBoardDataResult {
     tickets: Array.from(tickets.values()),
     heartbeats,
     loading,
+    loadError,
+    retryLoad: () => setLoadAttempt((n) => n + 1),
     refusal,
     dismissRefusal: () => setRefusal(null),
     fireVerb,
     handleDrop,
+    announcement,
   };
 }

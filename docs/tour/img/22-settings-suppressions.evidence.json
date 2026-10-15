@@ -1,6 +1,9 @@
 {
   "strings": [
+    "Skip to content",
     "Dokima",
+    "·",
+    "Demo Voyage",
     "Board",
     "Team",
     "Describe",
@@ -10,6 +13,8 @@
     "Roster",
     "Morning queue",
     "2",
+    "Search",
+    "Ctrl+K",
     "Settings",
     "Light",
     "Setup Wizard",
@@ -47,15 +52,27 @@
   ],
   "interactive": [
     {
+      "tag": "a",
+      "role": null,
+      "name": "Skip to content",
+      "disabled": false,
+      "rect": {
+        "x": 8,
+        "y": -48,
+        "w": 125,
+        "h": 39
+      }
+    },
+    {
       "tag": "button",
       "role": null,
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 520,
+        "x": 410,
         "y": 12,
-        "w": 69,
-        "h": 36
+        "w": 65,
+        "h": 32
       }
     },
     {
@@ -64,10 +81,10 @@
       "name": "Team",
       "disabled": false,
       "rect": {
-        "x": 593,
+        "x": 480,
         "y": 12,
-        "w": 65,
-        "h": 36
+        "w": 62,
+        "h": 32
       }
     },
     {
@@ -76,10 +93,10 @@
       "name": "Describe",
       "disabled": false,
       "rect": {
-        "x": 663,
+        "x": 546,
         "y": 12,
-        "w": 91,
-        "h": 36
+        "w": 85,
+        "h": 32
       }
     },
     {
@@ -88,10 +105,10 @@
       "name": "Plan",
       "disabled": false,
       "rect": {
-        "x": 757,
+        "x": 635,
         "y": 12,
-        "w": 57,
-        "h": 36
+        "w": 54,
+        "h": 32
       }
     },
     {
@@ -100,10 +117,10 @@
       "name": "Decisions",
       "disabled": false,
       "rect": {
-        "x": 818,
+        "x": 694,
         "y": 12,
-        "w": 96,
-        "h": 36
+        "w": 91,
+        "h": 32
       }
     },
     {
@@ -112,10 +129,10 @@
       "name": "Lessons",
       "disabled": false,
       "rect": {
-        "x": 919,
+        "x": 788,
         "y": 12,
-        "w": 85,
-        "h": 36
+        "w": 81,
+        "h": 32
       }
     },
     {
@@ -124,10 +141,10 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1008,
+        "x": 873,
         "y": 12,
-        "w": 73,
-        "h": 36
+        "w": 68,
+        "h": 32
       }
     },
     {
@@ -136,10 +153,22 @@
       "name": "Morning queue, 2 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1093,
-        "y": 17,
+        "x": 954,
+        "y": 12,
         "w": 134,
-        "h": 27
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Search Ctrl+K",
+      "disabled": false,
+      "rect": {
+        "x": 1100,
+        "y": 12,
+        "w": 137,
+        "h": 32
       }
     },
     {
@@ -148,22 +177,22 @@
       "name": "Settings",
       "disabled": false,
       "rect": {
-        "x": 1239,
+        "x": 1249,
         "y": 12,
-        "w": 86,
-        "h": 36
+        "w": 82,
+        "h": 32
       }
     },
     {
       "tag": "button",
       "role": null,
-      "name": "Switch to dark theme",
+      "name": "Light theme, switch to dark",
       "disabled": false,
       "rect": {
-        "x": 1337,
+        "x": 1343,
         "y": 12,
-        "w": 87,
-        "h": 36
+        "w": 81,
+        "h": 32
       }
     },
     {
@@ -172,10 +201,10 @@
       "name": "Setup Wizard",
       "disabled": false,
       "rect": {
-        "x": 1098,
-        "y": 93,
-        "w": 124,
-        "h": 36
+        "x": 1110,
+        "y": 90,
+        "w": 115,
+        "h": 39
       }
     },
     {
@@ -184,10 +213,10 @@
       "name": "Close",
       "disabled": false,
       "rect": {
-        "x": 1229,
-        "y": 93,
-        "w": 67,
-        "h": 36
+        "x": 1232,
+        "y": 90,
+        "w": 64,
+        "h": 39
       }
     },
     {
@@ -198,8 +227,8 @@
       "rect": {
         "x": 144,
         "y": 186,
-        "w": 79,
-        "h": 27
+        "w": 87,
+        "h": 31
       }
     },
     {
@@ -208,10 +237,10 @@
       "name": "Models",
       "disabled": false,
       "rect": {
-        "x": 227,
+        "x": 235,
         "y": 186,
-        "w": 65,
-        "h": 27
+        "w": 73,
+        "h": 31
       }
     },
     {
@@ -220,10 +249,10 @@
       "name": "Runs & Forge",
       "disabled": false,
       "rect": {
-        "x": 296,
+        "x": 311,
         "y": 186,
-        "w": 105,
-        "h": 27
+        "w": 112,
+        "h": 31
       }
     },
     {
@@ -232,10 +261,10 @@
       "name": "Autonomy · Budget · Berths",
       "disabled": false,
       "rect": {
-        "x": 405,
+        "x": 427,
         "y": 186,
-        "w": 196,
-        "h": 27
+        "w": 206,
+        "h": 31
       }
     },
     {
@@ -244,10 +273,10 @@
       "name": "Advanced ▾",
       "disabled": false,
       "rect": {
-        "x": 604,
+        "x": 637,
         "y": 186,
-        "w": 92,
-        "h": 27
+        "w": 102,
+        "h": 31
       }
     },
     {
@@ -256,10 +285,10 @@
       "name": "Agent",
       "disabled": false,
       "rect": {
-        "x": 701,
+        "x": 743,
         "y": 186,
-        "w": 56,
-        "h": 27
+        "w": 63,
+        "h": 31
       }
     },
     {
@@ -268,10 +297,10 @@
       "name": "Cost Estimate",
       "disabled": false,
       "rect": {
-        "x": 761,
+        "x": 810,
         "y": 186,
-        "w": 108,
-        "h": 27
+        "w": 115,
+        "h": 31
       }
     },
     {
@@ -280,10 +309,10 @@
       "name": "Effective Settings",
       "disabled": false,
       "rect": {
-        "x": 872,
+        "x": 929,
         "y": 186,
-        "w": 132,
-        "h": 27
+        "w": 139,
+        "h": 31
       }
     },
     {
@@ -292,10 +321,10 @@
       "name": "MCP Servers",
       "disabled": false,
       "rect": {
-        "x": 1008,
+        "x": 1072,
         "y": 186,
-        "w": 102,
-        "h": 27
+        "w": 111,
+        "h": 31
       }
     },
     {
@@ -304,10 +333,10 @@
       "name": "Validator Packs",
       "disabled": false,
       "rect": {
-        "x": 1114,
-        "y": 186,
-        "w": 117,
-        "h": 27
+        "x": 144,
+        "y": 221,
+        "w": 126,
+        "h": 31
       }
     },
     {
@@ -316,10 +345,10 @@
       "name": "Expert Overrides",
       "disabled": false,
       "rect": {
-        "x": 144,
-        "y": 217,
-        "w": 127,
-        "h": 27
+        "x": 274,
+        "y": 221,
+        "w": 136,
+        "h": 31
       }
     },
     {
@@ -328,10 +357,10 @@
       "name": "Rule Lifecycle",
       "disabled": false,
       "rect": {
-        "x": 275,
-        "y": 217,
-        "w": 107,
-        "h": 27
+        "x": 414,
+        "y": 221,
+        "w": 116,
+        "h": 31
       }
     },
     {
@@ -340,10 +369,10 @@
       "name": "Suppressions",
       "disabled": false,
       "rect": {
-        "x": 386,
-        "y": 217,
-        "w": 105,
-        "h": 27
+        "x": 534,
+        "y": 221,
+        "w": 117,
+        "h": 31
       }
     },
     {
@@ -352,10 +381,10 @@
       "name": "Escalation Policy",
       "disabled": false,
       "rect": {
-        "x": 495,
-        "y": 217,
-        "w": 126,
-        "h": 27
+        "x": 654,
+        "y": 221,
+        "w": 135,
+        "h": 31
       }
     },
     {
@@ -364,10 +393,10 @@
       "name": "Copilot",
       "disabled": false,
       "rect": {
-        "x": 626,
-        "y": 217,
-        "w": 64,
-        "h": 27
+        "x": 793,
+        "y": 221,
+        "w": 71,
+        "h": 31
       }
     },
     {
@@ -377,9 +406,9 @@
       "disabled": false,
       "rect": {
         "x": 144,
-        "y": 441,
-        "w": 180,
-        "h": 35
+        "y": 482,
+        "w": 244,
+        "h": 39
       }
     },
     {
@@ -388,9 +417,9 @@
       "name": "Justificationfalse_positivenot_applicable_scopeaccepted_riskfixed_elsewherewont_fix_documented",
       "disabled": false,
       "rect": {
-        "x": 336,
-        "y": 447,
-        "w": 182,
+        "x": 400,
+        "y": 492,
+        "w": 183,
         "h": 29
       }
     },
@@ -400,10 +429,10 @@
       "name": "Signature (your name)",
       "disabled": false,
       "rect": {
-        "x": 530,
-        "y": 441,
-        "w": 180,
-        "h": 35
+        "x": 595,
+        "y": 482,
+        "w": 244,
+        "h": 39
       }
     },
     {
@@ -412,10 +441,10 @@
       "name": "Suppress",
       "disabled": false,
       "rect": {
-        "x": 722,
-        "y": 440,
-        "w": 94,
-        "h": 36
+        "x": 851,
+        "y": 482,
+        "w": 88,
+        "h": 39
       }
     }
   ],
@@ -426,11 +455,11 @@
     },
     "contentBox": {
       "x": 0,
-      "y": 0,
+      "y": -48,
       "w": 1440,
-      "h": 900
+      "h": 948
     },
-    "occupancy": 1
+    "occupancy": 1.05
   },
   "classHistogram": {
     "app-shell": 1,
@@ -438,10 +467,15 @@
     "app-shell__decide-badge": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
+    "app-shell__kbd": 1,
+    "app-shell__main": 1,
     "app-shell__nav": 1,
     "app-shell__nav-item": 7,
     "app-shell__notifications-bell": 1,
-    "btn-quiet": 1,
+    "app-shell__project-name": 1,
+    "app-shell__search": 1,
+    "app-shell__wordmark": 1,
+    "btn-quiet": 2,
     "icon": 2,
     "page": 1,
     "page__header": 1,
@@ -458,6 +492,8 @@
     "settings__tab--advanced-toggle": 1,
     "settings__table": 1,
     "settings__tabs": 1,
+    "skip-link": 1,
+    "tab": 15,
     "theme-toggle": 1
   }
 }

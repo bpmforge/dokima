@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useModalLayer } from '../../lib/useModalLayer.js';
 import { explainRefusal } from '../refusal.js';
-import { availableVerbsFrom, verbTargetColumn } from '../transitions.js';
+import { availableVerbsFrom, verbMenuLabel } from '../transitions.js';
 import type { LifecycleVerb } from '../api.js';
 import type { ContractTicket } from './types.js';
 import { useBoardData } from '../useBoardData.js';
@@ -18,6 +19,8 @@ export interface TicketDrawerProps {
   wsUrl: string;
   ticketId: string;
   onClose: () => void;
+  /** Opens another ticket in this drawer (a dependency link). */
+  onOpenTicket?: (ticketId: string) => void;
 }
 
 /**
@@ -35,6 +38,7 @@ export function TicketDrawer({
   wsUrl,
   ticketId,
   onClose,
+  onOpenTicket,
 }: TicketDrawerProps) {
   const { tickets, heartbeats, loading, refusal, dismissRefusal, fireVerb } =
     useBoardData({
@@ -50,13 +54,8 @@ export function TicketDrawer({
     closeButtonRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalLayer(dialogRef, onClose);
 
   const submitDagEdit = useCallback(
     (dependsOn: string[]) => patchDependsOn(apiOpts, projectId, ticketId, dependsOn),
@@ -66,8 +65,15 @@ export function TicketDrawer({
   const ticket = tickets.find((t) => t.id === ticketId) as ContractTicket | undefined;
 
   return (
-    <div className="ticket-drawer__backdrop" data-testid="ticket-drawer-backdrop">
+    <div
+      className="ticket-drawer__backdrop"
+      data-testid="ticket-drawer-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
       <div
+        ref={dialogRef}
         className="ticket-drawer"
         role="dialog"
         aria-modal="true"
@@ -103,12 +109,18 @@ export function TicketDrawer({
                   type="button"
                   onClick={() => void fireVerb(ticket.id, verb as LifecycleVerb)}
                 >
-                  {verb} → {verbTargetColumn(verb)}
+                  {verbMenuLabel(verb)}
                 </button>
               ))}
             </section>
 
-            <ContractPanel ticket={ticket} />
+            <ContractPanel
+              ticket={ticket}
+              blockers={ticket.dependsOn.filter(
+                (id) => tickets.find((t) => t.id === id)?.status !== 'done',
+              )}
+              onOpenTicket={onOpenTicket}
+            />
             <EvidencePanel
               baseUrl={baseUrl}
               token={token}

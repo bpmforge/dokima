@@ -133,7 +133,9 @@ describe('TriageQueue', () => {
 
     render(<TriageQueue apiOpts={OPTS} projectId="proj-1" actorId="challenger-1" />);
     await screen.findByTestId('triage-item-1');
+    // Reject is permanent, so it arms on the first press and fires on the second.
     fireEvent.click(screen.getByRole('button', { name: 'Reject' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reject permanently? Click again' }));
 
     await waitFor(() =>
       expect(mockedApi.triageFieldReport).toHaveBeenCalledWith(OPTS, 'proj-1', 1, {
@@ -173,7 +175,9 @@ describe('TriageQueue', () => {
 
     render(<TriageQueue apiOpts={OPTS} projectId="proj-1" actorId="challenger-1" />);
     await screen.findByTestId('triage-item-1');
+    // Reject is permanent, so it arms on the first press and fires on the second.
     fireEvent.click(screen.getByRole('button', { name: 'Reject' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reject permanently? Click again' }));
 
     await waitFor(() =>
       expect(screen.getByRole('alert').textContent).toContain(

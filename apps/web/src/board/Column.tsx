@@ -2,16 +2,8 @@ import type { DragEvent } from 'react';
 import type { LifecycleVerb } from './api.js';
 import { Card } from './Card.js';
 import type { BoardColumn } from './lanes.js';
+import { COLUMN_LABEL } from './transitions.js';
 import type { HeartbeatData } from './types.js';
-
-const COLUMN_LABEL: Record<string, string> = {
-  ready: 'Ready',
-  claimed: 'Claimed',
-  in_progress: 'In Progress',
-  in_review: 'In Review',
-  blocked: 'Blocked',
-  done: 'Done',
-};
 
 export interface ColumnProps {
   column: BoardColumn;

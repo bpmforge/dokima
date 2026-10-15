@@ -91,7 +91,7 @@ Global Settings is deliberately thin: model matrix, autonomy dial, budgets, and 
 
 ## Step 14 — Command palette (⌘K)
 
-Pressing **⌘K**/**Ctrl+K** anywhere opens the palette: the "What are we doing today?" mode picker, with no results because nothing has been typed yet.
+Pressing **⌘K**/**Ctrl+K** on any screen — or the **Search** button in the header — opens the palette: the "What are we doing today?" mode picker and a **Go to** list of screens and projects; ticket, doc and receipt results appear once something is typed.
 
 ![Command palette (⌘K)](img/12-palette-no-query.png)
 

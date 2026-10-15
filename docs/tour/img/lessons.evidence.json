@@ -1,6 +1,9 @@
 {
   "strings": [
+    "Skip to content",
     "Dokima",
+    "·",
+    "Demo Voyage",
     "Board",
     "Team",
     "Describe",
@@ -10,21 +13,35 @@
     "Roster",
     "Morning queue",
     "2",
+    "Search",
+    "Ctrl+K",
     "Settings",
     "Light",
     "No field reports awaiting triage."
   ],
   "interactive": [
     {
+      "tag": "a",
+      "role": null,
+      "name": "Skip to content",
+      "disabled": false,
+      "rect": {
+        "x": 8,
+        "y": -48,
+        "w": 125,
+        "h": 39
+      }
+    },
+    {
       "tag": "button",
       "role": null,
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 518,
+        "x": 411,
         "y": 12,
-        "w": 69,
-        "h": 36
+        "w": 65,
+        "h": 32
       }
     },
     {
@@ -33,10 +50,10 @@
       "name": "Team",
       "disabled": false,
       "rect": {
-        "x": 591,
+        "x": 480,
         "y": 12,
-        "w": 65,
-        "h": 36
+        "w": 62,
+        "h": 32
       }
     },
     {
@@ -45,10 +62,10 @@
       "name": "Describe",
       "disabled": false,
       "rect": {
-        "x": 660,
+        "x": 546,
         "y": 12,
-        "w": 91,
-        "h": 36
+        "w": 85,
+        "h": 32
       }
     },
     {
@@ -57,10 +74,10 @@
       "name": "Plan",
       "disabled": false,
       "rect": {
-        "x": 754,
+        "x": 636,
         "y": 12,
-        "w": 57,
-        "h": 36
+        "w": 54,
+        "h": 32
       }
     },
     {
@@ -69,10 +86,10 @@
       "name": "Decisions",
       "disabled": false,
       "rect": {
-        "x": 815,
+        "x": 694,
         "y": 12,
-        "w": 96,
-        "h": 36
+        "w": 91,
+        "h": 32
       }
     },
     {
@@ -81,10 +98,10 @@
       "name": "Lessons",
       "disabled": false,
       "rect": {
-        "x": 916,
+        "x": 789,
         "y": 12,
-        "w": 88,
-        "h": 36
+        "w": 82,
+        "h": 32
       }
     },
     {
@@ -93,10 +110,10 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1008,
+        "x": 875,
         "y": 12,
-        "w": 73,
-        "h": 36
+        "w": 68,
+        "h": 32
       }
     },
     {
@@ -105,10 +122,22 @@
       "name": "Morning queue, 2 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1093,
-        "y": 17,
+        "x": 956,
+        "y": 12,
         "w": 134,
-        "h": 27
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Search Ctrl+K",
+      "disabled": false,
+      "rect": {
+        "x": 1102,
+        "y": 12,
+        "w": 137,
+        "h": 32
       }
     },
     {
@@ -117,22 +146,22 @@
       "name": "Settings",
       "disabled": false,
       "rect": {
-        "x": 1239,
+        "x": 1251,
         "y": 12,
-        "w": 86,
-        "h": 36
+        "w": 80,
+        "h": 32
       }
     },
     {
       "tag": "button",
       "role": null,
-      "name": "Switch to dark theme",
+      "name": "Light theme, switch to dark",
       "disabled": false,
       "rect": {
-        "x": 1337,
+        "x": 1343,
         "y": 12,
-        "w": 87,
-        "h": 36
+        "w": 81,
+        "h": 32
       }
     },
     {
@@ -142,9 +171,9 @@
       "disabled": false,
       "rect": {
         "x": 0,
-        "y": 77,
-        "w": 1440,
-        "h": 18
+        "y": 71,
+        "w": 618,
+        "h": 21
       }
     }
   ],
@@ -155,11 +184,11 @@
     },
     "contentBox": {
       "x": 0,
-      "y": 0,
+      "y": -48,
       "w": 1440,
-      "h": 900
+      "h": 948
     },
-    "occupancy": 1
+    "occupancy": 1.05
   },
   "classHistogram": {
     "app-shell": 1,
@@ -167,11 +196,17 @@
     "app-shell__decide-badge": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
+    "app-shell__kbd": 1,
+    "app-shell__main": 1,
     "app-shell__nav": 1,
     "app-shell__nav-item": 7,
     "app-shell__notifications-bell": 1,
-    "btn-quiet": 1,
+    "app-shell__project-name": 1,
+    "app-shell__search": 1,
+    "app-shell__wordmark": 1,
+    "btn-quiet": 2,
     "icon": 2,
+    "skip-link": 1,
     "theme-toggle": 1,
     "triage-queue__empty": 1
   }

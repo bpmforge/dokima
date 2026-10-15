@@ -47,6 +47,25 @@
   margin: 0 0 var(--sw-space-1);
 }
 
+.board-refusal__ticket {
+  margin: 0 0 var(--sw-space-0-5);
+}
+
+.board-refusal__fix {
+  margin: 0 0 var(--sw-space-1);
+}
+
+.board-refusal__evidence {
+  margin: 0 0 var(--sw-space-1);
+}
+
+.board-refusal__evidence pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: var(--sw-text-sm);
+  margin: var(--sw-space-1) 0 0;
+}
+
 .board-refusal__rule--tag {
   /* Provenance, not headline. Smaller — never lower-contrast: axe measured
      receding opacity below WCAG twice on this board (W13-52). */
@@ -71,6 +90,20 @@
 .board-refusal__actions {
   display: flex;
   gap: var(--sw-space-2);
+}
+
+/* Status filter chips: the shared .tab primitive (aria-pressed marks the
+   chosen one), wrapping on a narrow screen rather than scrolling. */
+.board-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sw-space-1);
+  align-items: center;
+}
+
+.board-filter__count {
+  color: var(--sw-fg-muted);
+  margin-left: var(--sw-space-1);
 }
 
 .board-view__lanes {
@@ -162,21 +195,24 @@
      it computes to `none`, verified via getComputedStyle). Positions
      belong in the separate `background-position` property, one entry
      per image, same order. */
-  --board-scroll-shadow: rgba(0, 0, 0, 0.22);
   background-color: var(--sw-bg);
   background-repeat: no-repeat;
   background-image:
     linear-gradient(to right, var(--sw-bg) 40%, transparent),
     linear-gradient(to left, var(--sw-bg) 40%, transparent),
-    linear-gradient(to right, var(--board-scroll-shadow), transparent),
-    linear-gradient(to left, var(--board-scroll-shadow), transparent);
-  background-position: 0 0, 100% 0, 0 0, 100% 0;
-  background-size: 28px 100%, 28px 100%, 10px 100%, 10px 100%;
+    linear-gradient(to right, var(--sw-scroll-shadow), transparent),
+    linear-gradient(to left, var(--sw-scroll-shadow), transparent);
+  background-position:
+    0 0,
+    100% 0,
+    0 0,
+    100% 0;
+  background-size:
+    28px 100%,
+    28px 100%,
+    10px 100%,
+    10px 100%;
   background-attachment: local, local, scroll, scroll;
-}
-
-:root[data-theme='dark'] .board-lane__columns {
-  --board-scroll-shadow: rgba(255, 255, 255, 0.22);
 }
 
 .board-lane__columns::-webkit-scrollbar {
@@ -192,17 +228,20 @@
   border-radius: var(--sw-radius-sm);
 }
 
- .board-column {
+.board-column {
   /* Grows into whatever the empty columns do not need, never below the
      measured minimum. */
   flex: 1 1 var(--sw-board-column-min);
-  min-width: 0;
+  /* Review IX-01 / UI-03: `min-width: 0` let an occupied column shrink to
+     34px, one letter per line. It now holds the measured minimum and the lane
+     scrolls sideways instead (its edge fade already says so). */
+  min-width: var(--sw-board-column-min);
   border: var(--sw-border-width) solid var(--sw-border);
   border-radius: var(--sw-radius-md);
   padding: var(--sw-space-2);
 }
 
- .board-column--empty {
+.board-column--empty {
   /* Recedes, never disappears: it is still a drop target, and a lane where
      empty columns vanished would move the remaining ones under the cursor
      mid-drag. Muted rather than removed — W13-06 changes its WIDTH, never its
@@ -212,7 +251,11 @@
      that has something. It still shrinks, and still shows its own name, so the
      six lifecycle states remain readable as a pipeline. */
   flex: 0 1 var(--sw-board-column-empty-min);
-  opacity: 0.55;
+  /* Shrinks only as far as its own label, so headers never overlap. */
+  min-width: min-content;
+  /* Review UX-19: receded by colour, not `opacity: 0.55` (4.08:1 in light). */
+  color: var(--sw-fg-muted);
+  border-style: dashed;
 }
 
 .board-column--empty .board-column__cards {
@@ -230,7 +273,7 @@
   gap: var(--sw-space-2);
 }
 
- /* W13-06: border/radius/padding come from `.surface` (W13-04) — one of the
+/* W13-06: border/radius/padding come from `.surface` (W13-04) — one of the
    local re-declarations the ratchet counts. */
 .board-card {
   cursor: grab;
@@ -280,6 +323,15 @@
   opacity: 0.7;
 }
 
+/* Review R1: no heartbeat for STALE_AFTER_S — the line says so in words
+   ("no update for …"); the colour only repeats it. */
+.board-card__heartbeat[data-stale='true'],
+.board-strip__item[data-stale='true'],
+[data-testid='drawer-heartbeat'][data-stale='true'] {
+  color: var(--sw-warning);
+  opacity: 1;
+}
+
 .board-card__badge {
   margin: var(--sw-space-1) 0 0;
   font-size: var(--sw-text-xs);
@@ -295,8 +347,32 @@
 }
 
 .board-card__verb-menu {
-  display: block;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sw-space-1);
+  align-items: center;
   margin-top: var(--sw-space-1);
+}
+
+.board-card__verb-menu label {
+  flex: 1 1 6rem;
+  min-width: 0;
+}
+
+/* The title doubles as the keyboard way into the drawer; it reads as text. */
+.board-card__open {
+  all: unset;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.board-card__open:hover {
+  text-decoration: underline;
+}
+
+.board-card__open:focus-visible {
+  outline: var(--sw-focus-ring-width) solid var(--sw-accent);
+  outline-offset: 2px;
 }
 
 .board-empty {

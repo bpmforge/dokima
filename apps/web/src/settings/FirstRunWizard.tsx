@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { createProject, FleetApiError } from '../fleet/api.js';
+import { createProject, fetchProjects, FleetApiError } from '../fleet/api.js';
 import { GuidedSample } from '../onboarding/GuidedSample.js';
 import { putGlobalSettings, SettingsApiError } from './api.js';
 import {
@@ -99,6 +99,7 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
   const [pinnedModel, setPinnedModel] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [createdProjectId, setCreatedProjectId] = useState<string | undefined>(undefined);
+  const [providerSaved, setProviderSaved] = useState(false);
   const [guidedActive, setGuidedActive] = useState(true);
   const [matrixWritten, setMatrixWritten] = useState(false);
   // Where the models step returns to, so the same step serves both entry
@@ -174,8 +175,17 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
        * provider details and dropped them, and the only real registration
        * happened inside "Create sample project".
        */
-      if (projectId) {
-        await putProviders(projectId, [providerEntry()], { scope: 'global' });
+      // The global write is addressed through a project. With none in view,
+      // any existing project will do, so declining the sample still keeps the
+      // provider. Only a truly empty Fleet has to wait for one.
+      const addressId =
+        projectId ??
+        (await fetchProjects()
+          .then((projects) => projects.find((p) => p.available)?.id ?? null)
+          .catch(() => null));
+      if (addressId) {
+        await putProviders(addressId, [providerEntry()], { scope: 'global' });
+        setProviderSaved(true);
       }
       setError(null);
       setAfterModels('sample');
@@ -335,7 +345,20 @@ export function FirstRunWizard({ onFinish, onCancel, projectId }: FirstRunWizard
             </p>
             <button type="button" onClick={() => void handleCreateSample()}>
               Create sample project
+            </button>{' '}
+            <button
+              type="button"
+              className="btn-quiet"
+              data-testid="wizard-skip-sample"
+              onClick={() => onFinish()}
+            >
+              Finish without a sample
             </button>
+            <p className="settings__hint" data-testid="wizard-skip-sample-hint">
+              {providerSaved
+                ? 'Your provider is saved and applies to every project you create.'
+                : 'Dokima saves providers through a project, and there are none yet. If you skip the sample, create your first project, then add the provider again in Settings → Providers.'}
+            </p>
           </section>
         )}
 

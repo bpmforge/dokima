@@ -1,25 +1,21 @@
 import { useState } from 'react';
 import { ActiveBerthsStrip } from './ActiveBerthsStrip.js';
-import {
-  buildRunRefusalLine,
-  fetchBuildRun,
-  runOutcome,
-  startBuildRun,
-  stopBuildRun,
-  type BuildRunOutcome,
-} from './api.js';
 import './board.css';
 import { EmptyState } from './BoardEmptyState.js';
 import { startOnboardAnalysis } from './api.js';
 import { ClaimNowStrip } from './ClaimNowStrip.js';
 import { openBlockers } from './badges.js';
+import { BoardFilterBar } from './BoardFilterBar.js';
+import { countByFilter, filterTickets } from './boardFilter.js';
 import { groupIntoLanes } from './lanes.js';
 import { Lane } from './Lane.js';
 import { RefusalPopover } from './RefusalPopover.js';
-import { RunSummary } from './RunSummary.js';
 import { ApprovedBuildPanel } from './ApprovedBuildPanel.js';
 import { ShippedTicker } from './ShippedTickerStrip.js';
+import { BoardLoadError, NO_MODEL_REASON, NoModelReason } from './BoardNotices.js';
 import { useBoardData } from './useBoardData.js';
+import { useRunReadiness } from './useRunReadiness.js';
+import { useBoardFilter } from './useBoardFilter.js';
 import { putProjectSettings } from '../settings/api.js';
 
 export interface BoardViewProps {
@@ -42,107 +38,45 @@ export function BoardView({
   onViewCurrentPhase,
   onSelectTicket,
 }: BoardViewProps) {
-  const [buildRun, setBuildRun] = useState<BuildRunOutcome | null>(null);
-  const [stopping, setStopping] = useState(false);
+  // Brad's decision (2026-10-15): ONE way to start work. "Start a run" opens
+  // the approved-run preview; nothing builds until the person approves it.
+  // Bumping this asks the panel to open that preview (the budget-park retry).
+  const [previewRequest, setPreviewRequest] = useState(0);
   const apiOpts = { baseUrl, token };
+  const [filter, setFilter] = useBoardFilter(projectId);
 
-  // W17-07: the way out the live UAT lacked. The loop stops at its next
-  // ticket boundary; in-flight work finishes or parks honestly.
+  const { runLimitUsd, budgetStatus, noModel } = useRunReadiness(
+    baseUrl,
+    token,
+    projectId,
+  );
+
   // W17-10: the budget park's own fix, one click — write the raised project
-  // setting, then start a run. Both effects are stated on the button.
+  // setting, then show the run preview for approval. Both effects are stated
+  // on the button.
   const handleRaiseBudgetRetry = async (_ticketId: string, newBudget: number) => {
     await putProjectSettings(projectId, { maxToolIterations: newBudget });
-    await handleStartRun();
+    setPreviewRequest((n) => n + 1);
   };
 
-  const handleStopRun = async () => {
-    if (!buildRun || buildRun.status !== 'running') return;
-    setStopping(true);
-    await stopBuildRun(apiOpts, projectId, buildRun.runId);
-  };
-
-  /**
-   * Poll the status route while a run is live. The outcome map behind it is
-   * IN-MEMORY by design (W12-20) — a convenience for this poll, not a second
-   * source of truth — so anything shown after a reload has to come from the
-   * event log the trace route already serves rather than from here.
-   */
-  const handleStartRun = async () => {
-    /**
-     * W23-14: a fetch that REJECTS — the core down, a bad base URL — used to
-     * escape as an unhandled rejection rather than reaching the person as a
-     * refusal. Every other failure here is already shown; this one was the
-     * only path that told them nothing.
-     */
-    const started = await startBuildRun(apiOpts, projectId).catch((err: unknown) => ({
-      ok: false as const,
-      problem: {
-        type: 'about:blank',
-        title: 'the core could not be reached',
-        status: 0,
-        detail: err instanceof Error ? err.message : String(err),
-        instance: `/projects/${projectId}/build-runs`,
-        request_id: 'unknown',
-      },
-    }));
-    if (!started.ok) {
-      setBuildRun({
-        runId: '—',
-        status: 'refused',
-        stderr: [started.problem.detail ?? 'could not start the run'],
-      });
-      return;
-    }
-    setBuildRun({ runId: started.data.runId, status: 'running' });
-    /**
-     * W21-82: the poll must never leave the board CLAIMING a run is live.
-     *
-     * This looped 240 times at one second, so any run longer than four
-     * minutes fell out of the bottom with `buildRun` still at
-     * `status: 'running'` — and `disabled={buildRun?.status === 'running'}`
-     * then kept the button dead forever. A failed poll did the same thing one
-     * line earlier, breaking without touching state at all.
-     *
-     * Live (Tally, run-mtbveccb): the run parked at 18:50:53 and the board
-     * still read "Run in progress… run-mtbveccb — running" ten minutes later.
-     * Clicking did nothing, because the click landed on a disabled button. A
-     * page reload cleared it instantly, which is the tell: the run was over,
-     * only this component's state said otherwise.
-     *
-     * Four minutes is not an edge case for the product's own target user — a
-     * local model working a real ticket routinely runs longer, and every one
-     * of this session's runs did.
-     *
-     * So: follow it for as long as a run plausibly lives, and on ANY exit
-     * that is not a terminal status, drop back to idle rather than lie. The
-     * outcome map behind this poll is in-memory by design (W12-20) and the
-     * board's own ticket cards carry the durable truth, so idle is honest —
-     * "this page is no longer following that run", not "it finished".
-     */
-    const MAX_POLLS = 4 * 60 * 60;
-    for (let i = 0; i < MAX_POLLS; i++) {
-      const polled = await fetchBuildRun(apiOpts, projectId, started.data.runId);
-      if (!polled.ok) {
-        setBuildRun(null);
-        return;
-      }
-      setBuildRun(polled.data);
-      if (polled.data.status !== 'running') return;
-      await new Promise((r) => setTimeout(r, 1000));
-    }
-    setBuildRun(null);
-  };
-
-  const refusalLine = buildRun ? buildRunRefusalLine(buildRun) : null;
-
-  const { tickets, heartbeats, loading, refusal, dismissRefusal, fireVerb, handleDrop } =
-    useBoardData({
-      baseUrl,
-      token,
-      projectId,
-      runId,
-      wsUrl,
-    });
+  const {
+    tickets,
+    heartbeats,
+    loading,
+    loadError,
+    retryLoad,
+    refusal,
+    dismissRefusal,
+    fireVerb,
+    handleDrop,
+    announcement,
+  } = useBoardData({
+    baseUrl,
+    token,
+    projectId,
+    runId,
+    wsUrl,
+  });
 
   /**
    * W21-88: a VISIBLE loading state, not a blank screen.
@@ -167,6 +101,9 @@ export function BoardView({
         <p className="board-view__loading">Loading the board…</p>
       </div>
     );
+  }
+  if (loadError !== null && tickets.length === 0) {
+    return <BoardLoadError message={loadError} onRetry={retryLoad} />;
   }
   if (tickets.length === 0) {
     /**
@@ -193,7 +130,9 @@ export function BoardView({
     );
   }
 
-  const lanes = groupIntoLanes(tickets);
+  // Filtering keeps the lanes × columns layout: a lane with no matching card
+  // is dropped, every remaining lane keeps all of its columns.
+  const lanes = groupIntoLanes(filterTickets(tickets, filter));
   const blockedDeps = new Map(
     tickets
       .filter((t) => t.status === 'blocked')
@@ -209,64 +148,19 @@ export function BoardView({
           existed (W12-20) and nothing called it, so the GUI could configure
           everything and start nothing. */}
       <div className="board-view__runbar" data-testid="board-runbar">
-        <button
-          type="button"
-          className="btn-primary"
-          disabled={buildRun?.status === 'running'}
-          onClick={() => {
-            setStopping(false);
-            void handleStartRun();
-          }}
-        >
-          {buildRun?.status === 'running' ? 'Run in progress…' : 'Start a run'}
-        </button>
-        {buildRun?.status === 'running' && (
-          <button
-            type="button"
-            className="btn-quiet"
-            data-testid="board-runbar-stop"
-            disabled={stopping}
-            onClick={() => void handleStopRun()}
-            title="The run stops at the next ticket boundary — work already in flight finishes or parks honestly."
-          >
-            {stopping ? 'Stopping at the next ticket…' : 'Stop the run'}
-          </button>
-        )}
-        {/* W13-59: the novice's single next step was a bare button with an
-            unstated consequence. One line: what a run is (VOCABULARY.md) and
-            the wizard-standard reassurance about what it may use. */}
-        <p className="board-view__run-hint" data-testid="board-runbar-hint">
-          A run is one pass of the agent working the board: it claims Ready tickets, does
-          the work, and hands back receipts. It uses only the models you chose in Settings
-          → Models, within your Autonomy setting — nothing else is contacted.
-        </p>
-        {buildRun && (
-          <span data-testid="board-runbar-status">
-            {buildRun.runId} — {buildRun.status}
-            {/* W13-63: "finished" alone read as success-toned nothing when a
-                run parked its only ticket. The CLI already prints the
-                outcome; the banner now carries it. */}
-            {runOutcome(buildRun) !== null && ` · ${runOutcome(buildRun)}`}
-          </span>
-        )}
-        {refusalLine && (
-          <p role="alert" data-testid="board-runbar-refusal">
-            {refusalLine}
-          </p>
-        )}
-        {/* W23-14: the approved-build surface. Mounted HERE, on the route
-            that owns Start run, because a panel nobody can reach approves
-            nothing — the same gap `recordApprovedBuild` had for two cards. */}
+        {noModel && <NoModelReason projectId={projectId} />}
+        {/* W23-14 + the 2026-10-15 merge of the two entry points: the
+            approved run IS the run. It owns start, preview, stop, progress
+            and the summary. */}
         <ApprovedBuildPanel
           apiOpts={apiOpts}
           projectId={projectId}
+          budgetUsd={runLimitUsd}
+          budgetStatus={budgetStatus}
+          noModelReason={noModel ? NO_MODEL_REASON : null}
           onSelectTicket={onSelectTicket}
+          previewRequest={previewRequest}
         />
-        {/* W19-04: once the run ends, one card says what it did — derived
-            from the run's own event slice, nothing new to keep in sync. */}
-        {buildRun && buildRun.status !== 'running' && (
-          <RunSummary apiOpts={apiOpts} projectId={projectId} runId={buildRun.runId} />
-        )}
       </div>
       <div className="board-view__strips">
         <ClaimNowStrip
@@ -280,12 +174,33 @@ export function BoardView({
           onSelectTicket={onSelectTicket}
         />
       </div>
+      <p
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        data-testid="board-announcer"
+      >
+        {announcement}
+      </p>
       {refusal && refusalTicket && (
         <RefusalPopover
           ticketId={refusal.ticketId}
           problem={refusal.problem}
           onDismiss={dismissRefusal}
         />
+      )}
+      <BoardFilterBar
+        filter={filter}
+        counts={countByFilter(tickets)}
+        onChange={setFilter}
+      />
+      {lanes.length === 0 && (
+        <p className="board-view__filter-empty" data-testid="board-filter-empty">
+          No cards match this filter.{' '}
+          <button type="button" className="btn-quiet" onClick={() => setFilter('all')}>
+            Show all
+          </button>
+        </p>
       )}
       <div className="board-view__lanes">
         {lanes.map((lane) => (

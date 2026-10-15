@@ -1,42 +1,45 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  fetchArtifactDoc,
-  fetchArtifactList,
-  fetchReceipt,
-  fetchReceipts,
-} from '../artifacts/api.js';
-import { MarkdownView } from '../artifacts/MarkdownView.js';
-import { ReceiptInspector } from '../artifacts/ReceiptInspector.js';
-import type { ArtifactDoc, ReceiptRecord } from '../artifacts/types.js';
-import { fetchBoardTickets, fireTicketVerb, type LifecycleVerb } from '../board/api.js';
+import { useModalLayer } from '../lib/useModalLayer.js';
+import { fetchArtifactDoc, fetchReceipt } from '../artifacts/api.js';
+import { fireTicketVerb, type LifecycleVerb } from '../board/api.js';
 import { explainRefusal } from '../board/refusal.js';
-import { availableVerbsFrom, verbTargetColumn } from '../board/transitions.js';
 import type { BoardTicket, ProblemDetails } from '../board/types.js';
-import { queryCodeIndex, type CodeSearchHit } from './codeIndex.js';
+import { paletteNavEntries, searchNav } from './navEntries.js';
+import { OPEN_PALETTE_EVENT } from './openPalette.js';
 import './palette.css';
+import { PalettePreview, type Preview } from './PalettePreview.js';
+import { PaletteResultList } from './PaletteResultList.js';
 import { searchDocs, searchReceipts, searchTickets, resultKey } from './search.js';
-import { isPaletteCloseKey, isPaletteOpenKey } from './shortcuts.js';
-import { PALETTE_MODES, type PaletteMode, type PaletteResult } from './types.js';
+import { isPaletteOpenKey } from './shortcuts.js';
+import {
+  PALETTE_MODES,
+  type PaletteMode,
+  type PaletteNavTarget,
+  type PaletteResult,
+} from './types.js';
+import { usePaletteData } from './usePaletteData.js';
 
 export interface CommandPaletteProps {
   baseUrl: string;
-  token: string;
-  projectId: string;
+  /** Without a token nothing project-scoped can be fetched; navigation still works. */
+  token?: string;
+  /** The open project, or null — on the Fleet the palette offers navigation only. */
+  projectId: string | null;
   onJumpToTicket: (ticketId: string) => void;
   onSelectMode: (mode: PaletteMode) => void;
+  onNavigate: (target: PaletteNavTarget) => void;
 }
-
-type Preview =
-  | { kind: 'doc'; path: string; doc: ArtifactDoc | null; error: string | null }
-  | { kind: 'receipt'; id: string; receipt: ReceiptRecord | null; error: string | null };
 
 /**
  * ⌘K command palette (UX_SPEC §2a): jump to tickets/docs/receipts, fire
- * verbs, mode picker. WCAG 2.2 AA combobox pattern — a text input
- * (`role="combobox"`) owning a `role="listbox"` of options, arrow-key
- * navigation, `aria-activedescendant` mirroring the highlighted option
- * (UX_SPEC §9 "every drag has a verb equivalent" extends here: every
- * result and verb is keyboard-reachable, nothing requires a pointer).
+ * verbs, go to any screen or project, mode picker. Mounted once, in the app
+ * shell, so it answers on every screen; ticket/doc/receipt search needs an
+ * open project and says so when there is none. WCAG 2.2 AA combobox pattern
+ * — a text input (`role="combobox"`) owning a `role="listbox"` of options,
+ * arrow-key navigation, `aria-activedescendant` mirroring the highlighted
+ * option: every result and verb is keyboard-reachable, nothing requires a
+ * pointer — and nothing requires a keyboard either (the header's Search
+ * button opens it through `OPEN_PALETTE_EVENT`).
  */
 export function CommandPalette({
   baseUrl,
@@ -44,17 +47,21 @@ export function CommandPalette({
   projectId,
   onJumpToTicket,
   onSelectMode,
+  onNavigate,
 }: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [tickets, setTickets] = useState<BoardTicket[]>([]);
-  const [docs, setDocs] = useState<{ path: string; title: string }[]>([]);
-  const [receipts, setReceipts] = useState<ReceiptRecord[]>([]);
-  const [codeHits, setCodeHits] = useState<CodeSearchHit[] | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [refusal, setRefusal] = useState<ProblemDetails | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { tickets, setTickets, docs, receipts, codeHits, projects } = usePaletteData(
+    open,
+    query,
+    baseUrl,
+    token,
+    projectId,
+  );
 
   const close = useCallback(() => {
     setOpen(false);
@@ -69,49 +76,41 @@ export function CommandPalette({
       if (isPaletteOpenKey(event)) {
         event.preventDefault();
         setOpen((current) => !current);
-      } else if (open && isPaletteCloseKey(event)) {
-        close();
       }
     };
+    const onRequestOpen = () => setOpen(true);
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open, close]);
-
-  useEffect(() => {
-    if (!open) return;
-    inputRef.current?.focus();
-    void fetchBoardTickets({ baseUrl, token }, projectId).then((res) => {
-      if (res.ok) setTickets(res.data);
-    });
-    void fetchArtifactList(projectId, { baseUrl, getToken: () => token })
-      .then(setDocs)
-      .catch(() => setDocs([]));
-    void fetchReceipts(projectId, {}, { baseUrl, getToken: () => token })
-      .then(setReceipts)
-      .catch(() => setReceipts([]));
-  }, [open, baseUrl, token, projectId]);
-
-  useEffect(() => {
-    if (!open || query.trim().length === 0) {
-      setCodeHits(null);
-      return;
-    }
-    let cancelled = false;
-    void queryCodeIndex(projectId, query, { baseUrl, token }).then((hits) => {
-      if (!cancelled) setCodeHits(hits);
-    });
+    window.addEventListener(OPEN_PALETTE_EVENT, onRequestOpen);
     return () => {
-      cancelled = true;
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener(OPEN_PALETTE_EVENT, onRequestOpen);
     };
-  }, [open, query, baseUrl, token, projectId]);
+  }, []);
+
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalLayer(dialogRef, close, open);
+
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
+
+  const navEntries = useMemo(
+    () => paletteNavEntries({ projectId, projects }),
+    [projectId, projects],
+  );
 
   const results = useMemo<PaletteResult[]>(
     () => [
-      ...searchTickets(tickets, query),
-      ...searchDocs(docs, query),
-      ...searchReceipts(receipts, query),
+      ...(projectId
+        ? [
+            ...searchTickets(tickets, query),
+            ...searchDocs(docs, query),
+            ...searchReceipts(receipts, query),
+          ]
+        : []),
+      ...searchNav(navEntries, query),
     ],
-    [tickets, docs, receipts, query],
+    [projectId, tickets, docs, receipts, navEntries, query],
   );
 
   useEffect(() => {
@@ -121,9 +120,14 @@ export function CommandPalette({
   const selectResult = useCallback(
     (result: PaletteResult) => {
       setRefusal(null);
-      if (result.kind === 'ticket') {
+      if (result.kind === 'nav') {
+        onNavigate(result.target);
+        close();
+      } else if (result.kind === 'ticket') {
         onJumpToTicket(result.id);
         close();
+      } else if (!projectId || !token) {
+        return;
       } else if (result.kind === 'doc') {
         setPreview({ kind: 'doc', path: result.path, doc: null, error: null });
         void fetchArtifactDoc(projectId, result.path, undefined, {
@@ -155,11 +159,12 @@ export function CommandPalette({
           );
       }
     },
-    [projectId, baseUrl, token, onJumpToTicket, close],
+    [projectId, baseUrl, token, onJumpToTicket, onNavigate, close],
   );
 
   const fireVerb = useCallback(
     async (ticketId: string, verb: Exclude<LifecycleVerb, 'comment'>) => {
+      if (!projectId || !token) return;
       setRefusal(null);
       const result = await fireTicketVerb({ baseUrl, token }, ticketId, verb, projectId);
       if (result.ok) {
@@ -170,7 +175,7 @@ export function CommandPalette({
         setRefusal(result.problem);
       }
     },
-    [baseUrl, token, projectId],
+    [baseUrl, token, projectId, setTickets],
   );
 
   const onInputKeyDown = useCallback(
@@ -193,10 +198,18 @@ export function CommandPalette({
   if (!open) return null;
 
   const listboxId = 'command-palette-listbox';
+  const active = results[activeIndex];
 
   return (
-    <div className="command-palette__backdrop" data-testid="command-palette-backdrop">
+    <div
+      className="command-palette__backdrop"
+      data-testid="command-palette-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) close();
+      }}
+    >
       <div
+        ref={dialogRef}
         className="command-palette"
         role="dialog"
         aria-modal="true"
@@ -204,31 +217,7 @@ export function CommandPalette({
         data-testid="command-palette"
       >
         {preview ? (
-          <div className="command-palette__preview">
-            <button
-              type="button"
-              onClick={() => setPreview(null)}
-              className="command-palette__back"
-            >
-              ← Back
-            </button>
-            {preview.kind === 'doc' &&
-              (preview.error ? (
-                <p role="alert">{preview.error}</p>
-              ) : preview.doc ? (
-                <MarkdownView content={preview.doc.content} />
-              ) : (
-                <p>Loading…</p>
-              ))}
-            {preview.kind === 'receipt' &&
-              (preview.error ? (
-                <p role="alert">{preview.error}</p>
-              ) : preview.receipt ? (
-                <ReceiptInspector receipt={preview.receipt} />
-              ) : (
-                <p>Loading…</p>
-              ))}
-          </div>
+          <PalettePreview preview={preview} onBack={() => setPreview(null)} />
         ) : (
           <>
             <input
@@ -237,17 +226,29 @@ export function CommandPalette({
               aria-expanded="true"
               aria-controls={listboxId}
               aria-activedescendant={
-                results[activeIndex]
-                  ? `palette-option-${resultKey(results[activeIndex])}`
-                  : undefined
+                active ? `palette-option-${resultKey(active)}` : undefined
               }
               className="command-palette__input"
-              placeholder="Jump to a ticket, doc, receipt… or pick a mode"
+              placeholder={
+                projectId
+                  ? 'Jump to a ticket, doc, receipt or screen… or pick a mode'
+                  : 'Go to a project or screen… or pick a mode'
+              }
+              aria-label={
+                projectId
+                  ? 'Search tickets, docs, receipts and screens, or pick a mode'
+                  : 'Search projects and screens, or pick a mode'
+              }
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={onInputKeyDown}
               data-testid="command-palette-input"
             />
+            {!projectId && (
+              <p className="command-palette__hint" data-testid="palette-no-project-hint">
+                Ticket, doc and receipt search needs an open project — open one below.
+              </p>
+            )}
             {refusal && (
               <p
                 className="command-palette__refusal"
@@ -274,86 +275,19 @@ export function CommandPalette({
                     {label}
                   </button>
                 ))}
+                <p className="command-palette__section-label">Go to</p>
               </div>
             )}
-            <ul
-              role="listbox"
-              id={listboxId}
-              className="command-palette__results"
-              data-testid="palette-results"
-            >
-              {results.map((result, index) => {
-                const key = resultKey(result);
-                const ticket =
-                  result.kind === 'ticket'
-                    ? tickets.find((t) => t.id === result.id)
-                    : undefined;
-                return (
-                  <li
-                    key={key}
-                    id={`palette-option-${key}`}
-                    role="option"
-                    aria-selected={index === activeIndex}
-                    className={`command-palette__result${index === activeIndex ? ' command-palette__result--active' : ''}`}
-                    data-testid={`palette-result-${key}`}
-                  >
-                    <button
-                      type="button"
-                      className="command-palette__result-label"
-                      onMouseEnter={() => setActiveIndex(index)}
-                      onClick={() => selectResult(result)}
-                    >
-                      <span className="command-palette__result-kind">{result.kind}</span>{' '}
-                      {result.title}
-                    </button>
-                    {ticket && availableVerbsFrom(ticket.status).length > 0 && (
-                      <label className="command-palette__verb-menu">
-                        <span className="sr-only">Fire a verb on {ticket.id}</span>
-                        <select
-                          value=""
-                          onChange={(event) => {
-                            const verb = event.target.value as Exclude<
-                              LifecycleVerb,
-                              'comment'
-                            >;
-                            if (verb) void fireVerb(ticket.id, verb);
-                          }}
-                        >
-                          <option value="" disabled>
-                            Fire verb…
-                          </option>
-                          {availableVerbsFrom(ticket.status).map((verb) => (
-                            <option key={verb} value={verb}>
-                              {verb} → {verbTargetColumn(verb)}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    )}
-                  </li>
-                );
-              })}
-              {codeHits && codeHits.length > 0 && (
-                <>
-                  <li className="command-palette__section-label" aria-hidden="true">
-                    Code
-                  </li>
-                  {codeHits.map((hit) => (
-                    <li
-                      key={`code:${hit.path}:${hit.line}`}
-                      role="option"
-                      aria-selected={false}
-                      className="command-palette__result"
-                      data-testid={`palette-code-${hit.path}:${hit.line}`}
-                    >
-                      <span className="command-palette__result-label">
-                        {hit.path}:{hit.line} — {hit.snippet}
-                      </span>
-                    </li>
-                  ))}
-                </>
-              )}
-            </ul>
+            <PaletteResultList
+              listboxId={listboxId}
+              results={results}
+              activeIndex={activeIndex}
+              tickets={tickets}
+              codeHits={codeHits}
+              onHover={setActiveIndex}
+              onSelect={selectResult}
+              onFireVerb={(ticketId, verb) => void fireVerb(ticketId, verb)}
+            />
           </>
         )}
       </div>

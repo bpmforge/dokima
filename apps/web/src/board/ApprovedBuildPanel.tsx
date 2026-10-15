@@ -18,9 +18,10 @@
  * refused it rather than a generic "needs review".
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BoardApiOptions } from './api.js';
 import { stopBuildRun } from './api.js';
+import { RunSummary } from './RunSummary.js';
 import {
   approveBuild,
   fetchApprovedBuildPreview,
@@ -44,11 +45,31 @@ const PHASE_LABEL: Record<BuildPhase, string> = {
   failed: 'Did not finish',
 };
 
+/** A ticket's state in words: the phase label when it is one, otherwise every `_` read as a space. */
+export function ticketStateLabel(state: string): string {
+  return (PHASE_LABEL as Record<string, string | undefined>)[state] ?? state.replaceAll('_', ' ');
+}
+
 export interface ApprovedBuildPanelProps {
   readonly apiOpts: BoardApiOptions;
   readonly projectId: string;
-  readonly budgetUsd?: number;
+  /**
+   * The project's configured run limit (Settings → Autonomy), or `null` when no
+   * cap is set. Review A2: this defaulted to `0` and nobody passed it, so every
+   * approval read "a budget of $0.00" — a number the person never chose.
+   */
+  readonly budgetUsd?: number | null;
+  /** Whether `budgetUsd` is known yet. Nothing is offered for approval until it is. */
+  readonly budgetStatus?: 'loading' | 'ready' | 'error';
+  /**
+   * Review UX-04: set when the board already knows no maker model exists. A
+   * new approval cannot build anything, so Set up / Approve are disabled with
+   * this reason, and Resume (which would fail the same way) is hidden.
+   */
+  readonly noModelReason?: string | null;
   readonly onSelectTicket?: (ticketId: string) => void;
+  /** Each increase opens the run preview (the budget-park retry asks this way). */
+  readonly previewRequest?: number;
   /** Injectable so the tests are not timing tests. Omitted, the panel polls. */
   readonly pollMs?: number | null;
 }
@@ -56,8 +77,11 @@ export interface ApprovedBuildPanelProps {
 export function ApprovedBuildPanel({
   apiOpts,
   projectId,
-  budgetUsd = 0,
+  budgetUsd = null,
+  budgetStatus = 'ready',
+  noModelReason = null,
   onSelectTicket,
+  previewRequest = 0,
   pollMs = 2000,
 }: ApprovedBuildPanelProps) {
   const [preview, setPreview] = useState<ApprovedBuildPreview | null>(null);
@@ -74,7 +98,10 @@ export function ApprovedBuildPanel({
     try {
       const runs = await fetchBuildRuns(apiOpts, projectId);
       if (!runs.ok) return;
-      setProgress(runs.data[0] ?? null);
+      // Review A1/R3: only an APPROVED build belongs in this panel. Adopting
+      // the newest run of any kind put a refused unapproved "Start a run"
+      // here as "Did not finish", with a Resume that approved a new build.
+      setProgress(runs.data.find((run) => run.approvedBuild) ?? null);
     } catch {
       // A core that is not answering is not a reason to take the board down
       // with an unhandled rejection. The panel simply shows nothing yet.
@@ -104,32 +131,60 @@ export function ApprovedBuildPanel({
     return () => clearTimeout(timer);
   }, [apiOpts, projectId, progress, pollMs]);
 
+  // The wire takes a number; no cap is sent as 0, exactly as the server's
+  // digest already reads an absent budget. What the PERSON reads is the
+  // honest version: "no budget cap is set", never "a budget of $0.00".
+  const wireBudget = budgetUsd ?? 0;
+
   const openPreview = async () => {
     setProblem(null);
-    const result = await fetchApprovedBuildPreview(apiOpts, projectId, budgetUsd);
-    if (!result.ok) {
-      setProblem(result.problem.detail ?? 'the approval details could not be read');
+    if (budgetStatus === 'loading') {
+      setProblem("Still reading this project's budget setting — try again in a moment.");
       return;
     }
-    setPreview(result.data);
+    if (budgetStatus === 'error') {
+      setProblem(
+        "Couldn't read this project's budget setting, so there is nothing exact to approve yet. Check Settings → Autonomy, then try again.",
+      );
+      return;
+    }
+    try {
+      const result = await fetchApprovedBuildPreview(apiOpts, projectId, wireBudget);
+      if (!result.ok) {
+        setProblem(result.problem.detail ?? 'the approval details could not be read');
+        return;
+      }
+      setPreview(result.data);
+    } catch (err) {
+      setProblem(err instanceof Error ? err.message : 'the approval details could not be read');
+    }
   };
+
+  // Latest openPreview for the request effect, without re-firing on every render.
+  const openPreviewRef = useRef(openPreview);
+  openPreviewRef.current = openPreview;
+  useEffect(() => {
+    if (previewRequest > 0) void openPreviewRef.current();
+  }, [previewRequest]);
 
   const approveAndStart = async () => {
     setBusy(true);
     setProblem(null);
     try {
-      const approved = await approveBuild(apiOpts, projectId, budgetUsd);
+      const approved = await approveBuild(apiOpts, projectId, wireBudget);
       if (!approved.ok) {
         setProblem(approved.problem.detail ?? 'the approval could not be recorded');
         return;
       }
-      const started = await startApprovedBuildRun(apiOpts, projectId, budgetUsd);
+      const started = await startApprovedBuildRun(apiOpts, projectId, wireBudget);
       if (!started.ok) {
         setProblem(started.problem.detail ?? 'the run could not start');
         return;
       }
       setPreview(null);
       await refresh();
+    } catch (err) {
+      setProblem(err instanceof Error ? err.message : 'the run could not start');
     } finally {
       setBusy(false);
     }
@@ -138,9 +193,22 @@ export function ApprovedBuildPanel({
   const stop = async () => {
     if (!progress) return;
     setBusy(true);
+    setProblem(null);
     try {
-      await stopBuildRun(apiOpts, projectId, progress.runId);
+      // Review R4: the stop result was discarded, so a refused stop looked
+      // exactly like an accepted one.
+      const stopped = await stopBuildRun(apiOpts, projectId, progress.runId);
+      if (!stopped.ok) {
+        setProblem(
+          `The run could not be stopped: ${stopped.problem.detail ?? stopped.problem.title}`,
+        );
+        return;
+      }
       await refresh();
+    } catch (err) {
+      setProblem(
+        `The run could not be stopped: ${err instanceof Error ? err.message : String(err)}`,
+      );
     } finally {
       setBusy(false);
     }
@@ -153,7 +221,15 @@ export function ApprovedBuildPanel({
 
   return (
     <section className="approved-build" data-testid="approved-build-panel">
-      <h3>Approved build</h3>
+      <h3>Run</h3>
+      {/* W13-59: what a run is, what it uses, and that nothing starts until
+          the person approves the preview. */}
+      <p className="board-view__run-hint" data-testid="board-runbar-hint">
+        A run is one pass of the agent working the board: it claims Ready tickets, does the
+        work, and hands back receipts. You approve exactly which tickets and budget first. It
+        uses only the models you chose in Settings → Models, within your Autonomy setting —
+        nothing else is contacted.
+      </p>
 
       {progress && (
         <div data-testid="approved-build-progress">
@@ -173,7 +249,7 @@ export function ApprovedBuildPanel({
                 >
                   {ticket.ticketId}
                 </button>{' '}
-                — {ticket.state.replace('_', ' ')}
+                — {ticketStateLabel(ticket.state)}
                 {ticket.repairRounds > 0 && ` · ${ticket.repairRounds} repair round(s)`}
                 {ticket.reason && (
                   <>
@@ -202,6 +278,9 @@ export function ApprovedBuildPanel({
             No live preview: Dokima does not run your app. What it can show is the
             evidence — open a ticket for its review, checks and signed receipt.
           </p>
+          {!live && (
+            <RunSummary apiOpts={apiOpts} projectId={projectId} runId={progress.runId} />
+          )}
           {live && (
             <button
               type="button"
@@ -214,37 +293,42 @@ export function ApprovedBuildPanel({
               Stop the run
             </button>
           )}
-          {!live && (
+          {!live && !preview && noModelReason === null && (
             <button
               type="button"
               className="btn-quiet"
               data-testid="approved-build-resume"
               disabled={busy}
-              onClick={() => void approveAndStart()}
-              title="A stopped run stays stopped — this starts a new run under a fresh approval of the current specification."
+              onClick={() => void openPreview()}
+              title="A stopped run stays stopped — this shows what a new run would cover, and starts it only after you approve that."
             >
-              Resume (starts a new run)
+              Start a new run
             </button>
           )}
         </div>
       )}
 
-      {!live && !preview && (
+      {!live && !preview && !progress && (
         <button
           type="button"
           className="btn-primary"
           data-testid="approved-build-review"
+          disabled={noModelReason !== null}
+          aria-describedby={noModelReason !== null ? 'board-run-blocked-reason' : undefined}
           onClick={() => void openPreview()}
         >
-          Set up an approved run
+          Start a run
         </button>
       )}
 
       {preview && (
         <div data-testid="approved-build-preview">
-          <p>
-            You are approving {preview.tickets.length} ticket(s), a budget of $
-            {preview.budgetUsd.toFixed(2)}, and this exact specification (
+          <p data-testid="approved-build-summary">
+            You are approving {preview.tickets.length} ticket(s),{' '}
+            {budgetUsd === null
+              ? 'with no budget cap set for this project (set a run limit in Settings → Autonomy)'
+              : `a budget of $${budgetUsd.toFixed(2)} (this project's run limit)`}
+            , and this exact specification (
             <code>{preview.inputDigest.slice(0, 19)}…</code>). If any of it changes, the
             approval stops applying and the run refuses rather than proceeding.
           </p>
@@ -260,6 +344,12 @@ export function ApprovedBuildPanel({
             Built by {preview.makerModel ?? 'no model configured'}, reviewed by{' '}
             {preview.reviewerModel ?? 'no model configured'}.
           </p>
+          {(preview.makerModel === null || noModelReason !== null) && (
+            <p id="approved-build-no-model" data-testid="approved-build-no-model">
+              {noModelReason ??
+                'Nothing can build yet: no model is set up for the coding agent. Add a provider in Settings → Providers, then pick a model in Settings → Models.'}
+            </p>
+          )}
           {!preview.independentReview && (
             <p role="alert" data-testid="approved-build-no-independent-review">
               This cannot finish without you: {preview.independentReviewReason}
@@ -274,7 +364,12 @@ export function ApprovedBuildPanel({
             type="button"
             className="btn-primary"
             data-testid="approved-build-approve"
-            disabled={busy}
+            disabled={busy || preview.makerModel === null || noModelReason !== null}
+            aria-describedby={
+              preview.makerModel === null || noModelReason !== null
+                ? 'approved-build-no-model'
+                : undefined
+            }
             onClick={() => void approveAndStart()}
           >
             Approve and start

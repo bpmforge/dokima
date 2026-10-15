@@ -23,6 +23,9 @@ export interface ArmedButtonProps {
   readonly className?: string;
   readonly title?: string;
   readonly testId?: string;
+  readonly disabled?: boolean;
+  /** Ties the button to consequence copy elsewhere on the card. */
+  readonly describedBy?: string;
   /** How long the armed state lasts before it disarms itself. */
   readonly disarmAfterMs?: number;
 }
@@ -35,6 +38,8 @@ export function ArmedButton({
   className,
   title,
   testId,
+  disabled,
+  describedBy,
   disarmAfterMs = 6000,
 }: ArmedButtonProps) {
   const [armed, setArmed] = useState(false);
@@ -70,6 +75,8 @@ export function ArmedButton({
         className={className}
         title={title}
         data-testid={testId}
+        disabled={disabled}
+        aria-describedby={describedBy}
         data-armed={armed || undefined}
         aria-live="polite"
         onClick={handleClick}

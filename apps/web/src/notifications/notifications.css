@@ -49,20 +49,7 @@
   gap: var(--sw-space-2);
 }
 
-.notifications-view__tabs button {
-  border: var(--sw-border-width) solid var(--sw-border);
-  background: transparent;
-  color: var(--sw-fg);
-  border-radius: var(--sw-radius-md);
-  padding: var(--sw-space-2) var(--sw-space-3);
-  cursor: pointer;
-}
-
-.notifications-view__tabs button[aria-selected='true'] {
-  background: var(--sw-accent);
-  color: var(--sw-bg);
-  border-color: var(--sw-accent);
-}
+/* The tab buttons take the shared `.tab` primitive (styles.css, UI-10). */
 
 .notifications-view__project-filter {
   display: flex;
@@ -110,7 +97,8 @@
 .morning-queue__header h2,
 .notification-center__header h2 {
   margin: 0;
-  font-size: var(--sw-text-xl);
+  /* Review UI-07: this h2 is the page title, so it takes the page-title size. */
+  font-size: var(--sw-text-page-title);
 }
 
 .morning-queue__timer {
@@ -225,6 +213,8 @@
   justify-content: space-between;
   gap: var(--sw-space-2);
   margin-top: var(--sw-space-2);
+  /* Review UX-02: Reject and "Mark as read" ran off-screen at 390px. */
+  flex-wrap: wrap;
 }
 
 .notification-card__time {
@@ -234,6 +224,7 @@
 
 .notification-card__actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--sw-space-2);
 }
 
@@ -283,4 +274,28 @@
 .notification-card__evidence-digest {
   font-size: 0.85em;
   margin: 0 0 var(--sw-space-1);
+}
+
+/* Review 2026-10-15: a destructive tool call is named before its second press. */
+.notification-card__evidence-warning {
+  color: var(--sw-danger);
+  font-weight: 600;
+  margin: var(--sw-space-1) 0;
+}
+
+/* Review Q1/Q3: a failed decision stays on its card; Reject's optional reason. */
+.notification-card__error {
+  color: var(--sw-danger);
+}
+
+.notification-card__reject {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sw-space-1);
+}
+
+.notification-card__reject textarea {
+  font: inherit;
+  color: var(--sw-fg);
+  background: var(--sw-bg);
 }

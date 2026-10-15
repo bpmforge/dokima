@@ -19,6 +19,8 @@ export interface ProjectCardProps {
   card: ProjectCardData;
   archivedView: boolean;
   onOpen: () => void;
+  /** Opens this project's board filtered to Blocked; the Blocked count is a button when set and nonzero. */
+  onOpenBlocked?: () => void;
   onArchive: () => void;
   onReopen: () => void;
   onRemove: () => void;
@@ -28,6 +30,7 @@ export function ProjectCard({
   card,
   archivedView,
   onOpen,
+  onOpenBlocked,
   onArchive,
   onReopen,
   onRemove,
@@ -119,7 +122,24 @@ export function ProjectCard({
           ] as const
         ).map(([label, value]) => (
           <div key={label} className={`readout${value === 0 ? ' readout--idle' : ''}`}>
-            <dd className="readout__value">{value}</dd>
+            <dd className="readout__value">
+              {/* A nonzero Blocked count goes straight to the board with
+                  the Blocked filter on — the count is the question, the
+                  board is the answer. */}
+              {label === 'Blocked' && value > 0 && onOpenBlocked && !archivedView ? (
+                <button
+                  type="button"
+                  className="project-card__readout-link"
+                  onClick={onOpenBlocked}
+                  aria-label={`${value} blocked — show on the board`}
+                  data-testid="project-card-blocked-link"
+                >
+                  {value}
+                </button>
+              ) : (
+                value
+              )}
+            </dd>
             <dt className="readout__label">{label}</dt>
           </div>
         ))}

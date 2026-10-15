@@ -171,7 +171,9 @@
   padding-top: var(--sw-space-1);
   border-top: var(--sw-border-width) solid var(--sw-border);
   font-size: var(--sw-text-sm);
-  opacity: 0.85;
+  /* Review UI-15 / UX-19: was `opacity: 0.85`, which took the cost link to
+     3.65:1 in light. The muted token is measured; the link keeps the accent. */
+  color: var(--sw-fg-muted);
 }
 
 .chat-card__sep {
@@ -179,17 +181,153 @@
 }
 
 .chat-card__cost {
-  color: var(--sw-accent);
-  text-decoration: none;
   font-weight: 600;
 }
 
-.chat-card__cost:hover {
+/* Only a cost with a real receipt is clickable, and it opens in-app (review C2). */
+.chat-card__cost--button,
+.chat-card__evidence--button {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: var(--sw-accent);
+  cursor: pointer;
+}
+
+.chat-card__cost--button {
+  font-weight: 600;
+}
+
+.chat-card__cost--button:hover,
+.chat-card__evidence--button:hover {
   text-decoration: underline;
+}
+
+.chat__receipt {
+  /* Border and radius come from the shared .surface (W13-04 ratchet). */
+  padding: var(--sw-space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sw-space-1);
+}
+
+.chat__receipt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sw-space-2);
+  font-weight: 600;
+}
+
+.chat__receipt-error {
+  color: var(--sw-danger);
 }
 
 /* W19-07: the human first line of a recognised finding. */
 .chat-card__lead {
   margin: 0 0 var(--sw-space-2);
   font-weight: 600;
+}
+
+/* A person's reply: set apart from agent cards by an accent rule on the
+   leading edge and the surface fill — no kind header, no provenance line. */
+.chat-human {
+  border: var(--sw-border-width) solid var(--sw-border);
+  border-left: var(--sw-indicator-width) solid var(--sw-accent);
+  border-radius: var(--sw-radius-sm);
+  padding: var(--sw-space-2);
+  background: var(--sw-surface);
+}
+
+.chat-human__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sw-space-2);
+  font-size: var(--sw-text-sm);
+  margin-bottom: var(--sw-space-1);
+}
+
+.chat-human__author {
+  font-weight: 600;
+}
+
+.chat-human__ticket,
+.chat-human__time {
+  color: var(--sw-fg-muted);
+}
+
+.chat-human__body {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.chat-card__reply {
+  margin-top: var(--sw-space-1);
+  font-size: var(--sw-text-sm);
+  padding: var(--sw-space-0-5) var(--sw-space-2);
+}
+
+/* The composer stays at the bottom of the pane while the feed scrolls. */
+.chat-composer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sw-space-1);
+  padding: var(--sw-space-2);
+  margin-top: auto;
+  border: var(--sw-border-width) solid var(--sw-border-strong);
+  border-radius: var(--sw-radius-md);
+  background: var(--sw-bg);
+}
+
+.chat-composer__ticket {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--sw-space-2);
+  font-size: var(--sw-text-sm);
+}
+
+.chat-composer__field {
+  font-size: var(--sw-text-sm);
+  font-weight: 600;
+}
+
+.chat-composer__text {
+  resize: vertical;
+  min-height: calc(var(--sw-space-8) * 2);
+}
+
+.chat-composer__hint {
+  margin: 0;
+  font-size: var(--sw-text-sm);
+  color: var(--sw-fg-muted);
+}
+
+.chat-composer__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sw-space-2);
+  padding: var(--sw-space-1) var(--sw-space-2);
+  border: var(--sw-border-width) solid var(--sw-danger);
+  border-radius: var(--sw-radius-sm);
+  color: var(--sw-danger);
+  font-size: var(--sw-text-sm);
+}
+
+.chat-composer__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sw-space-2);
+}
+
+.chat-composer__status {
+  margin: 0;
+  font-size: var(--sw-text-sm);
+  color: var(--sw-fg-muted);
 }

@@ -36,6 +36,24 @@ test('"?" opens the keyboard shortcuts overlay, Escape closes it', async ({ page
   await expect(overlay).toBeHidden();
 });
 
+test('the command palette opens on the Fleet too — from the header Search button and from the keyboard', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const palette = page.getByTestId('command-palette');
+  await expect(palette).toBeHidden();
+
+  await page.getByTestId('header-search').click();
+  await expect(palette).toBeVisible();
+  await expect(page.getByTestId('palette-no-project-hint')).toBeVisible();
+  await expect(page.getByTestId('palette-result-nav:settings')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(palette).toBeHidden();
+
+  await page.keyboard.press('ControlOrMeta+k');
+  await expect(palette).toBeVisible();
+});
+
 test('prefers-reduced-motion is reflected on the document element', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');

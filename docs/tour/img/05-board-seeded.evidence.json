@@ -1,6 +1,9 @@
 {
   "strings": [
+    "Skip to content",
     "Dokima",
+    "·",
+    "Demo Voyage",
     "Board",
     "Team",
     "Describe",
@@ -9,6 +12,8 @@
     "Lessons",
     "Roster",
     "Morning queue",
+    "Search",
+    "Ctrl+K",
     "Settings",
     "Light",
     "← Fleet",
@@ -19,16 +24,23 @@
     "manifest",
     "c/x.ts",
     "verify",
-    "fail",
+    "pass",
     "1 file(s)",
     "agent-1",
-    "·",
     "—",
     "E2E-3",
-    "$",
-    "0.0000",
+    "$0.00",
+    "Reply",
+    "Ticket",
+    "Your reply on",
+    "Saved to",
+    "'s history. Agents don't read replies yet — to send work back to an agent, reject the ticket on the board. Ctrl+Enter or ⌘+Enter sends.",
+    "Send reply",
+    "Nothing can build yet: no model is set up for the coding agent. Add a provider in Settings → Providers, then pick a model in Settings → Models.",
+    "Open Settings → Providers",
+    "Run",
+    "A run is one pass of the agent working the board: it claims Ready tickets, does the work, and hands back receipts. You approve exactly which tickets and budget first. It uses only the models you chose in Settings → Models, within your Autonomy setting — nothing else is contacted.",
     "Start a run",
-    "A run is one pass of the agent working the board: it claims Ready tickets, does the work, and hands back receipts. It uses only the models you chose in Settings → Models, within your Autonomy setting — nothing else is contacted.",
     "ui",
     ":",
     "E2E-1",
@@ -36,14 +48,19 @@
     "abc1234",
     "→",
     "Ship the strips",
-    "Lane",
-    "gateway",
+    "Show all",
+    "3",
     "Ready",
+    "1",
+    "Parked",
+    "0",
     "Claimed",
     "In Progress",
     "In Review",
     "Blocked",
     "Done",
+    "Lane",
+    "gateway",
     "Story",
     "●",
     "Task",
@@ -52,6 +69,7 @@
     "Move ticket",
     "Move to…",
     "Claim it yourself → Claimed (starts no agent, spends nothing)",
+    "Move",
     "Bug",
     "E2E-2",
     "Blocked on E2E-1",
@@ -64,15 +82,27 @@
   ],
   "interactive": [
     {
+      "tag": "a",
+      "role": null,
+      "name": "Skip to content",
+      "disabled": false,
+      "rect": {
+        "x": 8,
+        "y": -48,
+        "w": 125,
+        "h": 39
+      }
+    },
+    {
       "tag": "button",
       "role": null,
       "name": "Board",
       "disabled": false,
       "rect": {
-        "x": 518,
+        "x": 412,
         "y": 12,
-        "w": 71,
-        "h": 36
+        "w": 66,
+        "h": 32
       }
     },
     {
@@ -81,10 +111,10 @@
       "name": "Team",
       "disabled": false,
       "rect": {
-        "x": 593,
+        "x": 482,
         "y": 12,
-        "w": 65,
-        "h": 36
+        "w": 62,
+        "h": 32
       }
     },
     {
@@ -93,10 +123,10 @@
       "name": "Describe",
       "disabled": false,
       "rect": {
-        "x": 663,
+        "x": 548,
         "y": 12,
-        "w": 91,
-        "h": 36
+        "w": 85,
+        "h": 32
       }
     },
     {
@@ -105,10 +135,10 @@
       "name": "Plan",
       "disabled": false,
       "rect": {
-        "x": 757,
+        "x": 637,
         "y": 12,
-        "w": 57,
-        "h": 36
+        "w": 54,
+        "h": 32
       }
     },
     {
@@ -117,10 +147,10 @@
       "name": "Decisions",
       "disabled": false,
       "rect": {
-        "x": 818,
+        "x": 696,
         "y": 12,
-        "w": 96,
-        "h": 36
+        "w": 91,
+        "h": 32
       }
     },
     {
@@ -129,10 +159,10 @@
       "name": "Lessons",
       "disabled": false,
       "rect": {
-        "x": 919,
+        "x": 790,
         "y": 12,
-        "w": 85,
-        "h": 36
+        "w": 81,
+        "h": 32
       }
     },
     {
@@ -141,10 +171,10 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1008,
+        "x": 875,
         "y": 12,
-        "w": 73,
-        "h": 36
+        "w": 68,
+        "h": 32
       }
     },
     {
@@ -153,10 +183,22 @@
       "name": "Morning queue, 0 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1093,
-        "y": 17,
+        "x": 956,
+        "y": 12,
         "w": 134,
-        "h": 27
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Search Ctrl+K",
+      "disabled": false,
+      "rect": {
+        "x": 1102,
+        "y": 12,
+        "w": 137,
+        "h": 32
       }
     },
     {
@@ -165,22 +207,22 @@
       "name": "Settings",
       "disabled": false,
       "rect": {
-        "x": 1239,
+        "x": 1251,
         "y": 12,
-        "w": 86,
-        "h": 36
+        "w": 80,
+        "h": 32
       }
     },
     {
       "tag": "button",
       "role": null,
-      "name": "Switch to dark theme",
+      "name": "Light theme, switch to dark",
       "disabled": false,
       "rect": {
-        "x": 1337,
+        "x": 1343,
         "y": 12,
-        "w": 87,
-        "h": 36
+        "w": 81,
+        "h": 32
       }
     },
     {
@@ -190,9 +232,9 @@
       "disabled": false,
       "rect": {
         "x": 12,
-        "y": 69,
-        "w": 80,
-        "h": 36
+        "y": 65,
+        "w": 76,
+        "h": 39
       }
     },
     {
@@ -201,10 +243,10 @@
       "name": "Focus Chat and collapse the other panes",
       "disabled": false,
       "rect": {
-        "x": 133,
-        "y": 113,
-        "w": 47,
-        "h": 21
+        "x": 211,
+        "y": 112,
+        "w": 48,
+        "h": 25
       }
     },
     {
@@ -213,34 +255,94 @@
       "name": "Collapse Chat",
       "disabled": false,
       "rect": {
-        "x": 270,
-        "y": 113,
-        "w": 17,
-        "h": 21
+        "x": 263,
+        "y": 112,
+        "w": 24,
+        "h": 25
       }
     },
     {
       "tag": "div",
       "role": "list",
-      "name": "manifestc/x.tsverify fail1 file(s)agent-1·—·E2E-3·$0.0000",
+      "name": "manifestc/x.tsverify pass1 file(s)agent-1·—·E2E-3·$0.00Reply",
       "disabled": false,
       "rect": {
         "x": 21,
-        "y": 181,
+        "y": 188,
         "w": 257,
-        "h": 102
+        "h": 159
       }
     },
     {
-      "tag": "a",
+      "tag": "button",
       "role": null,
-      "name": "$0.0000",
+      "name": "Reply on E2E-3",
       "disabled": false,
       "rect": {
-        "x": 160,
-        "y": 258,
-        "w": 54,
-        "h": 16
+        "x": 30,
+        "y": 300,
+        "w": 60,
+        "h": 38
+      }
+    },
+    {
+      "tag": "select",
+      "role": null,
+      "name": "TicketE2E-3",
+      "disabled": false,
+      "rect": {
+        "x": 67,
+        "y": 672,
+        "w": 84,
+        "h": 36
+      }
+    },
+    {
+      "tag": "textarea",
+      "role": null,
+      "name": "Your reply on E2E-3",
+      "disabled": false,
+      "rect": {
+        "x": 21,
+        "y": 736,
+        "w": 257,
+        "h": 81
+      }
+    },
+    {
+      "tag": "p",
+      "role": "status",
+      "name": "",
+      "disabled": false,
+      "rect": {
+        "x": 21,
+        "y": 922,
+        "w": 0,
+        "h": 0
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Send reply",
+      "disabled": false,
+      "rect": {
+        "x": 181,
+        "y": 903,
+        "w": 97,
+        "h": 39
+      }
+    },
+    {
+      "tag": "div",
+      "role": "separator",
+      "name": "Resize Chat and Board",
+      "disabled": false,
+      "rect": {
+        "x": 300,
+        "y": 104,
+        "w": 6,
+        "h": 855
       }
     },
     {
@@ -249,10 +351,10 @@
       "name": "Focus Board and collapse the other panes",
       "disabled": false,
       "rect": {
-        "x": 707,
-        "y": 113,
-        "w": 47,
-        "h": 21
+        "x": 1045,
+        "y": 112,
+        "w": 48,
+        "h": 25
       }
     },
     {
@@ -261,22 +363,34 @@
       "name": "Collapse Board",
       "disabled": false,
       "rect": {
-        "x": 1104,
-        "y": 113,
-        "w": 17,
-        "h": 21
+        "x": 1097,
+        "y": 112,
+        "w": 24,
+        "h": 25
+      }
+    },
+    {
+      "tag": "a",
+      "role": null,
+      "name": "Open Settings → Providers",
+      "disabled": false,
+      "rect": {
+        "x": 657,
+        "y": 191,
+        "w": 177,
+        "h": 17
       }
     },
     {
       "tag": "button",
       "role": null,
       "name": "Start a run",
-      "disabled": false,
+      "disabled": true,
       "rect": {
         "x": 318,
-        "y": 151,
+        "y": 351,
         "w": 113,
-        "h": 35
+        "h": 39
       }
     },
     {
@@ -286,9 +400,9 @@
       "disabled": false,
       "rect": {
         "x": 327,
-        "y": 254,
-        "w": 172,
-        "h": 17
+        "y": 407,
+        "w": 177,
+        "h": 21
       }
     },
     {
@@ -297,10 +411,130 @@
       "name": "abc1234 → E2E-3 Ship the strips",
       "disabled": false,
       "rect": {
-        "x": 525,
-        "y": 254,
-        "w": 213,
-        "h": 17
+        "x": 530,
+        "y": 407,
+        "w": 216,
+        "h": 21
+      }
+    },
+    {
+      "tag": "p",
+      "role": "status",
+      "name": "",
+      "disabled": false,
+      "rect": {
+        "x": 316,
+        "y": 152,
+        "w": 2,
+        "h": 2
+      }
+    },
+    {
+      "tag": "div",
+      "role": "group",
+      "name": "Filter cards by status",
+      "disabled": false,
+      "rect": {
+        "x": 318,
+        "y": 445,
+        "w": 803,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Show all 3",
+      "disabled": false,
+      "rect": {
+        "x": 318,
+        "y": 445,
+        "w": 97,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Ready 1",
+      "disabled": false,
+      "rect": {
+        "x": 418,
+        "y": 445,
+        "w": 82,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Parked 0",
+      "disabled": false,
+      "rect": {
+        "x": 504,
+        "y": 445,
+        "w": 87,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Claimed 0",
+      "disabled": false,
+      "rect": {
+        "x": 595,
+        "y": 445,
+        "w": 94,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "In Progress 0",
+      "disabled": false,
+      "rect": {
+        "x": 693,
+        "y": 445,
+        "w": 115,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "In Review 0",
+      "disabled": false,
+      "rect": {
+        "x": 813,
+        "y": 445,
+        "w": 104,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Blocked 1",
+      "disabled": false,
+      "rect": {
+        "x": 920,
+        "y": 445,
+        "w": 93,
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Done 1",
+      "disabled": false,
+      "rect": {
+        "x": 1018,
+        "y": 445,
+        "w": 75,
+        "h": 32
       }
     },
     {
@@ -310,9 +544,9 @@
       "disabled": false,
       "rect": {
         "x": 318,
-        "y": 309,
+        "y": 514,
         "w": 803,
-        "h": 130
+        "h": 145
       }
     },
     {
@@ -322,7 +556,7 @@
       "disabled": false,
       "rect": {
         "x": 327,
-        "y": 339,
+        "y": 548,
         "w": 82,
         "h": 24
       }
@@ -334,7 +568,7 @@
       "disabled": false,
       "rect": {
         "x": 435,
-        "y": 339,
+        "y": 548,
         "w": 82,
         "h": 24
       }
@@ -346,7 +580,7 @@
       "disabled": false,
       "rect": {
         "x": 543,
-        "y": 339,
+        "y": 548,
         "w": 82,
         "h": 24
       }
@@ -358,7 +592,7 @@
       "disabled": false,
       "rect": {
         "x": 651,
-        "y": 339,
+        "y": 548,
         "w": 82,
         "h": 24
       }
@@ -370,7 +604,7 @@
       "disabled": false,
       "rect": {
         "x": 759,
-        "y": 339,
+        "y": 548,
         "w": 82,
         "h": 24
       }
@@ -382,9 +616,9 @@
       "disabled": false,
       "rect": {
         "x": 867,
-        "y": 339,
+        "y": 548,
         "w": 245,
-        "h": 91
+        "h": 102
       }
     },
     {
@@ -394,9 +628,21 @@
       "disabled": false,
       "rect": {
         "x": 867,
-        "y": 339,
+        "y": 548,
         "w": 245,
-        "h": 91
+        "h": 102
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Open ticket E2E-3: Ship the strips",
+      "disabled": false,
+      "rect": {
+        "x": 884,
+        "y": 589,
+        "w": 95,
+        "h": 21
       }
     },
     {
@@ -406,21 +652,21 @@
       "disabled": false,
       "rect": {
         "x": 318,
-        "y": 485,
+        "y": 709,
         "w": 803,
-        "h": 212
+        "h": 241
       }
     },
     {
       "tag": "div",
       "role": "list",
-      "name": "TaskE2E-1Wire the boardunclaimed○Move ticket E2E-1Move to…Claim it yourself → Claimed (starts no agent, spends nothing)",
+      "name": "TaskE2E-1Wire the boardunclaimed○Move ticket E2E-1Move to…Claim it yourself → Claimed (starts no agent, spends nothing)Move",
       "disabled": false,
       "rect": {
         "x": 327,
-        "y": 515,
+        "y": 743,
         "w": 164,
-        "h": 132
+        "h": 186
       }
     },
     {
@@ -430,9 +676,21 @@
       "disabled": false,
       "rect": {
         "x": 327,
-        "y": 515,
+        "y": 743,
         "w": 164,
-        "h": 132
+        "h": 186
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Open ticket E2E-1: Wire the board",
+      "disabled": false,
+      "rect": {
+        "x": 344,
+        "y": 784,
+        "w": 98,
+        "h": 21
       }
     },
     {
@@ -442,9 +700,21 @@
       "disabled": false,
       "rect": {
         "x": 344,
-        "y": 593,
+        "y": 832,
         "w": 130,
         "h": 37
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Move",
+      "disabled": true,
+      "rect": {
+        "x": 344,
+        "y": 873,
+        "w": 63,
+        "h": 39
       }
     },
     {
@@ -454,7 +724,7 @@
       "disabled": false,
       "rect": {
         "x": 517,
-        "y": 515,
+        "y": 743,
         "w": 82,
         "h": 24
       }
@@ -466,7 +736,7 @@
       "disabled": false,
       "rect": {
         "x": 625,
-        "y": 515,
+        "y": 743,
         "w": 82,
         "h": 24
       }
@@ -478,7 +748,7 @@
       "disabled": false,
       "rect": {
         "x": 733,
-        "y": 515,
+        "y": 743,
         "w": 82,
         "h": 24
       }
@@ -490,9 +760,9 @@
       "disabled": false,
       "rect": {
         "x": 841,
-        "y": 515,
+        "y": 743,
         "w": 164,
-        "h": 173
+        "h": 198
       }
     },
     {
@@ -502,9 +772,21 @@
       "disabled": false,
       "rect": {
         "x": 841,
-        "y": 515,
+        "y": 743,
         "w": 164,
-        "h": 173
+        "h": 198
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Open ticket E2E-2: Blocked on E2E-1",
+      "disabled": false,
+      "rect": {
+        "x": 858,
+        "y": 784,
+        "w": 115,
+        "h": 21
       }
     },
     {
@@ -514,9 +796,21 @@
       "disabled": false,
       "rect": {
         "x": 1030,
-        "y": 515,
+        "y": 743,
         "w": 82,
         "h": 24
+      }
+    },
+    {
+      "tag": "div",
+      "role": "separator",
+      "name": "Resize Board and Artifacts",
+      "disabled": false,
+      "rect": {
+        "x": 1134,
+        "y": 104,
+        "w": 6,
+        "h": 855
       }
     },
     {
@@ -525,10 +819,10 @@
       "name": "Focus Artifacts and collapse the other panes",
       "disabled": false,
       "rect": {
-        "x": 1286,
-        "y": 113,
-        "w": 47,
-        "h": 21
+        "x": 1352,
+        "y": 112,
+        "w": 48,
+        "h": 25
       }
     },
     {
@@ -537,10 +831,10 @@
       "name": "Collapse Artifacts",
       "disabled": false,
       "rect": {
-        "x": 1411,
-        "y": 113,
-        "w": 17,
-        "h": 21
+        "x": 1404,
+        "y": 112,
+        "w": 24,
+        "h": 25
       }
     },
     {
@@ -550,9 +844,9 @@
       "disabled": false,
       "rect": {
         "x": 1152,
-        "y": 151,
-        "w": 51,
-        "h": 27
+        "y": 154,
+        "w": 58,
+        "h": 31
       }
     },
     {
@@ -561,10 +855,10 @@
       "name": "Receipts",
       "disabled": false,
       "rect": {
-        "x": 1211,
-        "y": 151,
-        "w": 74,
-        "h": 27
+        "x": 1219,
+        "y": 154,
+        "w": 81,
+        "h": 31
       }
     },
     {
@@ -574,9 +868,9 @@
       "disabled": false,
       "rect": {
         "x": 1152,
-        "y": 195,
+        "y": 202,
         "w": 276,
-        "h": 94
+        "h": 102
       }
     }
   ],
@@ -587,11 +881,11 @@
     },
     "contentBox": {
       "x": 0,
-      "y": 0,
+      "y": -48,
       "w": 1440,
-      "h": 900
+      "h": 948
     },
-    "occupancy": 1
+    "occupancy": 1.05
   },
   "classHistogram": {
     "app-shell": 1,
@@ -599,9 +893,15 @@
     "app-shell__bell-label": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
+    "app-shell__kbd": 1,
+    "app-shell__main": 1,
     "app-shell__nav": 1,
     "app-shell__nav-item": 7,
     "app-shell__notifications-bell": 1,
+    "app-shell__project-name": 1,
+    "app-shell__search": 1,
+    "app-shell__wordmark": 1,
+    "approved-build": 1,
     "artifact-empty-state": 1,
     "artifact-viewer": 1,
     "artifact-viewer__docs": 1,
@@ -612,6 +912,7 @@
     "board-card__header": 3,
     "board-card__id": 3,
     "board-card__meta": 3,
+    "board-card__open": 3,
     "board-card__owner": 3,
     "board-card__receipt-dot": 3,
     "board-card__state-row": 1,
@@ -622,6 +923,8 @@
     "board-column--empty": 9,
     "board-column__cards": 12,
     "board-column__header": 12,
+    "board-filter": 1,
+    "board-filter__count": 8,
     "board-lane": 2,
     "board-lane__columns": 2,
     "board-lane__title": 2,
@@ -635,7 +938,8 @@
     "board-view__runbar": 1,
     "board-view__strips": 1,
     "btn-primary": 1,
-    "btn-quiet": 7,
+    "btn-quiet": 10,
+    "btn-secondary": 1,
     "chat": 1,
     "chat-card": 1,
     "chat-card--manifest": 1,
@@ -646,10 +950,18 @@
     "chat-card__kind": 1,
     "chat-card__model": 1,
     "chat-card__provenance": 1,
+    "chat-card__reply": 1,
     "chat-card__sep": 3,
     "chat-card__ticket": 1,
     "chat-card__verify": 1,
-    "chat-card__verify--fail": 1,
+    "chat-card__verify--pass": 1,
+    "chat-composer": 1,
+    "chat-composer__actions": 1,
+    "chat-composer__field": 1,
+    "chat-composer__hint": 1,
+    "chat-composer__status": 1,
+    "chat-composer__text": 1,
+    "chat-composer__ticket": 1,
     "chat__agent-threads": 1,
     "chat__thread": 1,
     "chat__thread--program": 1,
@@ -657,15 +969,19 @@
     "chat__thread-header": 1,
     "chat__thread-title": 1,
     "icon": 2,
+    "skip-link": 1,
     "split-pane": 1,
     "split-pane__divider": 2,
     "split-pane__pane": 3,
     "split-pane__pane-header": 3,
-    "sr-only": 1,
+    "sr-only": 2,
     "state": 1,
     "state--blocked": 1,
     "surface": 3,
     "surface--blocked": 1,
+    "tab": 10,
+    "tab--active": 1,
+    "tabular": 8,
     "theme-toggle": 1
   }
 }

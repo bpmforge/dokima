@@ -29,11 +29,14 @@ import { PROBLEM_CONTENT_TYPE } from './board-errors.js';
 import { resolveProjectRecord, stateDbPath } from './board-project.js';
 import { buildRunStatus, executeBuildRunJob, requestBuildRunStop } from './runs-job.js';
 import { readBuildRunState } from './approved-build-run-state.js';
+import type { HeartbeatHub } from './run-heartbeat.js';
 import { stopRun } from '@dokima/harbormaster';
 
 export interface RunsRoutesOptions {
   /** Overrides `computeFleetRegistryPath()` — tests only. */
   home?: string;
+  /** Review R1: the WS hub a build run's `loop.heartbeat` telemetry is published on. */
+  wsHub?: HeartbeatHub;
 }
 
 function wireEvent(record: EventRecord) {
@@ -188,6 +191,7 @@ export function registerRunsRoutes(
         actorId,
         runId,
         now: () => new Date().toISOString(),
+        ...(opts.wsHub ? { hub: opts.wsHub } : {}),
       });
       return reply.code(202).send({ run_id: runId, status: 'running' });
     },

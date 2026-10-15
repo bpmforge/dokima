@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   archiveProject as archiveProjectRequest,
   createProject as createProjectRequest,
@@ -7,7 +7,7 @@ import {
   removeProject as removeProjectRequest,
 } from './api.js';
 import { ArmedButton } from '../lib/ArmedButton.js';
-import { DirectoryPicker } from './DirectoryPicker.js';
+import { NewProjectForm } from './NewProjectForm.js';
 import { ProjectCard } from './ProjectCard.js';
 import { sortByAttention } from './sort.js';
 import type {
@@ -21,25 +21,13 @@ import { EmptyState } from './EmptyState.js';
 /** Live-update substitute (FR-F1's WS push is deferred — see HANDOFF in plan.json). */
 const POLL_INTERVAL_MS = 5_000;
 
-const MODE_LABEL: Record<ProjectMode, string> = {
-  new: 'New project',
-  onboard: 'Onboard existing repo',
-  import: 'Import',
-};
-
-/** The commit action needs its own verb — MODE_LABEL alone reads as a noun-phrase mode name, not something a button press does. */
-const SUBMIT_LABEL: Record<ProjectMode, string> = {
-  new: 'Create project',
-  onboard: 'Onboard existing repo',
-  import: 'Import',
-};
-
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof FleetApiError ? err.message : fallback;
 }
 
 export interface FleetHomeProps {
-  onOpenProject: (id: string) => void;
+  /** `boardFilter` opens the board pre-filtered (`?filter=`), e.g. `'blocked'` from a card's Blocked count. */
+  onOpenProject: (id: string, boardFilter?: string) => void;
   onOpenGuidedSample: () => void;
 }
 
@@ -82,12 +70,19 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
     [onOpenProject],
   );
 
+  // Archive is reversible (Reopen keeps the same project), so it says what
+  // happened and offers the undo right where the card was.
+  const [lastArchived, setLastArchived] = useState<{ name: string; path: string } | null>(
+    null,
+  );
   const handleArchive = useCallback(
     async (id: string) => {
+      const card = cards.find((c) => c.id === id);
       await archiveProjectRequest(id);
+      if (card) setLastArchived({ name: card.name, path: card.path });
       await refresh();
     },
-    [refresh],
+    [cards, refresh],
   );
 
   /** W9-15: forgets the registry entry only — the server never touches the folder. */
@@ -128,7 +123,7 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
   return (
     <div className="page fleet" data-testid="fleet-home">
       <header className="fleet__header">
-        <h1>Fleet</h1>
+        <h1 className="page__title">Fleet</h1>
         <div className="fleet__actions">
           {/* W12-29: one primary per screen. With projects on the board, New
               project is what a person came to Fleet to do; on a cold start
@@ -173,12 +168,31 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
           )}
         </div>
       </header>
+      <p className="fleet__notice" role="status" data-testid="fleet-archive-status">
+        {lastArchived && (
+          <>
+            Archived {lastArchived.name}.{' '}
+            <button
+              type="button"
+              className="btn-quiet"
+              data-testid="fleet-archive-undo"
+              onClick={() => {
+                const { path } = lastArchived;
+                setLastArchived(null);
+                void handleReopen(path);
+              }}
+            >
+              Undo
+            </button>
+          </>
+        )}
+      </p>
       {/* W18-08: the removal semantics, stated once for the whole page —
           each dead card used to repeat this paragraph. */}
       {unavailableCount > 0 && (
         <p className="fleet__unavailable-hint" data-testid="fleet-unavailable-hint">
-          Removing an unavailable entry only forgets it — nothing on disk is touched,
-          and onboarding the folder again restores it.
+          Removing an unavailable entry only forgets it — nothing on disk is touched, and
+          onboarding the folder again restores it.
         </p>
       )}
 
@@ -217,31 +231,50 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
             const readings: {
               label: string;
               value: number | string;
-              attention?: boolean;
-              idle?: boolean;
+              tone?: 'attention' | 'blocked';
+              idle: boolean;
             }[] = [
-              { label: 'ready', value: total((c) => c.board.ready) },
               {
+                label: 'ready',
+                value: total((c) => c.board.ready),
+                idle: total((c) => c.board.ready) === 0,
+              },
+              {
+                // Review UI-11: blocked is stuck, not "needs a person" — the
+                // warning tone, never the accent.
                 label: 'blocked',
                 value: total((c) => c.board.blocked),
-                attention: total((c) => c.board.blocked) > 0,
+                ...(total((c) => c.board.blocked) > 0
+                  ? { tone: 'blocked' as const }
+                  : {}),
+                idle: total((c) => c.board.blocked) === 0,
               },
               {
                 label: 'needs you',
                 value: total((c) => c.pendingDecideCount),
-                attention: total((c) => c.pendingDecideCount) > 0,
+                ...(total((c) => c.pendingDecideCount) > 0
+                  ? { tone: 'attention' as const }
+                  : {}),
+                idle: total((c) => c.pendingDecideCount) === 0,
               },
-              { label: 'agents running', value: total((c) => c.berthsRunning) },
+              {
+                label: 'agents running',
+                value: total((c) => c.berthsRunning),
+                idle: total((c) => c.berthsRunning) === 0,
+              },
               {
                 label: 'spend today',
                 value: `$${total((c) => Math.round(c.spendTodayUsd * 100) / 100).toFixed(2)}`,
+                // Idle from the number, not the formatted string: "$0.00" was
+                // never `=== 0`, so a zero spend never receded.
+                idle: total((c) => c.spendTodayUsd) === 0,
               },
             ];
             return readings.map((r) => (
               <div
                 key={r.label}
-                className={`readout${r.attention ? ' readout--attention' : ''}${
-                  r.value === 0 ? ' readout--idle' : ''
+                className={`readout${r.tone ? ` readout--${r.tone}` : ''}${
+                  r.idle ? ' readout--idle' : ''
                 }`}
               >
                 <dd className="readout__value">{r.value}</dd>
@@ -267,6 +300,7 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
               card={card}
               archivedView={archivedFilter}
               onOpen={() => onOpenProject(card.id)}
+              onOpenBlocked={() => onOpenProject(card.id, 'blocked')}
               onArchive={() => void handleArchive(card.id)}
               onReopen={() => void handleReopen(card.path)}
               onRemove={() => void handleRemove(card.id)}
@@ -275,123 +309,5 @@ export function FleetHome({ onOpenProject, onOpenGuidedSample }: FleetHomeProps)
         </div>
       )}
     </div>
-  );
-}
-
-interface NewProjectFormProps {
-  mode: ProjectMode;
-  onCancel: () => void;
-  onSubmit: (input: CreateProjectInput) => Promise<void>;
-}
-
-function NewProjectForm({ mode, onCancel, onSubmit }: NewProjectFormProps) {
-  const [path, setPath] = useState('');
-  const [name, setName] = useState('');
-  // W12-41: `new` asks for a NAME and nothing else. The server creates that
-  // directory (`fs.mkdir` + `ensureGitRepo`) and resolves where it goes, so
-  // asking the user to type an absolute path was asking them to dictate a
-  // location for something that did not exist yet. `onboard`/`import` are the
-  // opposite case: the directory is already there and only the user knows
-  // where, so they still ask (a picker is W12-42).
-  const derivesPath = mode === 'new';
-  const [showLocation, setShowLocation] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSubmitting(true);
-    setFormError(null);
-    try {
-      await onSubmit({
-        // Omitted entirely when derived — sending '' would read as "the user
-        // chose the empty path" rather than "the user did not choose".
-        ...(derivesPath && !showLocation ? {} : { path }),
-        name: name.trim() || undefined,
-        mode,
-      });
-    } catch (err) {
-      setFormError(errorMessage(err, 'Failed to register project'));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <form
-      className="fleet__form"
-      onSubmit={(e) => void handleSubmit(e)}
-      aria-label={MODE_LABEL[mode]}
-    >
-      <h2>{MODE_LABEL[mode]}</h2>
-      {derivesPath ? (
-        <>
-          <label>
-            Project name
-            <input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="My App"
-              required
-              autoFocus
-            />
-          </label>
-          {showLocation ? (
-            <label>
-              Folder
-              <input
-                value={path}
-                onChange={(event) => setPath(event.target.value)}
-                placeholder="/Users/you/Code/my-app"
-                required
-              />
-            </label>
-          ) : (
-            <p className="fleet__form-hint">
-              A folder is created for you and set up as a git repository. To put it
-              somewhere specific instead,{' '}
-              <button
-                type="button"
-                className="btn-quiet"
-                onClick={() => setShowLocation(true)}
-              >
-                choose the location
-              </button>
-              .
-            </p>
-          )}
-        </>
-      ) : (
-        <>
-          <label>
-            Directory path
-            <input
-              value={path}
-              onChange={(event) => setPath(event.target.value)}
-              placeholder="/Users/you/Code/existing-repo"
-              required
-              autoFocus
-            />
-          </label>
-          {/* W12-42: the input above asks a person to recall an absolute path
-              exactly. The picker is the answer for the common case; the input
-              stays for the case where the path is already on the clipboard. */}
-          <DirectoryPicker value={path} onChange={setPath} />
-          <label>
-            Name (optional)
-            <input value={name} onChange={(event) => setName(event.target.value)} />
-          </label>
-        </>
-      )}
-      {formError && <p role="alert">{formError}</p>}
-      <div className="fleet__form-actions">
-        <button type="submit" disabled={submitting}>
-          {submitting ? 'Working…' : SUBMIT_LABEL[mode]}
-        </button>
-        <button type="button" onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
-    </form>
   );
 }

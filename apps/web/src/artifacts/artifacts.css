@@ -14,19 +14,7 @@
   border-bottom: var(--sw-border-width) solid var(--sw-border);
 }
 
-.artifact-viewer__tabs button {
-  border: var(--sw-border-width) solid var(--sw-border);
-  background: transparent;
-  color: var(--sw-fg);
-  border-radius: var(--sw-radius-md);
-  padding: var(--sw-space-1) var(--sw-space-2);
-  cursor: pointer;
-}
-
-.artifact-viewer__tab--active {
-  border-color: var(--sw-accent) !important;
-  color: var(--sw-accent) !important;
-}
+/* Tab buttons take the shared `.tab` primitive (styles.css, review UI-10). */
 
 .artifact-viewer__docs,
 .artifact-viewer__receipts {
@@ -199,11 +187,11 @@
 }
 
 .diff-view__line--add {
-  background: rgb(46 139 61 / 12%);
+  background: color-mix(in srgb, var(--sw-success) 14%, transparent);
 }
 
 .diff-view__line--remove {
-  background: rgb(197 48 48 / 12%);
+  background: color-mix(in srgb, var(--sw-danger) 14%, transparent);
 }
 
 .diff-view__gutter {

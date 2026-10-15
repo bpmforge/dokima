@@ -252,7 +252,7 @@ export function PlanView({ projectId }: PlanViewProps) {
   return (
     <div className="page plan-view" data-testid="plan-view">
       <header className="plan-view__header">
-        <h2>Improvement plan</h2>
+        <h1 className="page__title">Improvement plan</h1>
         <p className="plan-view__funnel" data-testid="plan-funnel">
           {funnelSummary(funnel)}
         </p>

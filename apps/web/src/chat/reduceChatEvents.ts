@@ -1,4 +1,5 @@
 import type { ServerEnvelope } from '../lib/ws-client.js';
+import { humanMessageFromWire } from './human-message.js';
 import {
   cardFromWireEvent,
   isThreadArchivedWire,
@@ -37,7 +38,9 @@ export function reduceChatEvents(events: readonly ServerEnvelope[]): Thread[] {
       if (thread) thread.archived = true;
       continue;
     }
-    const card = cardFromWireEvent(event.type, event.data);
+    const card =
+      cardFromWireEvent(event.type, event.data) ??
+      humanMessageFromWire(event.type, event.data);
     if (!card) continue;
     threads.get(card.threadId)?.cards.push(card);
   }

@@ -6,7 +6,7 @@
  * contract.
  */
 
-export type PaletteResultKind = 'ticket' | 'doc' | 'receipt';
+export type PaletteResultKind = 'ticket' | 'doc' | 'receipt' | 'nav';
 
 export interface PaletteTicketResult {
   kind: 'ticket';
@@ -28,7 +28,33 @@ export interface PaletteReceiptResult {
   title: string;
 }
 
-export type PaletteResult = PaletteTicketResult | PaletteDocResult | PaletteReceiptResult;
+/** Screens the palette can send you to. Mirrors the header's destinations without importing `App/` (the palette must not depend on the shell that mounts it). */
+export type PaletteView =
+  | 'team'
+  | 'interview'
+  | 'plans'
+  | 'decisions'
+  | 'lessons'
+  | 'roster'
+  | 'notifications'
+  | 'settings';
+
+export type PaletteNavTarget =
+  | { kind: 'fleet' }
+  | { kind: 'board' }
+  | { kind: 'view'; view: PaletteView }
+  | { kind: 'project'; projectId: string };
+
+/** A navigation entry: a screen to go to, or a project to open. */
+export interface PaletteNavResult {
+  kind: 'nav';
+  id: string;
+  title: string;
+  target: PaletteNavTarget;
+}
+
+export type PaletteResult =
+  PaletteTicketResult | PaletteDocResult | PaletteReceiptResult | PaletteNavResult;
 
 /** UX_SPEC §2a: "'What are we doing today?' mode picker (New project / Onboard / Feature / Improve)". */
 export type PaletteMode = 'new' | 'onboard' | 'feature' | 'improve';

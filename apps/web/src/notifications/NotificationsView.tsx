@@ -35,6 +35,7 @@ export function NotificationsView() {
           <button
             type="button"
             role="tab"
+            className="tab"
             aria-selected={tab === 'queue'}
             onClick={() => setTab('queue')}
           >
@@ -43,6 +44,7 @@ export function NotificationsView() {
           <button
             type="button"
             role="tab"
+            className="tab"
             aria-selected={tab === 'center'}
             onClick={() => setTab('center')}
           >

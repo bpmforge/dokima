@@ -121,7 +121,7 @@ export async function buildApiServer(opts: BuildApiServerOptions): Promise<ApiSe
   registerEstimateRoutes(app, { home: opts.fleetHome });
   registerArtifactRoutes(app, { home: opts.fleetHome });
   registerReceiptRoutes(app, { home: opts.fleetHome });
-  registerRunsRoutes(app, { home: opts.fleetHome });
+  registerRunsRoutes(app, { home: opts.fleetHome, wsHub });
   // W23-14: the approval a person can actually give, and the run progress a
   // reload can read back.
   registerApprovedBuildRoutes(app, { home: opts.fleetHome });

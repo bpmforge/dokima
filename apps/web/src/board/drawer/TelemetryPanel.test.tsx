@@ -178,3 +178,35 @@ describe('drawer telemetry speaks user language (W13-60)', () => {
     expect(row.textContent).toContain('ticket.claimed');
   });
 });
+
+describe('TelemetryPanel fetch failures (review T1)', () => {
+  it('RED FIXTURE: failed spend and runs reads show errors with Retry, not Loading… forever', async () => {
+    mockedDrawerApi.fetchSpendByRung.mockRejectedValueOnce(new Error('spend 500'));
+    mockedDrawerApi.fetchTicketRuns.mockRejectedValueOnce(new Error('runs 500'));
+    mockedDrawerApi.fetchTicketRuns.mockResolvedValueOnce([]);
+    render(
+      <TelemetryPanel apiOpts={API_OPTS} projectId="p1" ticketId="W1-01" heartbeat={undefined} />,
+    );
+    expect((await screen.findByTestId('spend-by-rung-error')).textContent).toContain('spend 500');
+    const runsError = await screen.findByTestId('session-trace-error');
+    expect(runsError.textContent).toContain('runs 500');
+    expect(screen.queryByText('Loading…')).toBeNull();
+    fireEvent.click(runsError.querySelector('button')!);
+    expect(await screen.findByTestId('session-trace-empty')).toBeTruthy();
+  });
+
+  it('a failed trace open shows an error with Retry', async () => {
+    mockedDrawerApi.fetchSpendByRung.mockResolvedValue({ items: [] } as never);
+    mockedDrawerApi.fetchTicketRuns.mockResolvedValue(['run-1']);
+    mockedDrawerApi.fetchRunTrace.mockRejectedValueOnce(new Error('trace 500'));
+    mockedDrawerApi.fetchRunTrace.mockResolvedValueOnce([TRACE_EVENT]);
+    render(
+      <TelemetryPanel apiOpts={API_OPTS} projectId="p1" ticketId="W1-01" heartbeat={undefined} />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: /View session trace/ }));
+    const error = await screen.findByTestId('session-trace-error');
+    expect(error.textContent).toContain('trace 500');
+    fireEvent.click(error.querySelector('button')!);
+    expect(await screen.findByTestId('session-trace-events')).toBeTruthy();
+  });
+});

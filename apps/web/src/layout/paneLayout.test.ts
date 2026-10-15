@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   clampPaneSize,
+  resizePanePair,
   defaultLayout,
   deserializePaneLayout,
   paneLayoutStorageKey,
@@ -146,5 +147,28 @@ describe('focus mode (W12-34)', () => {
     expect(isFocused(start)).toBe(false);
     expect(isFocused(focusPane(start, 'board'))).toBe(true);
     expect(isFocused(unfocusPanes(focusPane(start, 'board')))).toBe(false);
+  });
+});
+
+describe('resizePanePair', () => {
+  it('measures from the start layout, so repeated moves do not compound', () => {
+    const start = defaultLayout();
+    const once = resizePanePair(start, 'chat', 'board', 5);
+    const again = resizePanePair(start, 'chat', 'board', 5);
+    expect(once.panes.chat.sizePct).toBe(26);
+    expect(again.panes.chat.sizePct).toBe(26);
+  });
+
+  it('conserves the pair sum and keeps both sides inside the bounds', () => {
+    const start = defaultLayout();
+    const pair = start.panes.chat.sizePct + start.panes.board.sizePct;
+    for (const delta of [-100, -10, 0, 10, 100]) {
+      const next = resizePanePair(start, 'chat', 'board', delta);
+      expect(next.panes.chat.sizePct + next.panes.board.sizePct).toBeCloseTo(pair);
+      for (const id of ['chat', 'board'] as const) {
+        expect(next.panes[id].sizePct).toBeGreaterThanOrEqual(15);
+        expect(next.panes[id].sizePct).toBeLessThanOrEqual(70);
+      }
+    }
   });
 });

@@ -1,10 +1,13 @@
 {
   "strings": [
+    "Skip to content",
     "Dokima",
     "Fleet",
     "Roster",
     "Morning queue",
     "2",
+    "Search",
+    "Ctrl+K",
     "Settings",
     "Dark",
     "New project",
@@ -34,15 +37,27 @@
   ],
   "interactive": [
     {
+      "tag": "a",
+      "role": null,
+      "name": "Skip to content",
+      "disabled": false,
+      "rect": {
+        "x": 8,
+        "y": -48,
+        "w": 125,
+        "h": 39
+      }
+    },
+    {
       "tag": "button",
       "role": null,
       "name": "Fleet",
       "disabled": false,
       "rect": {
-        "x": 943,
+        "x": 813,
         "y": 12,
-        "w": 64,
-        "h": 36
+        "w": 59,
+        "h": 32
       }
     },
     {
@@ -51,10 +66,10 @@
       "name": "Roster",
       "disabled": false,
       "rect": {
-        "x": 1010,
+        "x": 877,
         "y": 12,
-        "w": 73,
-        "h": 36
+        "w": 68,
+        "h": 32
       }
     },
     {
@@ -63,10 +78,22 @@
       "name": "Morning queue, 2 awaiting a decision",
       "disabled": false,
       "rect": {
-        "x": 1096,
-        "y": 17,
+        "x": 957,
+        "y": 12,
         "w": 134,
-        "h": 27
+        "h": 32
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "Search Ctrl+K",
+      "disabled": false,
+      "rect": {
+        "x": 1103,
+        "y": 12,
+        "w": 137,
+        "h": 32
       }
     },
     {
@@ -75,22 +102,22 @@
       "name": "Settings",
       "disabled": false,
       "rect": {
-        "x": 1241,
+        "x": 1253,
         "y": 12,
-        "w": 86,
-        "h": 36
+        "w": 80,
+        "h": 32
       }
     },
     {
       "tag": "button",
       "role": null,
-      "name": "Switch to light theme",
+      "name": "Dark theme, switch to light",
       "disabled": false,
       "rect": {
-        "x": 1339,
+        "x": 1344,
         "y": 12,
-        "w": 85,
-        "h": 36
+        "w": 80,
+        "h": 32
       }
     },
     {
@@ -99,10 +126,10 @@
       "name": "New project",
       "disabled": false,
       "rect": {
-        "x": 525,
-        "y": 93,
-        "w": 133,
-        "h": 36
+        "x": 549,
+        "y": 89,
+        "w": 124,
+        "h": 39
       }
     },
     {
@@ -111,10 +138,10 @@
       "name": "Onboard existing repo",
       "disabled": false,
       "rect": {
-        "x": 666,
-        "y": 93,
-        "w": 186,
-        "h": 36
+        "x": 681,
+        "y": 89,
+        "w": 173,
+        "h": 39
       }
     },
     {
@@ -123,10 +150,10 @@
       "name": "Import",
       "disabled": false,
       "rect": {
-        "x": 861,
-        "y": 93,
-        "w": 74,
-        "h": 36
+        "x": 862,
+        "y": 89,
+        "w": 69,
+        "h": 39
       }
     },
     {
@@ -135,10 +162,34 @@
       "name": "Show archived",
       "disabled": false,
       "rect": {
-        "x": 946,
-        "y": 105,
+        "x": 943,
+        "y": 102,
         "w": 13,
         "h": 13
+      }
+    },
+    {
+      "tag": "p",
+      "role": "status",
+      "name": "",
+      "disabled": false,
+      "rect": {
+        "x": 376,
+        "y": 152,
+        "w": 618,
+        "h": 0
+      }
+    },
+    {
+      "tag": "button",
+      "role": null,
+      "name": "1 blocked — show on the board",
+      "disabled": false,
+      "rect": {
+        "x": 449,
+        "y": 293,
+        "w": 32,
+        "h": 32
       }
     },
     {
@@ -147,10 +198,10 @@
       "name": "Open",
       "disabled": false,
       "rect": {
-        "x": 392,
-        "y": 383,
-        "w": 59,
-        "h": 28
+        "x": 393,
+        "y": 411,
+        "w": 54,
+        "h": 31
       }
     },
     {
@@ -159,10 +210,10 @@
       "name": "Archive",
       "disabled": false,
       "rect": {
-        "x": 459,
-        "y": 383,
-        "w": 72,
-        "h": 28
+        "x": 455,
+        "y": 411,
+        "w": 68,
+        "h": 31
       }
     }
   ],
@@ -173,11 +224,11 @@
     },
     "contentBox": {
       "x": 0,
-      "y": 0,
+      "y": -48,
       "w": 1440,
-      "h": 900
+      "h": 948
     },
-    "occupancy": 1
+    "occupancy": 1.05
   },
   "classHistogram": {
     "app-shell": 1,
@@ -185,33 +236,41 @@
     "app-shell__decide-badge": 1,
     "app-shell__header": 1,
     "app-shell__header-actions": 1,
+    "app-shell__kbd": 1,
+    "app-shell__main": 1,
     "app-shell__nav": 1,
     "app-shell__nav-item": 2,
     "app-shell__notifications-bell": 1,
+    "app-shell__search": 1,
+    "app-shell__wordmark": 1,
     "btn-primary": 2,
-    "btn-quiet": 3,
+    "btn-quiet": 4,
     "btn-secondary": 1,
     "fleet": 1,
     "fleet__actions": 1,
     "fleet__archived-toggle": 1,
     "fleet__grid": 1,
     "fleet__header": 1,
+    "fleet__notice": 1,
     "fleet__summary": 1,
     "fleet__summary-caption": 1,
     "icon": 2,
     "page": 1,
+    "page__title": 1,
     "project-card": 1,
     "project-card__actions": 1,
     "project-card__berths": 1,
     "project-card__board": 1,
     "project-card__header": 1,
     "project-card__phase-chip": 1,
+    "project-card__readout-link": 1,
     "project-card__spend": 1,
     "readout": 8,
-    "readout--attention": 1,
-    "readout--idle": 2,
+    "readout--blocked": 1,
+    "readout--idle": 3,
     "readout__label": 8,
     "readout__value": 8,
+    "skip-link": 1,
     "state": 1,
     "state--idle": 1,
     "surface": 2,

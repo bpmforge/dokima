@@ -116,6 +116,23 @@
   --sw-board-column-empty-min: 6.25rem;
 
   --sw-transition-duration: 150ms;
+
+  /* Overlays (review UI-13). A scrim and an overlay shadow were improvised in
+     five places at three strengths; in dark mode a 35% black scrim barely
+     separated the drawer from the page. One value per theme, defined here so
+     the dark block can deepen them. Raw rgb() lives ONLY in this block —
+     styles.test.ts rejects rgb()/hsl() literals anywhere else. */
+  --sw-scrim: rgb(14 20 23 / 40%);
+  --sw-shadow-overlay: 0 12px 32px rgb(14 20 23 / 18%);
+  /* The W9-05 board edge fade (was a local, light-only rgba in board.css). */
+  --sw-scroll-shadow: rgb(0 0 0 / 22%);
+
+  /* The selected-tab underline: thicker than a hairline so "selected" reads
+     without a fill that would compete with .btn-primary (review UI-10). */
+  --sw-indicator-width: 2px;
+
+  /* Page titles share one size on every screen (review UI-07). */
+  --sw-text-page-title: var(--sw-text-2xl);
 }
 
 /* Only the values that differ from the light theme are restated. The
@@ -141,6 +158,9 @@
   --sw-danger: #ff8a80; /* 8.04:1 */
   --sw-warning: #e0a800; /* 8.54:1 */
   --sw-success: #3fb950; /* 7.22:1 */
+  --sw-scrim: rgb(0 0 0 / 60%);
+  --sw-shadow-overlay: 0 12px 32px rgb(0 0 0 / 50%);
+  --sw-scroll-shadow: rgb(255 255 255 / 22%);
 }
 
 /* Fallback for first paint before ThemeProvider's effect sets data-theme. */
@@ -164,6 +184,9 @@
     --sw-danger: #ff8a80; /* 8.04:1 */
     --sw-warning: #e0a800; /* 8.54:1 */
     --sw-success: #3fb950; /* 7.22:1 */
+    --sw-scrim: rgb(0 0 0 / 60%);
+    --sw-shadow-overlay: 0 12px 32px rgb(0 0 0 / 50%);
+    --sw-scroll-shadow: rgb(255 255 255 / 22%);
   }
 }
 
@@ -180,6 +203,11 @@ body {
     -apple-system,
     'Segoe UI',
     sans-serif;
+  /* Review 2026-10-15 (Brad: "do recommended"): one body size and a reading
+     line-height. Text inherited the UA 16px in some views and 13px in others;
+     the system stack stays — no web font to load or self-host. */
+  font-size: var(--sw-text-md);
+  line-height: 1.5;
   transition:
     background var(--sw-transition-duration) ease,
     color var(--sw-transition-duration) ease;
@@ -194,6 +222,11 @@ body {
    declaring it once here covers every anchor, present and future. */
 a {
   color: var(--sw-accent);
+}
+
+/* Review 2026-10-15: prose lines stop at a readable measure on wide panes. */
+p {
+  max-width: 70ch;
 }
 
 /* W10-32: applied at five call sites (board/Card.tsx, drawer/DagEditPanel.tsx,
@@ -273,9 +306,55 @@ a {
    new token (the real token set is W13-03's job, and inventing half of one
    here would mean doing it twice), and an underline carries no text-contrast
    requirement of its own, so it holds in both themes as-is. */
-.app-shell__nav-item[aria-current='page'] {
+.app-shell__header [aria-current='page'] {
   border-color: var(--sw-accent);
+  color: var(--sw-fg);
   font-weight: 600;
+}
+
+/* The wordmark anchors the bar; at body weight it read as one more nav item. */
+.app-shell__wordmark {
+  font-size: var(--sw-text-lg);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Review UI-09: one height for every control in the header. Nav items were
+   38px pills, the morning-queue chip 27px, Settings a borderless 38px — three
+   treatments and three heights in one row. Destinations are quiet (border on
+   hover/focus, accent border when current); the bell and theme toggle keep a
+   border because they are actions, not places. */
+.app-shell__header-actions button[type='button'] {
+  display: inline-flex;
+  align-items: center;
+  height: var(--sw-space-8);
+  padding-block: 0;
+  font-size: var(--sw-text-md);
+  line-height: 1;
+}
+
+.app-shell__nav-item {
+  border-color: transparent;
+  color: var(--sw-fg-muted);
+}
+
+.app-shell__nav-item:hover,
+.app-shell__nav-item:focus-visible {
+  border-color: var(--sw-border);
+  color: var(--sw-fg);
+}
+
+/* The header's Search button shows its shortcut as a key cap. */
+.app-shell__search {
+  gap: var(--sw-space-2);
+}
+
+.app-shell__kbd {
+  font-family: var(--sw-font-mono);
+  font-size: var(--sw-text-sm);
+  padding: 0 var(--sw-space-1);
+  border: var(--sw-border-width) solid var(--sw-border);
+  border-radius: var(--sw-radius-sm);
 }
 
 /* Groups, so a destination does not read the same as a preference. */
@@ -292,6 +371,12 @@ a {
   display: flex;
   align-items: center;
   gap: var(--sw-space-1);
+  /* Review UI-01 (P0): a no-wrap row inside a `justify-content: flex-end`
+     parent overflowed to the LEFT at 390px, where nothing can scroll — Board,
+     Team and Describe sat at negative x and could not be reached at all. */
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 /* W9-04: one styled control everywhere — every plain <button> gets the
@@ -479,7 +564,7 @@ label:has(> input[type='radio']) {
 .shortcuts-overlay__backdrop {
   position: fixed;
   inset: 0;
-  background: rgb(0 0 0 / 45%);
+  background: var(--sw-scrim);
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -500,7 +585,7 @@ label:has(> input[type='radio']) {
   border: var(--sw-border-width) solid var(--sw-border);
   border-radius: var(--sw-radius-lg);
   padding: var(--sw-space-4) var(--sw-space-5);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 25%);
+  box-shadow: var(--sw-shadow-overlay);
 }
 
 .shortcuts-overlay__list {
@@ -532,12 +617,23 @@ label:has(> input[type='radio']) {
 .split-pane__pane-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--sw-space-1);
   padding: var(--sw-space-2) var(--sw-space-3);
   font-size: var(--sw-text-base);
   border-bottom: var(--sw-border-width) solid var(--sw-border);
 }
 
+/* The label pushes Focus and collapse to the right as one group; with
+   space-between and three children, Focus floated in the middle (UI-16). */
+.split-pane__pane-header > :first-child {
+  margin-right: auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* UI-16: "«" measured 16x21px, under WCAG 2.5.8's 24x24 target minimum. */
 .split-pane__pane-header button {
   border: none;
   background: transparent;
@@ -545,12 +641,67 @@ label:has(> input[type='radio']) {
   cursor: pointer;
   padding: var(--sw-space-0-5) var(--sw-space-1);
   border-radius: var(--sw-radius-sm);
+  min-width: var(--sw-space-6);
+  min-height: var(--sw-space-6);
+}
+
+/* A collapsed pane is a header strip. Its portaled content used to keep
+   painting through the 2.5rem strip (IX-01), and once panes stack on a phone
+   (below) hiding it is the only thing collapse can do. */
+.split-pane__pane[data-collapsed='true'] > :not(.split-pane__pane-header) {
+  display: none;
 }
 
 .split-pane__divider {
   width: var(--sw-divider-width);
   cursor: col-resize;
   background: var(--sw-border);
+  touch-action: none;
+}
+
+.split-pane__divider:hover,
+.split-pane__divider:focus-visible {
+  background: var(--sw-accent);
+}
+
+/* Review UI-03 / IX-01 / M1: at phone width three side-by-side panes measured
+   79 / 219 / 79px, which left board cards 34px wide and the chat one token per
+   line. Below 48rem the panes stack, full width, Board first — it is the
+   workspace's subject — then Chat, then Artifacts. The page scrolls instead of
+   the panes; dividers have no meaning in a column, so they go. The inline
+   flex-basis the layout persists is a desktop width percentage, so it is
+   overridden rather than reinterpreted as a height. Collapse still works:
+   a collapsed pane is just its header (rule above). */
+@media (max-width: 47.99rem) {
+  .split-pane {
+    flex-direction: column;
+    flex: none;
+    overflow: visible;
+  }
+
+  .split-pane__pane {
+    flex: none !important;
+    width: 100%;
+    min-width: 0;
+    border-right: none;
+    border-bottom: var(--sw-border-width) solid var(--sw-border);
+  }
+
+  .split-pane__pane:last-child {
+    border-bottom: none;
+  }
+
+  .split-pane__pane[data-testid='pane-board'] {
+    order: -1;
+  }
+
+  .split-pane__pane[data-testid='pane-chat'] {
+    max-height: 70vh;
+  }
+
+  .split-pane__divider {
+    display: none;
+  }
 }
 
 /* ==========================================================================
@@ -603,6 +754,12 @@ label:has(> input[type='radio']) {
    their own semantic hues. */
 .readout--attention .readout__value {
   color: var(--sw-accent);
+}
+
+/* Blocked is stuck, not "needs a person" — warning, per the state table
+   below. The Fleet summary used to paint it in the accent (review UI-11). */
+.readout--blocked .readout__value {
+  color: var(--sw-warning);
 }
 
 /* Any number outside a readout still lines up. Cheap, and it stops a column of
@@ -752,7 +909,7 @@ label:has(> input[type='radio']) {
 
 .page__title {
   margin: 0;
-  font-size: var(--sw-text-2xl);
+  font-size: var(--sw-text-page-title);
   line-height: 1.15;
   text-wrap: balance;
 }
@@ -793,4 +950,67 @@ label:has(> input[type='radio']) {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--sw-fg-muted);
+}
+
+/* ─── Tabs (review UI-10) ──────────────────────────────────────────────────
+   Four screens had four active-tab styles, and three of them were a filled
+   accent — identical to .btn-primary, so on Team the "Board" segment read as
+   the page's main action. One primitive: quiet text, and the selected tab is
+   marked by an accent underline and full-strength text, never a fill. Covers
+   aria-selected (tablists), aria-pressed (segmented toggles) and the legacy
+   --active class some surfaces still set. */
+.tab {
+  border: none;
+  border-bottom: var(--sw-indicator-width) solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--sw-fg-muted);
+  padding: var(--sw-space-1) var(--sw-space-3);
+  font-size: var(--sw-text-md);
+  cursor: pointer;
+}
+
+.tab:hover:not(:disabled) {
+  color: var(--sw-fg);
+}
+
+.tab:focus-visible {
+  outline: var(--sw-focus-ring-width) solid var(--sw-accent);
+  outline-offset: calc(-1 * var(--sw-focus-ring-width));
+}
+
+.tab[aria-selected='true'],
+.tab[aria-pressed='true'],
+.tab[aria-current='true'],
+.tab--active {
+  color: var(--sw-fg);
+  border-bottom-color: var(--sw-accent);
+  font-weight: 600;
+}
+
+/* ─── Landmarks (review UX-12) ─────────────────────────────────────────────
+   The skip link is the first focusable thing on every page and is invisible
+   until focused. */
+.skip-link {
+  position: absolute;
+  left: var(--sw-space-2);
+  top: calc(-1 * var(--sw-space-12));
+  z-index: 20;
+  padding: var(--sw-space-2) var(--sw-space-3);
+  background: var(--sw-surface);
+  color: var(--sw-fg);
+  border: var(--sw-border-width) solid var(--sw-accent);
+  border-radius: var(--sw-radius-md);
+}
+
+.skip-link:focus {
+  top: var(--sw-space-2);
+}
+
+.app-shell__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
 }

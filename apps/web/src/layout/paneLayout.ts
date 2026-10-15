@@ -61,6 +61,35 @@ export function clampPaneSize(pct: number): number {
   return Math.min(MAX_PANE_PCT, Math.max(MIN_PANE_PCT, pct));
 }
 
+/**
+ * Moves the divider between two adjacent panes by `deltaPct`, measured from a
+ * fixed `start` layout (the one in force at pointerdown or keydown). The pair's
+ * combined size is conserved and both sides stay inside MIN/MAX, so a drag can
+ * neither compound nor push the three panes past 100%.
+ */
+export function resizePanePair(
+  start: PaneLayout,
+  leftId: PaneId,
+  rightId: PaneId,
+  deltaPct: number,
+): PaneLayout {
+  const left = start.panes[leftId];
+  const right = start.panes[rightId];
+  const pair = left.sizePct + right.sizePct;
+  const lo = Math.max(MIN_PANE_PCT, pair - MAX_PANE_PCT);
+  const hi = Math.min(MAX_PANE_PCT, pair - MIN_PANE_PCT);
+  if (lo > hi) return start;
+  const newLeft = Math.min(hi, Math.max(lo, left.sizePct + deltaPct));
+  return {
+    ...start,
+    panes: {
+      ...start.panes,
+      [leftId]: { ...left, sizePct: newLeft },
+      [rightId]: { ...right, sizePct: pair - newLeft },
+    },
+  };
+}
+
 export function paneLayoutStorageKey(projectId: string): string {
   return `dokima.paneLayout.${projectId}`;
 }

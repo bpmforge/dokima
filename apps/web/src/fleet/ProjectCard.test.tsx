@@ -164,3 +164,35 @@ describe('an unavailable project is distinguishable by name, not only by styling
     expect(screen.queryByRole('article', { name: /unavailable/ })).toBeNull();
   });
 });
+
+describe('the Blocked count opens the board filtered to Blocked', () => {
+  function renderWith(data: Data, onOpenBlocked = vi.fn(), archivedView = false) {
+    render(
+      <ProjectCard
+        card={data}
+        archivedView={archivedView}
+        onOpen={vi.fn()}
+        onOpenBlocked={onOpenBlocked}
+        onArchive={vi.fn()}
+        onReopen={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+    return onOpenBlocked;
+  }
+
+  it('a nonzero Blocked count is a button whose name starts with the visible number', () => {
+    const onOpenBlocked = renderWith(card({ board: { ready: 0, blocked: 3, done: 0 } }));
+    const link = screen.getByRole('button', { name: '3 blocked — show on the board' });
+    link.click();
+    expect(onOpenBlocked).toHaveBeenCalledTimes(1);
+  });
+
+  it('a zero count, or an archived card, stays a plain readout', () => {
+    renderWith(card({ board: { ready: 1, blocked: 0, done: 0 } }));
+    expect(screen.queryByTestId('project-card-blocked-link')).toBeNull();
+    cleanup();
+    renderWith(card({ board: { ready: 0, blocked: 2, done: 0 } }), vi.fn(), true);
+    expect(screen.queryByTestId('project-card-blocked-link')).toBeNull();
+  });
+});

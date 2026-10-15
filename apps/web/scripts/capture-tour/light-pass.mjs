@@ -92,7 +92,7 @@ export async function runLightPass(browser, app, ctx) {
     ctx,
   );
 
-  await page.getByTestId('card-E2E-1').click();
+  await page.getByTestId('open-E2E-1').click();
   await page.getByTestId('ticket-drawer').waitFor();
   await shoot(
     page,
@@ -277,7 +277,7 @@ export async function runLightPass(browser, app, ctx) {
     page,
     '12-palette-no-query',
     'Command palette (⌘K)',
-    'Pressing **⌘K**/**Ctrl+K** anywhere opens the palette: the "What are we doing today?" mode picker, with no results because nothing has been typed yet.',
+    'Pressing **⌘K**/**Ctrl+K** on any screen — or the **Search** button in the header — opens the palette: the "What are we doing today?" mode picker and a **Go to** list of screens and projects; ticket, doc and receipt results appear once something is typed.',
     'palette-modes',
     ctx,
   );

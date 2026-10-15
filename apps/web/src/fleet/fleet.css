@@ -15,6 +15,10 @@
   gap: var(--sw-space-8);
   padding: var(--sw-space-3) var(--sw-space-4);
   margin-block-end: var(--sw-space-4);
+  /* Review UI-02: five readouts in a no-wrap row made the Fleet scroll
+     sideways at 390px (scrollWidth 634). */
+  flex-wrap: wrap;
+  row-gap: var(--sw-space-3);
 }
 
 /* W13-62: the aggregate must not read as the nearest project's readouts. */
@@ -36,7 +40,7 @@
 
 .fleet__header h1 {
   margin: 0;
-  font-size: var(--sw-text-xl);
+  font-size: var(--sw-text-page-title);
 }
 
 .fleet__actions {
@@ -113,7 +117,7 @@
   gap: var(--sw-space-4);
 }
 
- /* W13-05: the border, radius and padding now come from `.surface`
+/* W13-05: the border, radius and padding now come from `.surface`
    (W13-04), which is one of the 51 local re-declarations this ticket
    removes. What stays here is the card's own layout — the part that is
    genuinely about a project card and not about being a surface. */
@@ -142,7 +146,7 @@
   padding: var(--sw-space-0-5) var(--sw-space-2);
 }
 
- /* Readouts sit in a row and share the space evenly; each one stacks its own
+/* Readouts sit in a row and share the space evenly; each one stacks its own
    value over its label (`.readout`). */
 .project-card__board {
   display: flex;
@@ -151,7 +155,7 @@
   font-size: var(--sw-text-md);
 }
 
- /* W13-05: `.readout` owns the value/label treatment now. What was here
+/* W13-05: `.readout` owns the value/label treatment now. What was here
    centred them and set dt to 60% opacity — which is why the label and the
    number read at the same weight and nothing on the card had a hierarchy.
    Only the dd margin reset survives, because a <dd> carries one by default. */
@@ -159,7 +163,7 @@
   margin: 0;
 }
 
- /* `.state` supplies the dot, the gap and the colour (W13-04). */
+/* `.state` supplies the dot, the gap and the colour (W13-04). */
 .project-card__berths {
   font-size: var(--sw-text-md);
 }
@@ -170,7 +174,7 @@
    no-caller shape this board keeps finding, and the style guards cannot see it.
    The stale case became `.state--blocked`, which is what stale actually means. */
 
- /* Colour comes from `.state--attention` — this used --sw-danger, which said
+/* Colour comes from `.state--attention` — this used --sw-danger, which said
    "something is wrong" when the truth is "a person is needed". Under W13-04's
    rule each token keeps one meaning, and danger means refused. */
 .project-card__decide {
@@ -181,7 +185,8 @@
 
 .project-card__spend {
   font-size: var(--sw-text-md);
-  opacity: 0.8;
+  /* Review UX-19: `opacity: 0.8` measured 3.67:1 in light. */
+  color: var(--sw-fg-muted);
 }
 
 .project-card__actions {
@@ -331,4 +336,33 @@
   color: var(--sw-fg-muted);
   font-size: var(--sw-text-sm);
   margin: 0 0 var(--sw-space-3);
+}
+
+/* Archive confirmation with Undo; empty until something is archived. */
+.fleet__notice {
+  margin: 0;
+}
+
+/* A nonzero Blocked count is a link to the filtered board. It keeps the
+   readout's type and size; the underline is what says it goes somewhere. */
+.project-card__readout-link {
+  font: inherit;
+  color: inherit;
+  border: none;
+  background: transparent;
+  padding: 0 var(--sw-space-1);
+  min-width: var(--sw-space-8);
+  min-height: var(--sw-space-8);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  border-radius: var(--sw-radius-sm);
+}
+
+.project-card__readout-link:hover {
+  color: var(--sw-accent);
+}
+
+.project-card__readout-link:focus-visible {
+  outline: var(--sw-focus-ring-width) solid var(--sw-accent);
+  outline-offset: var(--sw-focus-ring-width);
 }

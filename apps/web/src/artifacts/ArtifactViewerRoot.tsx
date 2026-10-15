@@ -220,14 +220,14 @@ export function ArtifactViewer({ projectId, token }: ArtifactViewerProps) {
       <div className="artifact-viewer__tabs">
         <button
           type="button"
-          className={tab === 'docs' ? 'artifact-viewer__tab--active' : ''}
+          className={tab === 'docs' ? 'tab tab--active artifact-viewer__tab--active' : 'tab'}
           onClick={() => setTab('docs')}
         >
           Docs
         </button>
         <button
           type="button"
-          className={tab === 'receipts' ? 'artifact-viewer__tab--active' : ''}
+          className={tab === 'receipts' ? 'tab tab--active artifact-viewer__tab--active' : 'tab'}
           onClick={() => setTab('receipts')}
         >
           Receipts

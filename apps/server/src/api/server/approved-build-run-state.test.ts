@@ -238,4 +238,17 @@ describe('exit 0 is not build completion', () => {
   ])('%s → %s', (_what, input, expected) => {
     expect(classifyRunOutcome(input).kind).toBe(expected);
   });
+
+  it('RED FIXTURE (review UX-04): a failed run keeps the reason it gave, not "exited 2"', () => {
+    const outcome = classifyRunOutcome({
+      exitCode: 2,
+      stopRequested: false,
+      ticketsAwaitingDecision: 0,
+      reason: 'no model is configured for the coding-agent role',
+    });
+    expect(outcome.detail).toBe('no model is configured for the coding-agent role');
+    const bare = classifyRunOutcome({ exitCode: 2, stopRequested: false, ticketsAwaitingDecision: 0 });
+    expect(bare.detail).not.toMatch(/exited/);
+    expect(bare.detail).toContain('stopped before finishing');
+  });
 });

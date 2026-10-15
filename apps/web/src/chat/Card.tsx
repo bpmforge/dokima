@@ -1,5 +1,6 @@
 import { plainLeadFor } from './plain-lead.js';
 import { ProvenanceLine } from './ProvenanceLine.js';
+import { ticketOfItem } from './types.js';
 import type {
   ChatCard,
   FindingCard,
@@ -31,17 +32,62 @@ function QuestionCardBody({ card }: { card: QuestionCard }) {
 /**
  * `evidence_href` arrives over the same untrusted `chat:<project>` wire as
  * every other card field (agent sessions are untrusted, THREAT_MODEL trust
- * boundary). Only relative API paths are ever legitimate here, so anything
- * else (a `javascript:`/`data:` URI, an absolute external URL) is rejected
- * rather than handed to `href` verbatim — same "build the link ourselves,
- * don't trust the wire" posture as `ProvenanceLine`'s receipt link.
+ * boundary), so it is classified, never handed to `href` verbatim:
+ *
+ * - `/api/v1/receipts/<id>` → a receipt, opened IN-APP through the Receipt
+ *   Inspector. A plain link there navigated the tab to a raw API URL with no
+ *   bearer token — a 401 JSON page (review C2).
+ * - `?project=…&view=trace&ticket=…` → an in-app view. This is what the real
+ *   projection (`chat-projection.ts` `evidenceHrefFor`) emits; the old check
+ *   accepted only `/api/v1/` paths, so every real finding read "evidence
+ *   unavailable" (review C3). A bare query string is same-origin by
+ *   construction; only the keys the server emits are accepted.
+ * - anything else (a `javascript:`/`data:` URI, an absolute or
+ *   protocol-relative URL, another path) → no link.
  */
-export function isSafeEvidenceHref(href: string): boolean {
-  return href.startsWith('/api/v1/');
+export type EvidenceTarget =
+  | { kind: 'receipt'; receiptId: string }
+  | { kind: 'app'; href: string };
+
+const APP_EVIDENCE_KEYS = new Set(['project', 'view', 'ticket']);
+const APP_EVIDENCE_VIEWS = new Set(['trace']);
+const RECEIPT_PATH = /^\/api\/v1\/receipts\/([^/?#]+)$/;
+
+export function classifyEvidenceHref(href: string): EvidenceTarget | null {
+  const receipt = RECEIPT_PATH.exec(href);
+  if (receipt) {
+    try {
+      return { kind: 'receipt', receiptId: decodeURIComponent(receipt[1]!) };
+    } catch {
+      return null;
+    }
+  }
+  if (href.startsWith('?') && href.length > 1) {
+    const params = new URLSearchParams(href.slice(1));
+    let any = false;
+    for (const [key, value] of params) {
+      any = true;
+      if (!APP_EVIDENCE_KEYS.has(key) || value === '') return null;
+      if (key === 'view' && !APP_EVIDENCE_VIEWS.has(value)) return null;
+    }
+    if (!any) return null;
+    return { kind: 'app', href: `?${params.toString()}` };
+  }
+  return null;
 }
 
-function FindingCardBody({ card }: { card: FindingCard }) {
-  const safeHref = isSafeEvidenceHref(card.evidenceHref) ? card.evidenceHref : null;
+export function isSafeEvidenceHref(href: string): boolean {
+  return classifyEvidenceHref(href) !== null;
+}
+
+function FindingCardBody({
+  card,
+  onOpenReceipt,
+}: {
+  card: FindingCard;
+  onOpenReceipt?: (receiptId: string) => void;
+}) {
+  const target = classifyEvidenceHref(card.evidenceHref);
   // W19-07: recognised mechanical findings lead with one human sentence; the
   // verbatim issue stays below, untouched — summarise, never paraphrase away.
   const lead = plainLeadFor(card.issue);
@@ -56,14 +102,19 @@ function FindingCardBody({ card }: { card: FindingCard }) {
         </p>
       )}
       <p className="chat-card__issue">{card.issue}</p>
-      {safeHref ? (
-        <a
-          className="chat-card__evidence"
-          href={safeHref}
-          data-testid="card-evidence-link"
-        >
+      {target?.kind === 'app' ? (
+        <a className="chat-card__evidence" href={target.href} data-testid="card-evidence-link">
           evidence
         </a>
+      ) : target?.kind === 'receipt' && onOpenReceipt ? (
+        <button
+          type="button"
+          className="chat-card__evidence chat-card__evidence--button"
+          data-testid="card-evidence-link"
+          onClick={() => onOpenReceipt(target.receiptId)}
+        >
+          evidence
+        </button>
       ) : (
         <span
           className="chat-card__evidence chat-card__evidence--unavailable"
@@ -118,10 +169,15 @@ function SlateCardBody({ card }: { card: SlateCard }) {
 
 export interface CardProps {
   card: ChatCard;
+  /** Opens a receipt in-app (Receipt Inspector). Absent → receipts render as plain text. */
+  onOpenReceipt?: (receiptId: string) => void;
+  /** Points the composer at this card's ticket. Absent, or no ticket → no Reply button. */
+  onReply?: (ticketId: string) => void;
 }
 
 /** Dispatches one of UX_SPEC §3's four structured card types (question/finding/manifest/slate). */
-export function Card({ card }: CardProps) {
+export function Card({ card, onOpenReceipt, onReply }: CardProps) {
+  const ticket = ticketOfItem(card);
   return (
     <article
       className={`chat-card chat-card--${card.kind}`}
@@ -130,10 +186,23 @@ export function Card({ card }: CardProps) {
     >
       <header className="chat-card__kind">{card.kind}</header>
       {card.kind === 'question' && <QuestionCardBody card={card} />}
-      {card.kind === 'finding' && <FindingCardBody card={card} />}
+      {card.kind === 'finding' && (
+        <FindingCardBody card={card} onOpenReceipt={onOpenReceipt} />
+      )}
       {card.kind === 'manifest' && <ManifestCardBody card={card} />}
       {card.kind === 'slate' && <SlateCardBody card={card} />}
-      <ProvenanceLine provenance={card.provenance} />
+      <ProvenanceLine provenance={card.provenance} onOpenReceipt={onOpenReceipt} />
+      {onReply && ticket !== null && (
+        <button
+          type="button"
+          className="btn-quiet chat-card__reply"
+          data-testid="chat-card-reply"
+          aria-label={`Reply on ${ticket}`}
+          onClick={() => onReply(ticket)}
+        >
+          Reply
+        </button>
+      )}
     </article>
   );
 }

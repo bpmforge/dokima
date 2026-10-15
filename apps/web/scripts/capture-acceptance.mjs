@@ -100,7 +100,7 @@ try {
   await page.getByTestId('card-E2E-1').waitFor();
   await shoot(page, 'A-06', 'Seeded board via real event log, reloaded');
 
-  await page.getByTestId('card-E2E-1').click();
+  await page.getByTestId('open-E2E-1').click();
   await page.getByTestId('ticket-drawer').waitFor();
   await shoot(page, 'A-07', 'Clicked card E2E-1 — ticket drawer open');
 

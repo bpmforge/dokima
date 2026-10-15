@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { decideSlate, fetchSlates } from '../decisions/api.js';
-import { SlateCard } from '../decisions/SlateCard.js';
-import type { SlateRecord } from '../decisions/types.js';
 import {
   decideApproval,
   dismissNotification,
   fetchMorningQueue,
   NotificationsApiError,
 } from './api.js';
-import { McpApprovalEvidence, type McpApprovalBody } from './McpApprovalEvidence.js';
+import {
+  isDestructiveToolCall,
+  McpApprovalEvidence,
+  type McpApprovalBody,
+} from './McpApprovalEvidence.js';
+import { ArmedButton } from '../lib/ArmedButton.js';
+import { SlateAnswer } from './SlateAnswer.js';
 import { TicketEvidence } from './TicketEvidence.js';
 import { NotificationCard } from './NotificationCard.js';
 import type { NotificationItem } from './types.js';
@@ -45,8 +48,11 @@ function hoursAgo(iso: string, nowMs: number): number {
   return Math.max(0, Math.round((nowMs - new Date(iso).getTime()) / 3_600_000));
 }
 
+/** Review Q2: any Error's own message (the server's detail), not only NotificationsApiError's. */
 function errorMessage(err: unknown, fallback: string): string {
-  return err instanceof NotificationsApiError ? err.message : fallback;
+  if (err instanceof NotificationsApiError) return err.message;
+  if (err instanceof Error && err.message) return err.message;
+  return fallback;
 }
 
 export interface MorningQueueProps {
@@ -80,6 +86,20 @@ export function MorningQueue({ projectId }: MorningQueueProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  /**
+   * Review Q1: a failed decision's error belongs to ITS card and stays until
+   * that card's next attempt (or Dismiss). It used to share the page's error
+   * line, which the next 5 s poll cleared — gone in under four seconds.
+   */
+  const [decideErrors, setDecideErrors] = useState<Record<string, string>>({});
+  const clearDecideError = useCallback((id: string) => {
+    setDecideErrors((current) => {
+      if (!(id in current)) return current;
+      const rest = { ...current };
+      delete rest[id];
+      return rest;
+    });
+  }, []);
   const [elapsedMs, setElapsedMs] = useState(0);
   const sessionStartRef = useRef(Date.now());
   const previousReviewRef = useRef<string | null>(null);
@@ -116,18 +136,28 @@ export function MorningQueue({ projectId }: MorningQueueProps) {
   }, [refresh]);
 
   const decide = useCallback(
-    async (item: NotificationItem, decision: 'approved' | 'rejected') => {
+    async (
+      item: NotificationItem,
+      decision: 'approved' | 'rejected',
+      note?: string,
+    ): Promise<boolean> => {
       setBusyId(item.id);
+      clearDecideError(item.id);
       try {
-        await decideApproval(item.id, item.projectId, decision);
-        await refresh();
+        await decideApproval(item.id, item.projectId, decision, {}, note);
       } catch (err) {
-        setError(errorMessage(err, 'Failed to record decision'));
-      } finally {
+        setDecideErrors((current) => ({
+          ...current,
+          [item.id]: `Your ${decision === 'approved' ? 'approval' : 'rejection'} was not recorded: ${errorMessage(err, 'the request failed')}`,
+        }));
         setBusyId(null);
+        return false;
       }
+      setBusyId(null);
+      await refresh();
+      return true;
     },
-    [refresh],
+    [refresh, clearDecideError],
   );
 
   const overTarget = elapsedMs > REVIEW_TARGET_MS;
@@ -170,60 +200,13 @@ export function MorningQueue({ projectId }: MorningQueueProps) {
                     onAnswered={() => void refresh()}
                   />
                 ) : item.tier === 'decide' ? (
-                  <div className="notification-card__actions">
-                    {/* W13-61 (novice audit, CRITICAL): the work, ON the card.
-                        This asked for a merge approval showing a title and a
-                        diff-stat string — no files, no verify result, no
-                        receipt. A review that cannot see the work is not a
-                        review. */}
-                    {item.refType === 'ticket' && item.refId && (
-                      <TicketEvidence projectId={item.projectId} ticketId={item.refId} />
-                    )}
-                    {/* W14-04: same standard for tool approvals — the exact
-                        request, on the card. */}
-                    {item.refType === 'mcp_tool_call' && (
-                      <McpApprovalEvidence
-                        body={item.body as McpApprovalBody | null}
-                      />
-                    )}
-                    <button
-                      type="button"
-                      disabled={busyId === item.id}
-                      onClick={() => void decide(item, 'approved')}
-                    >
-                      Approve
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busyId === item.id}
-                      onClick={() => void decide(item, 'rejected')}
-                    >
-                      Reject
-                    </button>
-                    {/* Mechanism-true consequences (the HIGH finding): the
-                        click RECORDS — it does not merge or delete. Saying
-                        more than that would be promising machinery that does
-                        not run on this click. */}
-                    {item.refType === 'mcp_tool_call' ? (
-                      /* W14-04, mechanism-true (external-tools.ts): deciding
-                         records; the tool runs in a later pass, not on this
-                         click. */
-                      <p className="notification-card__consequence">
-                        Approve records your decision, with your name — the
-                        tool then runs the next time an agent asks for it with
-                        exactly these arguments, and nowhere else. Reject
-                        records the refusal and nothing ever runs.
-                      </p>
-                    ) : (
-                      <p className="notification-card__consequence">
-                        Either choice records your decision in the project's
-                        ledger, with your name, and clears this card. Nothing
-                        merges or is discarded by the click itself — the work
-                        stays on its branch, and the run waiting on this answer
-                        reads the ledger.
-                      </p>
-                    )}
-                  </div>
+                  <DecideActions
+                    item={item}
+                    busy={busyId === item.id}
+                    error={decideErrors[item.id] ?? null}
+                    onDismissError={() => clearDecideError(item.id)}
+                    onDecide={(decision, note) => decide(item, decision, note)}
+                  />
                 ) : item.tier === 'review' ? (
                   <div className="notification-card__actions">
                     {/* W13-61 (MEDIUM): review-tier cards had no exit — a
@@ -261,85 +244,146 @@ export function MorningQueue({ projectId }: MorningQueueProps) {
  * A slate that has vanished (answered in another tab, or by a resumed run)
  * says so instead of offering a choice that would 409.
  */
-function SlateAnswer({
-  projectId,
-  slateId,
-  onAnswered,
+/**
+ * Approve / Reject for an ordinary Decide card.
+ *
+ * Review Q3: the consequence is read BEFORE the buttons (it used to follow
+ * them), and Reject opens an optional reason recorded with the decision —
+ * the route already accepted a `note` that the UI never sent.
+ * Review Q4: Approve is disabled while the card itself says there is nothing
+ * to approve (no manifest, still loading, or the request's details missing).
+ * Reject always stays available.
+ */
+function DecideActions({
+  item,
+  busy,
+  error,
+  onDismissError,
+  onDecide,
 }: {
-  projectId: string;
-  slateId: string;
-  onAnswered: () => void;
+  item: NotificationItem;
+  busy: boolean;
+  error: string | null;
+  onDismissError: () => void;
+  onDecide: (decision: 'approved' | 'rejected', note?: string) => Promise<boolean>;
 }) {
-  const [record, setRecord] = useState<SlateRecord | null>(null);
-  const [missing, setMissing] = useState(false);
-  const [deciding, setDeciding] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [ticketReady, setTicketReady] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState('');
+  const reasonId = `reject-reason-${item.id}`;
+  const consequenceId = `decide-consequence-${item.id}`;
 
-  useEffect(() => {
-    let live = true;
-    void fetchSlates(projectId, 'open')
-      .then((slates) => {
-        if (!live) return;
-        const found = slates.find((s) => s.id === slateId) ?? null;
-        setRecord(found);
-        setMissing(found === null);
-      })
-      .catch((err: unknown) => {
-        if (live) setError(errorMessage(err, 'Could not load this decision'));
-      });
-    return () => {
-      live = false;
-    };
-  }, [projectId, slateId]);
-
-  if (error) {
-    return (
-      <p className="notification-card__error" role="alert">
-        {error}
-      </p>
-    );
-  }
-  if (missing) {
-    return (
-      <p className="notification-card__hint" role="status">
-        Already answered — this card will clear on the next refresh.
-      </p>
-    );
-  }
-  if (!record) return null;
+  const hasTicketEvidence = item.refType === 'ticket' && Boolean(item.refId);
+  const mcpBody = item.body as McpApprovalBody | null;
+  const mcpReady = Boolean(mcpBody) && typeof mcpBody === 'object';
+  const approvable = hasTicketEvidence
+    ? ticketReady
+    : item.refType === 'mcp_tool_call'
+      ? mcpReady
+      : true;
 
   return (
-    <div data-testid={`queue-slate-${slateId}`}>
-      <SlateCard
-        record={record}
-        deciding={deciding}
-        error={null}
-        onDecide={async (chosen: string, rationale: string) => {
-          setDeciding(true);
-          setError(null);
-          try {
-            await decideSlate(projectId, slateId, {
-              chosen,
-              rationale: rationale || undefined,
-            });
-            // No manual resolve: W10-73's reconcile pass closes the card once
-            // the slate is no longer open, so refreshing is the whole of it.
-            onAnswered();
-          } catch (err) {
-            setError(errorMessage(err, 'Could not record that decision'));
-          } finally {
-            setDeciding(false);
-          }
-        }}
-      />
+    <div className="notification-card__actions">
+      {/* W13-61 (novice audit, CRITICAL): the work, ON the card. This asked
+          for a merge approval showing a title and a diff-stat string — no
+          files, no verify result, no receipt. A review that cannot see the
+          work is not a review. */}
+      {hasTicketEvidence && (
+        <TicketEvidence
+          projectId={item.projectId}
+          ticketId={item.refId!}
+          onReadyChange={setTicketReady}
+        />
+      )}
+      {/* W14-04: same standard for tool approvals — the exact request, on the card. */}
+      {item.refType === 'mcp_tool_call' && <McpApprovalEvidence body={mcpBody} />}
+      {/* Mechanism-true consequences (the HIGH finding): the click RECORDS —
+          it does not merge or delete. Saying more than that would be
+          promising machinery that does not run on this click. */}
+      {item.refType === 'mcp_tool_call' ? (
+        /* W14-04, mechanism-true (external-tools.ts): deciding records; the
+           tool runs in a later pass, not on this click. */
+        <p className="notification-card__consequence" id={consequenceId}>
+          Approve records your decision, with your name — the tool then runs the
+          next time an agent asks for it with exactly these arguments, and nowhere
+          else. Reject records the refusal and nothing ever runs.
+        </p>
+      ) : (
+        <p className="notification-card__consequence" id={consequenceId}>
+          Either choice records your decision in the project's ledger, with your
+          name, and clears this card. Nothing merges or is discarded by the click
+          itself — the work stays on its branch, and the run waiting on this answer
+          reads the ledger.
+        </p>
+      )}
+      {error && (
+        <div className="notification-card__error" role="alert" data-testid={`decide-error-${item.id}`}>
+          <p>{error}</p>
+          <button type="button" onClick={onDismissError}>
+            Dismiss
+          </button>
+        </div>
+      )}
+      {rejecting ? (
+        <div className="notification-card__reject" data-testid={`reject-form-${item.id}`}>
+          <label htmlFor={reasonId}>Reason (optional — recorded with your decision)</label>
+          <textarea
+            id={reasonId}
+            value={reason}
+            rows={2}
+            onChange={(event) => setReason(event.target.value)}
+          />
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              void onDecide('rejected', reason.trim() || undefined).then((ok) => {
+                if (ok) setRejecting(false);
+              });
+            }}
+          >
+            Confirm reject
+          </button>
+          <button type="button" disabled={busy} onClick={() => setRejecting(false)}>
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <>
+          {item.refType === 'mcp_tool_call' && isDestructiveToolCall(mcpBody) ? (
+            <ArmedButton
+              label="Approve"
+              armedLabel="Approve the destructive call? Press again"
+              disabled={busy || !approvable}
+              describedBy={consequenceId}
+              testId="mcp-approve-destructive"
+              onConfirm={() => void onDecide('approved')}
+            />
+          ) : (
+            <button
+              type="button"
+              disabled={busy || !approvable}
+              aria-describedby={consequenceId}
+              title={approvable ? undefined : 'There is nothing on this card to approve yet.'}
+              onClick={() => void onDecide('approved')}
+            >
+              Approve
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={busy}
+            aria-describedby={consequenceId}
+            onClick={() => setRejecting(true)}
+          >
+            Reject
+          </button>
+        </>
+      )}
     </div>
   );
 }
 
-/** UX_SPEC §2b positive-quiet, no CTA. W13-51: the closing clause used to be
- * "next digest at wave gate" — an internal term defined nowhere a user can
- * see, as the last words of the calmest screen in the product. The digest
- * arrives when the current run finishes, so say that. */
 function EmptyQueue({ lastReviewedAt }: { lastReviewedAt: string | null }) {
   const suffix = lastReviewedAt
     ? `Last review ${hoursAgo(lastReviewedAt, Date.now())} h ago; the next digest arrives when the current run finishes.`

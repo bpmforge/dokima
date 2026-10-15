@@ -41,25 +41,9 @@ describe('isShortcutOverlayCloseKey', () => {
   });
 });
 
-describe('shortcutsFor (W10-34)', () => {
-  it('always lists "?" and Esc', () => {
-    const keys = shortcutsFor({ paletteActive: false }).map((s) => s.keys);
-    expect(keys).toContain('?');
-    expect(keys).toContain('Esc');
-  });
-
-  it('omits the command-palette shortcut where the palette is not mounted (Fleet, or a project sub-view)', () => {
-    const shortcuts = shortcutsFor({ paletteActive: false });
-    expect(shortcuts).toHaveLength(2);
-    expect(shortcuts.some((s) => s.description === 'Open command palette')).toBe(false);
-  });
-
-  it('lists the command-palette shortcut where the palette is actually mounted', () => {
-    const shortcuts = shortcutsFor({ paletteActive: true });
-    expect(shortcuts).toHaveLength(3);
-    expect(shortcuts).toContainEqual({
-      keys: '⌘K / Ctrl+K',
-      description: 'Open command palette',
-    });
+describe('shortcutsFor', () => {
+  it('lists "?", Esc and the command palette — the palette is mounted on every screen', () => {
+    const shortcuts = shortcutsFor();
+    expect(shortcuts.map((s) => s.keys)).toEqual(['?', 'Esc', '⌘K / Ctrl+K']);
   });
 });

@@ -189,7 +189,8 @@ describe('ProvidersPanel empty + registration states (AC1, AC2 states table)', (
     fireEvent.click(screen.getByRole('button', { name: 'Add provider' }));
 
     const alert = await screen.findByRole('alert');
-    expect(alert.textContent).toContain('lowercase alphanumeric with dashes');
+    expect(alert.textContent).toContain('lowercase letters, numbers and dashes');
+    expect(screen.getByLabelText('ID').getAttribute('aria-invalid')).toBe('true');
     expect(fetchSpy).toHaveBeenCalledTimes(1); // only the initial GET — no PUT attempted
   });
 });

@@ -1,3 +1,4 @@
+import { paletteShortcutLabel, requestOpenPalette } from '../palette/index.js';
 import { useTheme } from '../theme/ThemeProvider.js';
 import type { View } from './navigation.js';
 
@@ -8,7 +9,11 @@ function ThemeToggle() {
       type="button"
       className="theme-toggle"
       onClick={toggleTheme}
-      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+      // Review UX-13 (WCAG 2.5.3 label in name): the visible word starts the
+      // accessible name, and the name still says what pressing it does.
+      aria-label={`${theme === 'dark' ? 'Dark' : 'Light'} theme, switch to ${
+        theme === 'dark' ? 'light' : 'dark'
+      }`}
     >
       {/* W12-33: an inline SVG, not an emoji. Emoji render differently per
           platform and font — next to text buttons they read as a placeholder
@@ -70,6 +75,8 @@ const DESTINATIONS: ReadonlyArray<{
 
 interface AppHeaderProps {
   appName: string;
+  /** The open project's name, so it's always clear which project this is. */
+  projectName?: string | null;
   view: View;
   projectId: string | null;
   decideBadgeCount: number;
@@ -79,6 +86,7 @@ interface AppHeaderProps {
 
 export function AppHeader({
   appName,
+  projectName,
   view,
   projectId,
   decideBadgeCount,
@@ -87,7 +95,17 @@ export function AppHeader({
 }: AppHeaderProps) {
   return (
     <header className="app-shell__header">
-      <span>{appName}</span>
+      <span>
+        <span className="app-shell__wordmark">{appName}</span>
+        {projectName && (
+          <>
+            <span aria-hidden="true"> · </span>
+            <span className="app-shell__project-name" data-testid="header-project-name">
+              {projectName}
+            </span>
+          </>
+        )}
+      </span>
       <div className="app-shell__header-actions">
         {/*
           W13-01: THE DESTINATION SET IS STABLE. This used to collapse to a
@@ -159,11 +177,25 @@ export function AppHeader({
             </span>
           )}
         </button>
+        {/* The command palette, for a pointer or a finger: ⌘K/Ctrl+K is
+            invisible to anyone who does not already know it. The shortcut is
+            shown as the platform spells it. */}
+        <button
+          type="button"
+          className="btn-quiet app-shell__search"
+          onClick={requestOpenPalette}
+          aria-keyshortcuts="Meta+K Control+K"
+          data-testid="header-search"
+        >
+          Search{' '}
+          <kbd className="app-shell__kbd">{paletteShortcutLabel(navigator.platform)}</kbd>
+        </button>
         {/* W12-29: header chrome recedes. Navigation is reachable, not
             competing with the page's actual action. */}
         <button
           type="button"
           className="btn-quiet"
+          aria-current={view === 'settings' ? 'page' : undefined}
           onClick={() => openView('settings')}
         >
           Settings

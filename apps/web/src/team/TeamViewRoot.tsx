@@ -224,6 +224,7 @@ export function TeamViewRoot({
         <div className="team__seg" role="group" aria-labelledby="team-view-mode">
           <button
             type="button"
+            className="tab"
             data-testid="team-mode-board"
             aria-pressed={mode === 'board'}
             onClick={() => chooseMode('board')}
@@ -232,6 +233,7 @@ export function TeamViewRoot({
           </button>
           <button
             type="button"
+            className="tab"
             data-testid="team-mode-office"
             aria-pressed={mode === 'office'}
             onClick={() => chooseMode('office')}
@@ -240,6 +242,7 @@ export function TeamViewRoot({
           </button>
           <button
             type="button"
+            className="tab"
             data-testid="team-mode-list"
             aria-pressed={mode === 'list'}
             onClick={() => chooseMode('list')}

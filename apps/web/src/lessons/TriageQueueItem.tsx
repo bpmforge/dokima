@@ -8,6 +8,7 @@
  * triage.ts`'s `SelfTriageError`).
  */
 import { type FormEvent, useState } from 'react';
+import { ArmedButton } from '../lib/ArmedButton.js';
 import type { TriageDecision } from './api.js';
 import type { FieldReportRecord } from './types.js';
 
@@ -101,13 +102,19 @@ export function TriageQueueItem({
           >
             Accept → Validator-fix ticket
           </button>
-          <button
-            type="button"
-            disabled={busy || selfFiled}
-            onClick={() => void onTriage({ decision: 'reject' })}
-          >
-            Reject
-          </button>
+          {/* Reject is permanent on the server, so it takes two presses. */}
+          {busy || selfFiled ? (
+            <button type="button" disabled>
+              Reject
+            </button>
+          ) : (
+            <ArmedButton
+              label="Reject"
+              armedLabel="Reject permanently? Click again"
+              testId={`triage-reject-${report.id}`}
+              onConfirm={() => onTriage({ decision: 'reject' })}
+            />
+          )}
         </div>
       )}
 

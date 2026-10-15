@@ -1,4 +1,5 @@
-import type { DragEvent } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
+import { ArmedButton } from '../lib/ArmedButton.js';
 import {
   blockedExplanation,
   budgetParkRetry,
@@ -12,7 +13,9 @@ import {
   WAIVED_BADGE_LABEL,
 } from './badges.js';
 import type { LifecycleVerb } from './api.js';
-import { formatHeartbeat } from './heartbeat.js';
+import { consumeCardFocus, requestCardFocus } from './focusRequest.js';
+import { formatHeartbeat, isHeartbeatStale } from './heartbeat.js';
+import { useHeartbeatClock } from './useLiveRun.js';
 import { availableVerbsFrom, verbMenuLabel } from './transitions.js';
 import type { BoardTicket, HeartbeatData } from './types.js';
 
@@ -49,11 +52,32 @@ export function Card({
   onRaiseBudgetRetry,
 }: CardProps) {
   const verbs = availableVerbsFrom(ticket.status);
+  // Review R1/R2: a live line's age ticks, and a silent one says so.
+  const now = useHeartbeatClock(heartbeat !== undefined);
+  const [chosen, setChosen] = useState<Exclude<LifecycleVerb, 'comment'> | ''>('');
+  const openRef = useRef<HTMLButtonElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Take focus back after a move remounted this card in its new column.
+  useEffect(() => {
+    if (consumeCardFocus(ticket.id)) openRef.current?.focus();
+  }, [ticket.id, ticket.status]);
+
+  // Choosing in the menu only selects; the Move button fires. A select that
+  // fired on change moved tickets on a stray ArrowDown (WCAG 3.2.2).
+  const fire = () => {
+    if (!chosen) return;
+    if (cardRef.current?.contains(document.activeElement)) requestCardFocus(ticket.id);
+    setChosen('');
+    onFireVerb(ticket.id, chosen);
+  };
+
   return (
     <div
       className={`board-card surface${cardStateClass(ticket.status)}${
         isParked(ticket) ? ' surface--blocked' : ''
       }`}
+      ref={cardRef}
       data-testid={`card-${ticket.id}`}
       draggable
       onDragStart={(event) => onDragStart(event, ticket.id)}
@@ -66,7 +90,19 @@ export function Card({
         <span className="board-card__type">{TYPE_LABEL[ticket.type]}</span>
         <span className="board-card__id">{ticket.id}</span>
       </header>
-      <p className="board-card__title">{ticket.title}</p>
+      <p className="board-card__title">
+        {/* The keyboard way into the ticket drawer; the click bubbles to the
+            board's card delegation like any other click on the card. */}
+        <button
+          type="button"
+          ref={openRef}
+          className="board-card__open"
+          data-testid={`open-${ticket.id}`}
+          aria-label={`Open ticket ${ticket.id}: ${ticket.title}`}
+        >
+          {ticket.title}
+        </button>
+      </p>
       {/* W13-52: the chip gets its OWN row — both the header (opacity .7) and
           the meta row (opacity .8) deliberately recede, and axe measured the
           warning hue blended below WCAG contrast inside each (3.54, then
@@ -119,7 +155,7 @@ export function Card({
                 type="button"
                 className="btn-quiet"
                 data-testid={`raise-retry-${ticket.id}`}
-                title={`Writes this project's turn budget to ${retry.suggested}, then starts a run — nothing else changes.`}
+                title={`Writes this project's turn budget to ${retry.suggested}, then opens the run preview for you to approve — nothing else changes.`}
                 onClick={() => onRaiseBudgetRetry(ticket.id, retry.suggested)}
               >
                 Raise the budget to {retry.suggested} and retry
@@ -155,7 +191,15 @@ export function Card({
           {ticket.manifest?.closeReceipt ? '●' : '○'}
         </span>
       </div>
-      {heartbeat && <p className="board-card__heartbeat">{formatHeartbeat(heartbeat)}</p>}
+      {heartbeat && (
+        <p
+          className="board-card__heartbeat"
+          data-testid={`card-heartbeat-${ticket.id}`}
+          data-stale={isHeartbeatStale(heartbeat, now) ? 'true' : undefined}
+        >
+          {formatHeartbeat(heartbeat, now)}
+        </p>
+      )}
       {isParked(ticket) && (
         <p className="board-card__badge board-card__badge--stale">{PARKED_BADGE_LABEL}</p>
       )}
@@ -168,25 +212,45 @@ export function Card({
         </p>
       )}
       {verbs.length > 0 && (
-        <label className="board-card__verb-menu">
-          <span className="sr-only">Move ticket {ticket.id}</span>
-          <select
-            value=""
-            onChange={(event) => {
-              const verb = event.target.value as LifecycleVerb;
-              if (verb) onFireVerb(ticket.id, verb);
-            }}
-          >
-            <option value="" disabled>
-              Move to…
-            </option>
-            {verbs.map((verb) => (
-              <option key={verb} value={verb}>
-                {verbMenuLabel(verb)}
+        <div className="board-card__verb-menu">
+          <label>
+            <span className="sr-only">Move ticket {ticket.id}</span>
+            <select
+              value={chosen}
+              onChange={(event) =>
+                setChosen(event.target.value as Exclude<LifecycleVerb, 'comment'> | '')
+              }
+            >
+              <option value="" disabled>
+                Move to…
               </option>
-            ))}
-          </select>
-        </label>
+              {verbs.map((verb) => (
+                <option key={verb} value={verb}>
+                  {verbMenuLabel(verb)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {chosen === 'accept' ? (
+            <ArmedButton
+              label="Move"
+              armedLabel="Accept as Done? This can't be undone. Click again"
+              onConfirm={fire}
+              className="btn-quiet"
+              testId={`move-${ticket.id}`}
+            />
+          ) : (
+            <button
+              type="button"
+              className="btn-quiet"
+              data-testid={`move-${ticket.id}`}
+              disabled={!chosen}
+              onClick={fire}
+            >
+              Move
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
