@@ -171,7 +171,9 @@
   padding-top: var(--sw-space-1);
   border-top: var(--sw-border-width) solid var(--sw-border);
   font-size: var(--sw-text-sm);
-  opacity: 0.85;
+  /* Review UI-15 / UX-19: was `opacity: 0.85`, which took the cost link to
+     3.65:1 in light. The muted token is measured; the link keeps the accent. */
+  color: var(--sw-fg-muted);
 }
 
 .chat-card__sep {

@@ -29,9 +29,22 @@
   margin-bottom: var(--sw-space-4);
 }
 
+/* Review UI-06: the H1 was overridden to 20px while the section H2s fell
+   back to the 24px browser default — an inverted hierarchy. The H1 takes the
+   shared page-title size; section headings sit on the scale below it. */
 .settings__header h1 {
   margin: 0;
+  font-size: var(--sw-text-page-title);
+}
+
+.settings__panel h2 {
+  margin: 0 0 var(--sw-space-3);
   font-size: var(--sw-text-xl);
+}
+
+.settings__panel h3 {
+  margin: var(--sw-space-4) 0 var(--sw-space-2);
+  font-size: var(--sw-text-lg);
 }
 
 .settings__header-actions {
@@ -50,24 +63,12 @@
   gap: var(--sw-space-1);
   margin-bottom: var(--sw-space-4);
   border-bottom: var(--sw-border-width) solid var(--sw-border);
-  padding-bottom: var(--sw-space-2);
+  /* The selected tab's underline sits ON this rule (shared .tab, UI-10). */
+  padding-bottom: 0;
 }
 
-.settings__tab {
-  border: var(--sw-border-width) solid var(--sw-border);
-  background: transparent;
-  color: var(--sw-fg);
-  border-radius: var(--sw-radius-md);
-  padding: var(--sw-space-1) var(--sw-space-2);
-  cursor: pointer;
-  font-size: var(--sw-text-base);
-}
-
-.settings__tab--active {
-  background: var(--sw-accent);
-  border-color: var(--sw-accent);
-  color: var(--sw-on-accent);
-}
+/* `.settings__tab` buttons also carry the shared `.tab` primitive
+   (styles.css, review UI-10); nothing here restyles them. */
 
 .settings__panel section {
   margin-bottom: var(--sw-space-6);

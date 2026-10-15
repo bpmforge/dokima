@@ -8,7 +8,11 @@ function ThemeToggle() {
       type="button"
       className="theme-toggle"
       onClick={toggleTheme}
-      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+      // Review UX-13 (WCAG 2.5.3 label in name): the visible word starts the
+      // accessible name, and the name still says what pressing it does.
+      aria-label={`${theme === 'dark' ? 'Dark' : 'Light'} theme, switch to ${
+        theme === 'dark' ? 'light' : 'dark'
+      }`}
     >
       {/* W12-33: an inline SVG, not an emoji. Emoji render differently per
           platform and font — next to text buttons they read as a placeholder
@@ -87,7 +91,7 @@ export function AppHeader({
 }: AppHeaderProps) {
   return (
     <header className="app-shell__header">
-      <span>{appName}</span>
+      <span className="app-shell__wordmark">{appName}</span>
       <div className="app-shell__header-actions">
         {/*
           W13-01: THE DESTINATION SET IS STABLE. This used to collapse to a
@@ -164,6 +168,7 @@ export function AppHeader({
         <button
           type="button"
           className="btn-quiet"
+          aria-current={view === 'settings' ? 'page' : undefined}
           onClick={() => openView('settings')}
         >
           Settings

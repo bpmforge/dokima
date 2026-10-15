@@ -1,7 +1,7 @@
 .ticket-drawer__backdrop {
   position: fixed;
   inset: 0;
-  background: rgb(0 0 0 / 35%);
+  background: var(--sw-scrim);
   display: flex;
   justify-content: flex-end;
   z-index: 1500;
@@ -11,9 +11,12 @@
   width: min(32rem, 95vw);
   height: 100%;
   overflow-y: auto;
-  background: var(--sw-bg);
+  /* Review UI-13: --sw-surface, not the page colour, plus the overlay
+     shadow — in dark mode only a hairline separated drawer from page. */
+  background: var(--sw-surface);
   color: var(--sw-fg);
   border-left: var(--sw-border-width) solid var(--sw-border);
+  box-shadow: var(--sw-shadow-overlay);
   padding: var(--sw-space-4) var(--sw-space-5);
 }
 
@@ -28,15 +31,25 @@
   outline-offset: var(--sw-focus-ring-width);
 }
 
+/* Review UI-17: `auto` sized each list's label column to its own longest
+   key, so values started at x=1092 in one list and x=1157 in the next. A fixed
+   label track lines every key/value list in the drawer up on one edge. */
 .ticket-drawer__contract-grid {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: min(9rem, 35%) minmax(0, 1fr);
   gap: var(--sw-space-1) var(--sw-space-3);
+  overflow-wrap: anywhere;
+}
+
+.ticket-drawer h3 {
+  margin: var(--sw-space-5) 0 var(--sw-space-2);
+  font-size: var(--sw-text-md);
+  font-weight: 600;
 }
 
 .ticket-drawer__empty {
-  opacity: 0.75;
-  font-style: italic;
+  color: var(--sw-fg-muted);
+  font-size: var(--sw-text-sm);
 }
 
 .ticket-drawer__acceptance li,

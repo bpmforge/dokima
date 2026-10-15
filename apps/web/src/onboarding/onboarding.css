@@ -12,7 +12,7 @@
 
 .guided-sample__chat-card {
   border: var(--sw-border-width) solid var(--sw-border);
-  border-radius: 0.5rem;
+  border-radius: var(--sw-radius-lg);
   padding: var(--sw-space-3) var(--sw-space-4);
 }
 
@@ -27,7 +27,7 @@
 
 .guided-sample__degrade {
   border: var(--sw-border-width) solid var(--sw-warning);
-  border-radius: 0.5rem;
+  border-radius: var(--sw-radius-lg);
   padding: var(--sw-space-3) var(--sw-space-4);
 }
 

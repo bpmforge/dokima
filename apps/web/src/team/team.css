@@ -127,11 +127,8 @@
   display: flex;
   gap: var(--sw-space-1);
 }
-.team__seg button[aria-pressed='true'] {
-  background: var(--sw-accent);
-  color: var(--sw-on-accent);
-  font-weight: 600;
-}
+/* The segment buttons take the shared `.tab` primitive (styles.css, UI-10):
+   a filled accent segment read as the page's primary action. */
 .team__viewhint {
   font-size: var(--sw-text-sm);
   color: var(--sw-fg-muted);
