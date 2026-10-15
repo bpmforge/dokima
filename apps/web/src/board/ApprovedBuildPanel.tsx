@@ -18,9 +18,10 @@
  * refused it rather than a generic "needs review".
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BoardApiOptions } from './api.js';
 import { stopBuildRun } from './api.js';
+import { RunSummary } from './RunSummary.js';
 import {
   approveBuild,
   fetchApprovedBuildPreview,
@@ -67,6 +68,8 @@ export interface ApprovedBuildPanelProps {
    */
   readonly noModelReason?: string | null;
   readonly onSelectTicket?: (ticketId: string) => void;
+  /** Each increase opens the run preview (the budget-park retry asks this way). */
+  readonly previewRequest?: number;
   /** Injectable so the tests are not timing tests. Omitted, the panel polls. */
   readonly pollMs?: number | null;
 }
@@ -78,6 +81,7 @@ export function ApprovedBuildPanel({
   budgetStatus = 'ready',
   noModelReason = null,
   onSelectTicket,
+  previewRequest = 0,
   pollMs = 2000,
 }: ApprovedBuildPanelProps) {
   const [preview, setPreview] = useState<ApprovedBuildPreview | null>(null);
@@ -156,6 +160,13 @@ export function ApprovedBuildPanel({
     }
   };
 
+  // Latest openPreview for the request effect, without re-firing on every render.
+  const openPreviewRef = useRef(openPreview);
+  openPreviewRef.current = openPreview;
+  useEffect(() => {
+    if (previewRequest > 0) void openPreviewRef.current();
+  }, [previewRequest]);
+
   const approveAndStart = async () => {
     setBusy(true);
     setProblem(null);
@@ -210,7 +221,15 @@ export function ApprovedBuildPanel({
 
   return (
     <section className="approved-build" data-testid="approved-build-panel">
-      <h3>Approved build</h3>
+      <h3>Run</h3>
+      {/* W13-59: what a run is, what it uses, and that nothing starts until
+          the person approves the preview. */}
+      <p className="board-view__run-hint" data-testid="board-runbar-hint">
+        A run is one pass of the agent working the board: it claims Ready tickets, does the
+        work, and hands back receipts. You approve exactly which tickets and budget first. It
+        uses only the models you chose in Settings → Models, within your Autonomy setting —
+        nothing else is contacted.
+      </p>
 
       {progress && (
         <div data-testid="approved-build-progress">
@@ -259,6 +278,9 @@ export function ApprovedBuildPanel({
             No live preview: Dokima does not run your app. What it can show is the
             evidence — open a ticket for its review, checks and signed receipt.
           </p>
+          {!live && (
+            <RunSummary apiOpts={apiOpts} projectId={projectId} runId={progress.runId} />
+          )}
           {live && (
             <button
               type="button"
@@ -280,7 +302,7 @@ export function ApprovedBuildPanel({
               onClick={() => void openPreview()}
               title="A stopped run stays stopped — this shows what a new run would cover, and starts it only after you approve that."
             >
-              Resume (starts a new run)
+              Start a new run
             </button>
           )}
         </div>
@@ -295,7 +317,7 @@ export function ApprovedBuildPanel({
           aria-describedby={noModelReason !== null ? 'board-run-blocked-reason' : undefined}
           onClick={() => void openPreview()}
         >
-          Set up an approved run
+          Start a run
         </button>
       )}
 

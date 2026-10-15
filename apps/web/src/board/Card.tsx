@@ -152,7 +152,7 @@ export function Card({
                 type="button"
                 className="btn-quiet"
                 data-testid={`raise-retry-${ticket.id}`}
-                title={`Writes this project's turn budget to ${retry.suggested}, then starts a run — nothing else changes.`}
+                title={`Writes this project's turn budget to ${retry.suggested}, then opens the run preview for you to approve — nothing else changes.`}
                 onClick={() => onRaiseBudgetRetry(ticket.id, retry.suggested)}
               >
                 Raise the budget to {retry.suggested} and retry

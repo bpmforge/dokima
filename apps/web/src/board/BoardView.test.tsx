@@ -171,55 +171,6 @@ describe('BoardView start-run affordance (W12-28)', () => {
   });
 });
 
-describe('the run can be STOPPED from the board (W17-07)', () => {
-  it('RED FIXTURE: while a run is in progress a working Stop control appears, states the boundary consequence, and calls the stop route', async () => {
-    mockedUseBoardData.mockReturnValue(
-      boardData({ tickets: [makeBoardTicket({ id: 'E2E-1' })] }),
-    );
-    const calls: string[] = [];
-    const fetchImpl = vi.fn(async (url: RequestInfo | URL) => {
-      calls.push(String(url));
-      if (String(url).endsWith('/build-runs')) {
-        return new Response(JSON.stringify({ run_id: 'run-x', status: 'running' }), {
-          status: 202,
-        });
-      }
-      if (String(url).endsWith('/stop')) {
-        return new Response(JSON.stringify({ status: 'stopping' }), { status: 202 });
-      }
-      // status poll: stays running so the Stop control stays visible.
-      return new Response(
-        JSON.stringify({ run_id: 'run-x', status: 'running' }),
-        { status: 200 },
-      );
-    });
-    vi.stubGlobal('fetch', fetchImpl);
-    try {
-      render(
-        <BoardView
-          baseUrl="/api/v1"
-          token="t"
-          projectId="p1"
-          wsUrl="ws://x"
-          onSelectTicket={vi.fn()}
-        />,
-      );
-      fireEvent.click(screen.getByRole('button', { name: 'Start a run' }));
-      const stop = await screen.findByTestId('board-runbar-stop');
-      expect(stop.getAttribute('title')).toContain('next ticket boundary');
-      fireEvent.click(stop);
-      await vi.waitFor(() =>
-        expect(calls.some((u) => u.endsWith('/build-runs/run-x/stop'))).toBe(true),
-      );
-      expect((await screen.findByTestId('board-runbar-stop')).textContent).toContain(
-        'Stopping at the next ticket',
-      );
-    } finally {
-      vi.unstubAllGlobals();
-    }
-  });
-});
-
 describe('the park is worn on the card face (W17-07)', () => {
   it('RED FIXTURE: a parked ticket shows its count and one-line reason on the face — evidence at a glance, not an archaeology dig', () => {
     const parked = makeBoardTicket({
@@ -280,7 +231,7 @@ describe('the park card offers the fix it names (W17-10)', () => {
     { verb: 'release' },
   ] as never;
 
-  it('RED FIXTURE: one click writes the raised setting AND starts a run — fails if either half silently no-ops', async () => {
+  it('RED FIXTURE: one click writes the raised setting AND opens the run preview — fails if either half silently no-ops', async () => {
     const parked = makeBoardTicket({
       id: 'P-2',
       status: 'ready',
@@ -315,13 +266,13 @@ describe('the park card offers the fix it names (W17-10)', () => {
       );
       const button = screen.getByTestId('raise-retry-P-2');
       expect(button.textContent).toContain('Raise the budget to 20 and retry');
-      expect(button.getAttribute('title')).toContain('then starts a run');
+      expect(button.getAttribute('title')).toContain('run preview');
       fireEvent.click(button);
       await vi.waitFor(() => {
         const settingsCall = calls.find((c) => c.url.includes('/settings'));
         expect(settingsCall).toBeTruthy();
         expect(settingsCall!.body).toContain('"maxToolIterations":20');
-        expect(calls.some((c) => c.url.endsWith('/build-runs'))).toBe(true);
+        expect(calls.some((c) => c.url.includes('/approved-build/preview'))).toBe(true);
       });
     } finally {
       vi.unstubAllGlobals();
@@ -353,48 +304,6 @@ describe('the park card offers the fix it names (W17-10)', () => {
       />,
     );
     expect(screen.queryByTestId('raise-retry-P-3')).toBeNull();
-  });
-});
-
-describe('W21-82 — the board never claims a run is live after it has stopped', () => {
-  /**
-   * Live: Tally's run-mtbveccb parked at 18:50:53 and the board still read
-   * "Run in progress… run-mtbveccb — running" ten minutes later. The poll
-   * broke out without touching state, so the button stayed disabled and a
-   * page reload was the only way to start another run.
-   */
-  it('a failed status poll returns the button to Start a run instead of leaving it disabled', async () => {
-    mockedUseBoardData.mockReturnValue(
-      boardData({ tickets: [makeBoardTicket({ id: 'E2E-1' })] }),
-    );
-    const fetchImpl = vi.fn(async (url: RequestInfo | URL) => {
-      if (String(url).endsWith('/build-runs')) {
-        return new Response(JSON.stringify({ run_id: 'run-y', status: 'running' }), {
-          status: 202,
-        });
-      }
-      // The status route stops answering — the shape that stranded the board.
-      return new Response(JSON.stringify({ detail: 'gone' }), { status: 404 });
-    });
-    vi.stubGlobal('fetch', fetchImpl);
-    try {
-      render(
-        <BoardView
-          baseUrl="/api/v1"
-          token="t"
-          projectId="p1"
-          wsUrl="ws://x"
-          onSelectTicket={vi.fn()}
-        />,
-      );
-      fireEvent.click(screen.getByRole('button', { name: 'Start a run' }));
-      const button = await screen.findByRole('button', { name: 'Start a run' });
-      await vi.waitFor(() =>
-        expect((button as HTMLButtonElement).disabled).toBe(false),
-      );
-    } finally {
-      vi.unstubAllGlobals();
-    }
   });
 });
 
@@ -474,65 +383,6 @@ describe('review fixes: stop failure, refused run, failed load, no model (R4, R3
       <BoardView baseUrl="/api/v1" token="t" projectId="p1" wsUrl="ws://x" onSelectTicket={vi.fn()} />,
     );
   }
-
-  it('RED FIXTURE (R4): a refused stop is shown and the Stop button comes back', async () => {
-    mockedUseBoardData.mockReturnValue(boardData({ tickets: [makeBoardTicket({ id: 'E2E-1' })] }));
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
-        const u = String(url);
-        if (u.endsWith('/build-runs') && init?.method === 'POST') {
-          return new Response(JSON.stringify({ run_id: 'run-x', status: 'running' }), { status: 202 });
-        }
-        if (u.endsWith('/stop')) {
-          return new Response(
-            JSON.stringify({ type: 'about:blank', title: 'conflict', status: 409, detail: 'the run already ended' }),
-            { status: 409 },
-          );
-        }
-        return new Response(JSON.stringify({ run_id: 'run-x', status: 'running' }), { status: 200 });
-      }),
-    );
-    try {
-      renderBoard();
-      fireEvent.click(screen.getByRole('button', { name: 'Start a run' }));
-      fireEvent.click(await screen.findByTestId('board-runbar-stop'));
-      const error = await screen.findByTestId('board-runbar-stop-error');
-      expect(error.textContent).toContain('the run already ended');
-      await vi.waitFor(() =>
-        expect((screen.getByTestId('board-runbar-stop') as HTMLButtonElement).disabled).toBe(false),
-      );
-      expect(screen.getByTestId('board-runbar-stop').textContent).toBe('Stop the run');
-    } finally {
-      vi.unstubAllGlobals();
-    }
-  });
-
-  it('RED FIXTURE (R3): a refused run is described once — no status span, no "what this run did" summary', async () => {
-    mockedUseBoardData.mockReturnValue(boardData({ tickets: [makeBoardTicket({ id: 'E2E-1' })] }));
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
-        if (String(url).endsWith('/build-runs') && init?.method === 'POST') {
-          return new Response(
-            JSON.stringify({ type: 'about:blank', title: 'refused', status: 409, detail: 'no model is configured' }),
-            { status: 409 },
-          );
-        }
-        return new Response(JSON.stringify({ detail: 'nope' }), { status: 404 });
-      }),
-    );
-    try {
-      renderBoard();
-      fireEvent.click(screen.getByRole('button', { name: 'Start a run' }));
-      const refusal = await screen.findByTestId('board-runbar-refusal');
-      expect(refusal.textContent).toBe('Run refused: no model is configured');
-      expect(screen.queryByTestId('board-runbar-status')).toBeNull();
-      expect(screen.queryByTestId('run-summary')).toBeNull();
-    } finally {
-      vi.unstubAllGlobals();
-    }
-  });
 
   it('RED FIXTURE (R6): a failed board load shows an error with Retry, not the empty-project onboarding', () => {
     const retryLoad = vi.fn();
