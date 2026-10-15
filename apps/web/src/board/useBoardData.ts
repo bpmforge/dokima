@@ -112,12 +112,24 @@ export function useBoardData(opts: UseBoardDataOptions): UseBoardDataResult {
       const toStatus = verb === 'comment' ? undefined : verbTargetColumn(verb);
       const move = toStatus ? beginOptimisticMove(tickets, ticketId, toStatus) : null;
       if (move) setTickets(move.tickets);
+      // A fetch that REJECTS (core down, network gone) must still roll the
+      // optimistic move back and explain itself, same as BoardView's runs.
       const result = await fireTicketVerb(
         apiOpts.current,
         ticketId,
         verb,
         opts.projectId,
-      );
+      ).catch((err: unknown) => ({
+        ok: false as const,
+        problem: {
+          type: 'about:blank',
+          title: 'the core could not be reached',
+          status: 0,
+          detail: err instanceof Error ? err.message : String(err),
+          instance: `/tickets/${ticketId}/${verb}`,
+          request_id: 'unknown',
+        },
+      }));
       if (result.ok) {
         setTickets((current) => confirmOptimisticMove(current, ticketId, result.data));
         setRefusal(null);

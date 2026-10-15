@@ -551,6 +551,12 @@ label:has(> input[type='radio']) {
   width: var(--sw-divider-width);
   cursor: col-resize;
   background: var(--sw-border);
+  touch-action: none;
+}
+
+.split-pane__divider:hover,
+.split-pane__divider:focus-visible {
+  background: var(--sw-accent);
 }
 
 /* ==========================================================================

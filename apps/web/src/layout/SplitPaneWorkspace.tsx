@@ -4,11 +4,14 @@ import {
   useEffect,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import {
-  clampPaneSize,
   defaultLayout,
+  MAX_PANE_PCT,
+  MIN_PANE_PCT,
+  resizePanePair,
   deserializePaneLayout,
   paneLayoutStorageKey,
   PANE_IDS,
@@ -26,10 +29,15 @@ const PANE_LABELS: Record<PaneId, string> = {
   artifacts: 'Artifacts',
 };
 
+// Storage can throw (site data blocked); the workspace must still render.
 function loadLayout(storageKey: string): PaneLayout {
-  return (
-    deserializePaneLayout(window.localStorage.getItem(storageKey)) ?? defaultLayout()
-  );
+  let raw: string | null = null;
+  try {
+    raw = window.localStorage.getItem(storageKey);
+  } catch {
+    raw = null;
+  }
+  return deserializePaneLayout(raw) ?? defaultLayout();
 }
 
 export interface SplitPaneWorkspaceProps {
@@ -49,7 +57,11 @@ export function SplitPaneWorkspace({ projectId = 'default' }: SplitPaneWorkspace
   }, [storageKey]);
 
   useEffect(() => {
-    window.localStorage.setItem(storageKey, serializePaneLayout(layout));
+    try {
+      window.localStorage.setItem(storageKey, serializePaneLayout(layout));
+    } catch {
+      // Not persisted this session; the layout still works in memory.
+    }
   }, [layout, storageKey]);
 
   const toggleCollapsed = useCallback((id: PaneId) => {
@@ -71,6 +83,10 @@ export function SplitPaneWorkspace({ projectId = 'default' }: SplitPaneWorkspace
     setLayout((current) => (isFocused(current) ? unfocusPanes(current) : focusPane(current, id)));
   }, []);
 
+  // Latest layout for event handlers that snapshot it at gesture start.
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
+
   const startResize = useCallback(
     (leftId: PaneId, rightId: PaneId) =>
       (downEvent: ReactPointerEvent<HTMLDivElement>) => {
@@ -78,29 +94,47 @@ export function SplitPaneWorkspace({ projectId = 'default' }: SplitPaneWorkspace
         const rect = containerRef.current?.getBoundingClientRect();
         if (!rect) return;
         const startX = downEvent.clientX;
+        // Every move is measured from this snapshot, so the size can't compound.
+        const start = layoutRef.current;
+        downEvent.currentTarget.setPointerCapture?.(downEvent.pointerId);
 
         const onMove = (moveEvent: PointerEvent) => {
           const deltaPct = ((moveEvent.clientX - startX) / rect.width) * 100;
-          setLayout((current) => {
-            const left = current.panes[leftId];
-            const right = current.panes[rightId];
-            return {
-              ...current,
-              panes: {
-                ...current.panes,
-                [leftId]: { ...left, sizePct: clampPaneSize(left.sizePct + deltaPct) },
-                [rightId]: { ...right, sizePct: clampPaneSize(right.sizePct - deltaPct) },
-              },
-            };
-          });
+          setLayout(resizePanePair(start, leftId, rightId, deltaPct));
         };
-        const onUp = () => {
+        const stop = () => {
           window.removeEventListener('pointermove', onMove);
-          window.removeEventListener('pointerup', onUp);
+          window.removeEventListener('pointerup', stop);
+          window.removeEventListener('keydown', onKey, true);
+        };
+        // Escape mid-drag puts the split back where it started.
+        const onKey = (keyEvent: KeyboardEvent) => {
+          if (keyEvent.key !== 'Escape') return;
+          keyEvent.preventDefault();
+          keyEvent.stopImmediatePropagation();
+          setLayout(start);
+          stop();
         };
         window.addEventListener('pointermove', onMove);
-        window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointerup', stop);
+        window.addEventListener('keydown', onKey, true);
       },
+    [],
+  );
+
+  const resizeWithKeys = useCallback(
+    (leftId: PaneId, rightId: PaneId) => (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      const step = event.shiftKey ? 10 : 2;
+      const current = layoutRef.current;
+      let delta: number;
+      if (event.key === 'ArrowLeft') delta = -step;
+      else if (event.key === 'ArrowRight') delta = step;
+      else if (event.key === 'Home') delta = -100;
+      else if (event.key === 'End') delta = 100;
+      else return;
+      event.preventDefault();
+      setLayout(resizePanePair(current, leftId, rightId, delta));
+    },
     [],
   );
 
@@ -152,7 +186,16 @@ export function SplitPaneWorkspace({ projectId = 'default' }: SplitPaneWorkspace
               <div
                 className="split-pane__divider"
                 data-testid={`divider-${id}-${next}`}
+                role="separator"
+                aria-orientation="vertical"
+                tabIndex={0}
+                aria-label={`Resize ${PANE_LABELS[id]} and ${PANE_LABELS[next]}`}
+                aria-valuenow={Math.round(pane.sizePct)}
+                aria-valuemin={MIN_PANE_PCT}
+                aria-valuemax={MAX_PANE_PCT}
+                title="Drag, or focus and use the arrow keys, to resize"
                 onPointerDown={startResize(id, next)}
+                onKeyDown={resizeWithKeys(id, next)}
               />
             )}
           </Fragment>
