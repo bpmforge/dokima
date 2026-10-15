@@ -12,7 +12,9 @@ export interface RefusalPopoverProps {
 function evidenceToShow(evidence: unknown): unknown {
   if (evidence === null || evidence === undefined) return null;
   if (typeof evidence === 'object' && !Array.isArray(evidence)) {
-    const { fix: _fix, ...rest } = evidence as Record<string, unknown>;
+    const rest = Object.fromEntries(
+      Object.entries(evidence as Record<string, unknown>).filter(([key]) => key !== 'fix'),
+    );
     return Object.keys(rest).length > 0 ? rest : null;
   }
   return evidence;

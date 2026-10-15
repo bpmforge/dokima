@@ -129,7 +129,7 @@ export function ChatView({ token, projectId = 'default' }: ChatViewProps) {
         <>
           {openReceipt && (
             <section
-              className="chat__receipt"
+              className="surface surface--attention chat__receipt"
               data-testid="chat-receipt"
               aria-label={`Receipt ${openReceipt.id}`}
             >
